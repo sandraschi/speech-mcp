@@ -55,6 +55,22 @@ npm run dev
 - `start_evi_session`: Initialize real-time Hume sessions.
 - `manage_voice_clones`: Unified identity management (Create/List/Delete).
 
+## 🗺️ Roadmap & Next Steps (v0.x)
+
+As a **Beta** release, we have identified several orchestration frontiers and technical debt targets:
+
+### Current Shortcomings
+- **Emotion Visualization**: ElevenLabs currently lacks the deep prosody-to-visual mapping available for Hume EVI.
+- **Frontend State Persistence**: Audio stream settings do not currently persist across hard refreshes.
+- **Agentic Loop Latency**: Iterative sampling (SEP-1577) adds a cognitive overhead of ~2-3 seconds per mission phase.
+
+### Completion Estimates
+- [ ] **v0.2.0 (March 2026)**: ElevenLabs real-time emotion mapping.
+- [ ] **v0.3.0 (April 2026)**: Local-first persistence layer (SQLite/LanceDB).
+- [ ] **v1.0.0 (H2 2026)**: Production-ready industrial stability.
+
+---
+
 ## ⚖️ Standards & Compliance
 
 - **FastMCP 2.14.5**: Full adherence to modern agentic standards.
