@@ -35,7 +35,7 @@ const VoicesPage: React.FC = () => {
             {/* Header Section */}
             <section>
                 <h2 className="page-title">Voice Architecture</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>Manage base identities and neural clones for empathic synthesis.</p>
+                <p className="text-secondary">Manage base identities and neural clones for empathic synthesis.</p>
             </section>
 
             {activeStream && (
@@ -46,68 +46,58 @@ const VoicesPage: React.FC = () => {
                 />
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
+            <div className="display-grid grid-cols-12 gap-24">
                 {/* Voice Cloning Card */}
                 <section className="glass-card cloning-card">
-                    <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '24px' }}>🧬</span> Neural Cloning
+                    <h3 className="m-b-20 d-flex align-center gap-10">
+                        <span className="font-24">🧬</span> Neural Cloning
                     </h3>
                     <div className="cloning-dropzone">
-                        <span style={{ fontSize: '40px' }}>📤</span>
-                        <div style={{ textAlign: 'center' }}>
-                            <p style={{ fontWeight: 600 }}>Drop audio sample here</p>
-                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Minimum 5 seconds recommended</p>
+                        <span className="font-400">📤</span>
+                        <div className="text-center">
+                            <p className="font-600">Drop audio sample here</p>
+                            <p className="font-12 text-secondary">Minimum 5 seconds recommended</p>
                         </div>
                     </div>
 
-                    <div style={{ marginTop: '24px' }}>
-                        <label style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>Clone Name</label>
-                        <input type="text" placeholder="e.g. Executive Support" className="glass-card" style={{
-                            width: '100%',
-                            background: 'var(--bg-primary)',
-                            padding: '12px',
-                            color: 'white',
-                            outline: 'none',
-                            border: '1px solid var(--glass-border)'
-                        }} />
+                    <div className="m-t-24">
+                        <label className="font-13 text-secondary d-block m-b-8">Clone Name</label>
+                        <input type="text" placeholder="e.g. Executive Support" className="glass-card w-full p-12 bg-primary text-white outline-none" />
                     </div>
 
-                    <button className="accent-glow btn-new-session" style={{ width: '100%', marginTop: '20px' }}>
+                    <button className="accent-glow btn-new-session w-full m-t-20">
                         Start Cloning
                     </button>
                 </section>
 
                 {/* Voice Library */}
                 <section className="glass-card library-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '24px' }}>📚</span> Identity Library
+                    <div className="d-flex justify-between align-center m-b-24">
+                        <h3 className="d-flex align-center gap-10">
+                            <span className="font-24">📚</span> Identity Library
                         </h3>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button className="glass-card" style={{ padding: '6px 12px', fontSize: '12px' }}>All</button>
-                            <button className="glass-card" style={{ padding: '6px 12px', fontSize: '12px', opacity: 0.5 }}>Favorites</button>
+                        <div className="d-flex gap-8">
+                            <button className="glass-card p-6-12 font-12">All</button>
+                            <button className="glass-card p-6-12 font-12 opacity-50">Favorites</button>
                         </div>
                     </div>
 
-                    <div className="provider-selector" style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                    <div className="provider-selector d-flex gap-8 m-b-24">
                         <button
-                            className={`glass-card ${provider === 'hume' ? 'active' : ''}`}
+                            className={`glass-card p-8-16 font-14 flex-1 ${provider === 'hume' ? 'active' : ''}`}
                             onClick={() => setProvider('hume')}
-                            style={{ padding: '8px 16px', fontSize: '14px', flex: 1 }}
                         >
                             Hume AI
                         </button>
                         <button
-                            className={`glass-card ${provider === 'elevenlabs' ? 'active' : ''}`}
+                            className={`glass-card p-8-16 font-14 flex-1 ${provider === 'elevenlabs' ? 'active' : ''}`}
                             onClick={() => setProvider('elevenlabs')}
-                            style={{ padding: '8px 16px', fontSize: '14px', flex: 1 }}
                         >
                             ElevenLabs
                         </button>
                         <button
-                            className={`glass-card ${provider === 'windows' ? 'active' : ''}`}
+                            className={`glass-card p-8-16 font-14 flex-1 ${provider === 'windows' ? 'active' : ''}`}
                             onClick={() => setProvider('windows')}
-                            style={{ padding: '8px 16px', fontSize: '14px', flex: 1 }}
                         >
                             Windows Local
                         </button>
@@ -121,36 +111,29 @@ const VoicesPage: React.FC = () => {
                             return false;
                         }).map(voice => (
                             <div key={voice.id} className="voice-item">
-                                <div className="voice-avatar" style={{
-                                    background: voice.type === 'base' ? 'var(--accent-blue)' : 'var(--accent-purple)'
-                                }}>
+                                <div className={`voice-item-avatar ${voice.type}`}>
                                     {voice.type === 'base' ? '👤' : '🤖'}
                                 </div>
 
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600 }}>{voice.name}</div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                <div className="voice-item-info">
+                                    <div className="voice-item-name">{voice.name}</div>
+                                    <div className="voice-item-meta">
                                         {voice.type === 'base' ? 'Official Base Voice' : 'Neural Clone'}
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                <div className="d-flex gap-12 align-center">
                                     <button
                                         onClick={() => triggerPreview(voice.id)}
-                                        style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}
+                                        className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+                                        title={`Preview ${voice.name}`}
                                     >
                                         ▶️
                                     </button>
                                     <button
                                         onClick={() => toggleFavorite(voice.id)}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            fontSize: '20px',
-                                            cursor: 'pointer',
-                                            color: voice.isFavorite ? '#fcd34d' : 'var(--text-secondary)',
-                                            transition: 'var(--transition-smooth)'
-                                        }}
+                                        className={`btn-favorite ${voice.isFavorite ? 'active' : 'inactive'}`}
+                                        title={voice.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                                     >
                                         {voice.isFavorite ? '⭐' : '☆'}
                                     </button>

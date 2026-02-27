@@ -1,4 +1,5 @@
 import asyncio
+
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -31,13 +32,8 @@ async def run_agentic_mission():
                 print(f"📍 Next Step: {step}")
 
             # 3. Simulate high-bandwidth interaction
-            if (
-                "Initialize high-bandwidth stream"
-                in mission.content[0].text["next_steps"]
-            ):
-                print(
-                    "Connecting to WebSocket side-channel at ws://localhost:10760/ws/stream..."
-                )
+            if "Initialize high-bandwidth stream" in mission.content[0].text["next_steps"]:
+                print("Connecting to WebSocket side-channel at ws://localhost:10760/ws/stream...")
 
 
 if __name__ == "__main__":

@@ -20,7 +20,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, onNavigate, activePage 
                     <NavItem icon="🎙️" label="EVI Session" active={activePage === 'evi'} onClick={() => onNavigate('evi')} />
                     <NavItem icon="🔊" label="Octave TTS" active={activePage === 'tts'} onClick={() => onNavigate('tts')} />
                     <NavItem icon="👤" label="Voice Clones" active={activePage === 'voices'} onClick={() => onNavigate('voices')} />
+                    <NavItem icon="🕒" label="History" active={activePage === 'history'} onClick={() => onNavigate('history')} />
+                    <NavItem icon="🧠" label="Semantic Memory" active={activePage === 'semantic'} onClick={() => onNavigate('semantic')} />
                     <NavItem icon="📊" label="Analysis" active={activePage === 'analysis'} onClick={() => onNavigate('analysis')} />
+                    <NavItem icon="🔗" label="Apps Hub" active={activePage === 'services'} onClick={() => onNavigate('services')} />
                     <NavItem icon="🔧" label="Tools" active={activePage === 'tools'} onClick={() => onNavigate('tools')} />
                 </nav>
 

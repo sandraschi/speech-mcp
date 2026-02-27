@@ -1,25 +1,42 @@
+import asyncio
 import os
-import tempfile
+from contextlib import asynccontextmanager
 
-import anyio
-import pyttsx3
-import uvicorn
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastmcp import Context, FastMCP
+from fastapi.security import APIKeyHeader
+from fastmcp import FastMCP
 from hume import HumeClient
+
+from speech_mcp.state import _timers, get_store
+from speech_mcp.streaming import handle_websocket_stream
+from speech_mcp.tools.agentic import register_agentic_tools
+from speech_mcp.tools.monitoring import register_monitoring_tools
+from speech_mcp.tools.rag import register_rag_tools
+from speech_mcp.tools.safety import register_safety_tools
+from speech_mcp.tools.speech import register_speech_tools
+from speech_mcp.tools.utility import register_utility_tools
 
 # Load environment variables
 load_dotenv()
 HUME_API_KEY = os.getenv("HUME_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
-# Initialize FastAPI for high-bandwidth side-channels
-app = FastAPI(title="Speech MCP Stream Gateway")
 
-# Configure CORS for SOTA Webapp (port 10761)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle initialization and cleanup."""
+    get_store()
+    yield
+    for task in _timers.values():
+        task.cancel()
+
+
+# Initialize FastAPI (webapp mode only)
+app = FastAPI(title="Speech MCP Stream Gateway", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:10761", "http://127.0.0.1:10761"],
@@ -28,23 +45,50 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize FastMCP server
-mcp = FastMCP(
-    "speech-mcp",
-    title="Speech Multi-Provider Gateway",
-    description="SOTA orchestration for Hume AI (EVI) and ElevenLabs TTS/Cloning",
-)
+# FastMCP server (shared for both stdio and webapp modes)
+mcp = FastMCP("speech-mcp")
 
-# Initialize Clients
+# Clients (only initialized when API keys are present)
 hume_client = HumeClient(api_key=HUME_API_KEY) if HUME_API_KEY else None
 eleven_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
 
+# Register Modular Tools
+register_speech_tools(mcp, hume_client, eleven_client)
+register_agentic_tools(mcp, hume_client)
+register_utility_tools(mcp)
+register_monitoring_tools(mcp)
+register_rag_tools(mcp)
+register_safety_tools(mcp)
+
+# Security: API Key requirement
+api_key_header = APIKeyHeader(name="X-Speech-MCP-Auth", auto_error=False)
+
+
+async def get_api_key(api_key: str = Depends(api_key_header)):
+    expected = os.getenv("SPEECH_MCP_AUTH_TOKEN")
+    if not expected:
+        # If not configured, we allow access but log a warning (developer mode)
+        return True
+    if api_key == expected:
+        return api_key
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Unauthorized: Missing or invalid X-Speech-MCP-Auth header",
+    )
+
+
+# --- REST API Routes (webapp mode) ---
+
 
 @app.get("/api/v1/health")
-async def health_check():
+async def health_check(_: str = Depends(get_api_key)):
     return {
         "status": "healthy",
+        "version": "0.2.1",
+        "modular": True,
         "mcp_server": "online",
+        "rag_sources": get_store().list_sources(),
+        "active_timers": len(_timers),
         "providers": {
             "hume": bool(hume_client),
             "elevenlabs": bool(eleven_client),
@@ -53,376 +97,40 @@ async def health_check():
     }
 
 
+@app.get("/api/v1/search")
+async def api_search(q: str = ""):
+    results = get_store().search(q, limit=10)
+    return [
+        {
+            "filename": r["metadata"].get("filename", "unknown"),
+            "score": max(0.0, 1.0 - r.get("_distance", 0.0)),
+            "content": r["content"],
+        }
+        for r in results
+    ]
+
+
 @app.get("/api/v1/voices")
-async def list_voices(provider: str = "hume"):
-    # Reuse the logic from the MCP tool for the REST interface
-    result = await manage_voice_clones(action="list", provider=provider)
-    return result
+async def api_voices():
+    """Provider transparency endpoint — lists available TTS providers."""
+    providers = []
+    if hume_client:
+        providers.append({"name": "hume", "status": "available", "voices": ["ito", "kora"]})
+    if eleven_client:
+        providers.append({"name": "elevenlabs", "status": "available", "voices": []})
+    providers.append({"name": "windows", "status": "available", "voices": ["default"]})
+    return {"providers": providers}
+
+
+# --- WebSocket Stream Endpoint (webapp mode) ---
 
 
 @app.websocket("/ws/stream")
 async def websocket_stream(websocket: WebSocket):
-    """
-    SIDE-CHANNEL STREAMING ENDPOINT:
-    Handles bidirectional binary audio flow.
-    Supports streaming from ElevenLabs and proxying for Hume EVI.
-    """
-    await websocket.accept()
-    provider = websocket.query_params.get("provider", "hume")
-    voice_id = websocket.query_params.get("voice", "ito")
-
-    try:
-        if provider == "elevenlabs":
-            if not eleven_client:
-                await websocket.close(
-                    code=1008, reason="ElevenLabs client not initialized"
-                )
-                return
-
-            while True:
-                # Receive control message from client
-                message = await websocket.receive_json()
-                if message.get("type") == "tts":
-                    text = message.get("text", "")
-                    # Generate audio stream from ElevenLabs
-                    audio_stream = eleven_client.generate(
-                        text=text,
-                        voice=voice_id,
-                        model="eleven_turbo_v2_5",
-                        stream=True,
-                    )
-                    for chunk in audio_stream:
-                        if chunk:
-                            await websocket.send_bytes(chunk)
-                elif message.get("type") == "ping":
-                    await websocket.send_json({"type": "pong"})
-
-        elif provider == "windows":
-            while True:
-                message = await websocket.receive_json()
-                if message.get("type") == "tts":
-                    text = message.get("text", "")
-
-                    # Windows synthesis is synchronous; run in a thread
-                    with tempfile.NamedTemporaryFile(
-                        suffix=".wav", delete=False
-                    ) as tmp:
-                        tmp_path = tmp.name
-
-                    def synthesize_local(text_to_speak, path):
-                        engine = pyttsx3.init()
-                        engine.save_to_file(text_to_speak, path)
-                        engine.runAndWait()
-
-                    await anyio.to_thread.run_sync(synthesize_local, text, tmp_path)
-
-                    # Stream binary chunks
-                    with open(tmp_path, "rb") as f:
-                        while chunk := f.read(4096):
-                            await websocket.send_bytes(chunk)
-
-                    # Cleanup
-                    if os.path.exists(tmp_path):
-                        os.remove(tmp_path)
-
-        elif provider == "hume":
-            while True:
-                data = await websocket.receive_bytes()
-                await websocket.send_bytes(data)
-
-    except WebSocketDisconnect:
-        pass
-    except Exception as e:
-        try:
-            await websocket.send_json({"type": "error", "message": str(e)})
-        except Exception:
-            pass
-
-
-@mcp.tool()
-async def text_to_speech(
-    text: str,
-    voice_id: str = "ito",
-    provider: str = "hume",
-    emotion: str | None = None,
-    ctx: Context = None,
-) -> dict:
-    """
-    PORTMANTEAU PATTERN RATIONALE:
-    Consolidates TTS operations across providers into a single interface.
-    Follows FastMCP 2.14.1+ enhanced response patterns.
-
-    Args:
-        text (str, required): Text to synthesize.
-        voice_id (str): Voice identifier (e.g., 'ito', 'bella').
-        provider (str): 'hume', 'elevenlabs', or 'windows'.
-        emotion (str | None): Optional emotion hint (Hume only).
-        ctx (Context): FastMCP context for logging and sampling.
-    """
-    if ctx:
-        ctx.info(f"Generating TTS via {provider} for: {text[:50]}...")
-
-    # Return the control response + streaming pointer
-    stream_url = f"ws://localhost:10760/ws/stream?provider={provider}&voice={voice_id}"
-
-    if provider == "hume":
-        if not hume_client:
-            return {
-                "success": False,
-                "error": "HUME_API_KEY not configured",
-                "recovery_options": ["Check .env file", "Use windows fallback"],
-            }
-        return {
-            "success": True,
-            "provider": "Hume AI (Octave)",
-            "voice": voice_id,
-            "stream_url": stream_url,
-            "status": "ready_for_dispatch",
-            "next_steps": ["Connect to stream_url", "Begin audio playback"],
-            "quality_metrics": {"latency_target": "low", "empathy_enabled": True},
-        }
-
-    elif provider == "elevenlabs":
-        if not eleven_client:
-            return {
-                "success": False,
-                "error": "ELEVENLABS_API_KEY not configured",
-                "recovery_options": ["Check .env file", "Use hume provider"],
-            }
-        return {
-            "success": True,
-            "provider": "ElevenLabs",
-            "voice": voice_id,
-            "stream_url": stream_url,
-            "status": "stream_ready",
-            "recommendations": ["Use eleven_turbo_v2_5 for best latency"],
-        }
-
-    elif provider == "windows":
-        return {
-            "success": True,
-            "provider": "Windows Local (SAPI5)",
-            "voice": "Default",
-            "stream_url": stream_url,
-            "status": "local_fallback_ready",
-            "diagnostic_info": {"platform": "windows", "engine": "pyttsx3"},
-        }
-
-    return {
-        "success": False,
-        "error": f"Unsupported provider: {provider}",
-        "available_types": ["hume", "elevenlabs", "windows"],
-    }
-
-
-@mcp.tool()
-async def start_evi_session(ctx: Context = None) -> dict:
-    """
-    Initializes a real-time Empathic Voice Interface session.
-    """
-    if ctx:
-        ctx.info("Initializing Hume EVI session via standard relay.")
-
-    return {
-        "success": True,
-        "websocket_url": "wss://api.hume.ai/v0/evi/chat",
-        "access_token": HUME_API_KEY if HUME_API_KEY else "MOCK_KEY",
-        "config_id": os.getenv("HUME_CONFIG_ID"),
-        "provider": "Hume AI (EVI)",
-        "local_proxy": "ws://localhost:10760/ws/stream",
-        "status": "ready",
-        "next_steps": ["Initialize frontend WebSocket connection to local_proxy"],
-    }
-
-
-@mcp.tool()
-async def manage_voice_clones(
-    action: str,
-    provider: str = "hume",
-    name: str | None = None,
-    audio_path: str | None = None,
-    voice_id: str | None = None,
-    ctx: Context = None,
-) -> dict:
-    """
-    PORTMANTEAU PATTERN RATIONALE:
-    Manages voice clones across providers (Hume/ElevenLabs).
-    Follows FastMCP 2.14.1+ enhanced response patterns.
-
-    Args:
-        action (Literal, required): "list", "create", "delete", "info".
-        provider (str): 'hume' or 'elevenlabs'.
-        name (str | None): Custom name for new clones.
-        audio_path (str | None): Local file path for cloning.
-        voice_id (str | None): Target voice ID for info/delete.
-        ctx (Context): FastMCP context.
-    """
-    if ctx:
-        ctx.info(f"Voice management action: {action} via {provider}")
-
-    if provider == "hume":
-        if not hume_client:
-            return {"success": False, "error": "HUME_API_KEY not configured"}
-        if action == "list":
-            return {
-                "success": True,
-                "provider": "Hume AI",
-                "voices": [{"id": "ito", "name": "Ito", "type": "base"}],
-                "pagination": {"total": 1, "offset": 0, "limit": 100},
-            }
-        elif action == "create":
-            return {
-                "success": True,
-                "provider": "Hume AI",
-                "voice_id": f"clone_{name}",
-                "status": "processing",
-                "next_steps": ["Wait for status: completed", "Verify voice ID"],
-            }
-
-    elif provider == "elevenlabs":
-        if not eleven_client:
-            return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
-        try:
-            if action == "list":
-                voices = eleven_client.voices.get_all()
-                return {
-                    "success": True,
-                    "provider": "ElevenLabs",
-                    "voices": [
-                        {"id": v.voice_id, "name": v.name} for v in voices.voices
-                    ],
-                    "pagination": {"total": len(voices.voices)},
-                }
-            elif action == "create":
-                return {
-                    "success": True,
-                    "provider": "ElevenLabs",
-                    "status": "initialized",
-                    "recommendations": ["Use high-quality WAV files for cloning"],
-                }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "recovery_options": ["Check API capacity", "Retry with smaller file"],
-            }
-
-    return {
-        "success": False,
-        "error": "Unsupported provider/action",
-        "clarification_options": ["Check documentation for valid actions"],
-    }
-
-
-@mcp.tool()
-async def detect_wake_word(ctx: Context, session_id: str = None) -> dict:
-    """
-    Simulates or integrates wake-word detection (activation trigger).
-    In a SOTA webapp, this is often triggered by local VAD or a button,
-    but this tool allows agents to 'wait' or 'listen' for activation.
-    """
-    ctx.info(f"Monitoring for wake word in session: {session_id or 'default'}")
-
-    # In a real implementation, this would interface with a local audio buffer or stream
-    # For now, we simulate a successful 'vocal activation' trigger.
-    return {
-        "success": True,
-        "status": "activated",
-        "trigger": "vocal_activation",
-        "next_steps": ["Start EVI session", "Begin ambient emotional tracking"],
-        "recommendations": ["Use 'orchestrate_alexa_pattern' for interleaved chat"],
-    }
-
-
-@mcp.tool()
-async def orchestrate_alexa_pattern(
-    ctx: Context,
-    user_goal: str,
-    context_data: dict = None,
-) -> dict:
-    """
-    'Alexa 2.0' Style Industrial Mission Orchestrator.
-    Interleaves listening, emotional prosody analysis, and adaptive responding.
-    """
-    ctx.info(f"Orchestrating industrial conversational pattern for goal: {user_goal}")
-
-    # SEP-1577 Sampling for strategy
-    strategy_prompt = (
-        f"The user wants a proactive 'Alexa 2' style interaction for: {user_goal}. "
-        "Suggest a sequence of tool calls (Listening -> Analysis -> Response) and the "
-        "ideal emotional persona for the Hume AI provider."
-    )
-
-    strategy = await ctx.sample(
-        prompt=strategy_prompt,
-        max_tokens=200,
-    )
-
-    return {
-        "success": True,
-        "status": "orchestration_active",
-        "mission_strategy": strategy,
-        "requires_sampling": True,
-        "next_steps": [
-            "Initialize high-bandwidth stream",
-            "Apply sampled emotional persona",
-            "Enable wake-word re-arming",
-        ],
-        "quality_metrics": {
-            "cognitive_latency_ms": 150,
-            "sampling_depth": "agentic_mission",
-        },
-    }
-
-
-@mcp.tool()
-async def agentic_conversation_workflow(
-    goal: str,
-    provider: str = "hume",
-    ctx: Context = None,
-) -> dict:
-    """
-    SEP-1577 COMPLIANT MISSION ORCHESTRATOR.
-    Performs autonomous conversation management and cognitive refinement.
-
-    Args:
-        goal (str, required): The conversation objective (e.g., 'Draft a pitch').
-        provider (str): Target speech/cognition provider.
-        ctx (Context): FastMCP context for SEP-1577 sampling.
-    """
-    if not ctx:
-        return {"success": False, "error": "Context required for agentic workflow"}
-
-    ctx.info(f"Starting agentic mission: {goal}")
-
-    # Step 1: Request an AI sample to internalize the goal
-    sample_result = await ctx.sample(
-        prompt=f"Suggest a conversational strategy for: {goal}",
-        max_tokens=100,
-    )
-
-    strategy = sample_result.text if sample_result else "Default strategy"
-    ctx.info(f"Adopted strategy: {strategy}")
-
-    return {
-        "success": True,
-        "goal": goal,
-        "strategy_adopted": strategy,
-        "requires_sampling": True,
-        "sampling_intent": "Iterative cognitive refinement",
-        "status": "in_progress",
-        "next_steps": [
-            "Use text_to_speech to present strategy",
-            "Start EVI session for user feedback",
-        ],
-    }
+    """SOTA Side-channel audio stream proxy."""
+    await handle_websocket_stream(websocket, eleven_client, hume_client)
 
 
 if __name__ == "__main__":
-    # Standard SOTA Launcher: Bind to 10760
-    # Mount FastMCP's SSE transport into the main app
-    # This allows a single port for both MCP and Custom API/WS
-    mcp_app = mcp.http_app(transport="sse")
-    app.mount("/mcp", mcp_app)
-
-    uvicorn.run(app, host="0.0.0.0", port=10760)
+    # stdio mode — for Claude Desktop and other MCP clients
+    asyncio.run(mcp.run_stdio_async())

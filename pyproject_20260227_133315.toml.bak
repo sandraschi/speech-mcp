@@ -3,7 +3,7 @@ name = "speech-mcp"
 version = "0.2.1"
 description = "SOTA MCP server for Hume AI EVI and Octave"
 dependencies = [
-    "fastmcp>=3.0.0",
+    "fastmcp>=2.14.5",
     "hume>=0.7.0",
     "elevenlabs>=1.0.0",
     "websockets",
@@ -14,14 +14,9 @@ dependencies = [
     "pyttsx3",
     "lancedb",
     "fastembed",
-    "pyarrow",
-    "python-osc"
+    "pyarrow"
 ]
 requires-python = ">=3.11"
-
-[project.scripts]
-speech-mcp = "speech_mcp.server:main"
-speech-mcp-webapp = "speech_mcp.webapp:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -1,9 +1,9 @@
-# Agentic Orchestration Guide (FastMCP 2.14.5)
+# Agentic Orchestration Guide (FastMCP 3.1.2+)
 
-This document details the advanced cognitive orchestration layer of Speech-MCP, leveraging the **FastMCP 2.14.5** standards.
+This document details the advanced cognitive orchestration layer of Speech-MCP, leveraging the **FastMCP 3.1.2+** standards (Feb 2026).
 
 > [!IMPORTANT]
-> **Antigravity Native**: Currently, the **Antigravity IDE** is the only orchestration environment capable of fully understanding and iteratively closing the cognitive loops defined in this specification.
+> **Antigravity Extension Layer**: While compliant with standard MCP, Speech-MCP is optimized for the **Antigravity Extension Layer**, allowing for seamless multi-turn cognitive loops and autonomous sampling refinement.
 
 ## 🧠 Core Agentic Standards
 

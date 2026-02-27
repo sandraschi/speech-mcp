@@ -1,18 +1,18 @@
 {
     "name": "speech-mcp",
-    "version": "0.2.0",
-    "description": "SOTA-grade MCP server for industrial voice orchestration (Hume AI + ElevenLabs). Optimized for Antigravity iterative cognitive loops.",
+    "version": "0.2.1",
+    "description": "SOTA-grade MCP server for multi-provider voice orchestration (Hume AI + ElevenLabs + Windows TTS) with RAG knowledge base.",
     "homepage": "https://github.com/sandraschi/speech-mcp",
     "license": "MIT",
     "keywords": [
         "mcp",
         "speech",
         "tts",
-        "stt",
         "hume-ai",
         "elevenlabs",
+        "rag",
         "agentic",
-        "alexa-2.0"
+        "fastmcp"
     ],
     "mcp": {
         "transport": "stdio",
@@ -30,29 +30,55 @@
     "tools": [
         {
             "name": "text_to_speech",
-            "description": "Synthesize audio across providers with Dialogic returns."
+            "description": "Synthesize speech via Hume AI, ElevenLabs, or Windows Local TTS. Returns a WebSocket stream URL for audio consumption.",
+            "status": "stable"
         },
         {
-            "name": "start_evi_session",
-            "description": "Initialize real-time Hume EVI sessions."
+            "name": "manage_domestic_utility",
+            "description": "Alexa-style domestic utility gateway: set/cancel/query timers, query weather, and schedule alarms.",
+            "status": "stable"
         },
         {
-            "name": "orchestrate_alexa_pattern",
-            "description": "Industrial mission orchestrator for interleaved speech patterns."
+            "name": "trigger_action",
+            "description": "Elicit physical effects via IoT bridge (Tapo smart lights) or trigger UI notifications.",
+            "status": "stable"
+        },
+        {
+            "name": "search_docs",
+            "description": "Semantic RAG search over the speech-mcp knowledge base (LanceDB + FastEmbed).",
+            "status": "stable"
+        },
+        {
+            "name": "ask_docs",
+            "description": "Ask complex questions about speech AI using RAG retrieval + LLM sampling (ctx.sample).",
+            "status": "stable"
         },
         {
             "name": "detect_wake_word",
-            "description": "Wait or listen for vocal activation trigger."
+            "description": "[UNDER CONSTRUCTION] Local wake-word detection (e.g. 'Hey Edna'). Planned for v0.3.0. Not yet functional.",
+            "status": "under_construction"
+        },
+        {
+            "name": "start_evi_session",
+            "description": "[UNDER CONSTRUCTION] Start a real-time Hume EVI (Empathic Voice Interface) session with bidirectional audio. Planned for v0.3.0. Not yet functional.",
+            "status": "under_construction"
         },
         {
             "name": "agentic_conversation_workflow",
-            "description": "Mission orchestrator with SEP-1577 sampling support."
+            "description": "[UNDER CONSTRUCTION] Multi-turn agentic conversation orchestration with TTS output per turn. Planned for v0.3.0. Not yet functional.",
+            "status": "under_construction"
+        },
+        {
+            "name": "manage_voice_clones",
+            "description": "[UNDER CONSTRUCTION] Manage ElevenLabs voice clone library (list, add, remove). Planned for v0.3.0. Not yet functional.",
+            "status": "under_construction"
         }
     ],
-    "runtime": "python>=3.10",
+    "runtime": "python>=3.11",
     "capabilities": {
         "sampling": true,
         "dialogic_returns": true,
+        "rag": true,
         "agentic_workflows": true
     }
 }
