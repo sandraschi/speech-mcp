@@ -1,6 +1,6 @@
 [project]
 name = "speech-mcp"
-version = "0.2.0"
+version = "0.2.1"
 description = "SOTA MCP server for Hume AI EVI and Octave"
 dependencies = [
     "fastmcp>=2.14.5",
