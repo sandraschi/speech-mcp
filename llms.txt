@@ -1,0 +1,21 @@
+# Speech-MCP
+
+> SOTA-grade MCP server for industrial voice orchestration. Bridges Hume AI (EVI/Octave) and ElevenLabs (PVC/TTS) into a unified, agentic cognitive layer. Optimized for Antigravity iterative cognitive loops.
+
+## Core Documentation
+- [Agentic Orchestration Guide](file:///D:/Dev/repos/speech-mcp/docs/AGENTIC_ORCHESTRATION.md): Deep dive into FastMCP 2.14.5 standards, Dialogic Returns, and SEP-1577 Sampling.
+- [SOTA Chinese AI Research](file:///D:/Dev/repos/speech-mcp/docs/CHINESE_AI_RESEARCH.md): Analysis of high-potential speech models (SenseVoice, ChatTTS).
+- [Arazzo Workflows](file:///D:/Dev/repos/speech-mcp/arazzo.yaml): Execution sequences for Alexa 2.0 missions.
+- [Walkthrough](file:///C:/Users/sandr/.gemini/antigravity/brain/3f8c8e02-ee9f-498f-89c2-1a159c80d6d7/walkthrough.md): Technical retrospective and accomplishment log.
+
+## Features
+- **Dialogic Returns**: Structured tool responses with `next_steps` and `recovery_options`.
+- **SEP-1577 Sampling**: In-band reasoning requests via `ctx.sample()`.
+- **Alexa 2.0 Patterns**: Industrial mission orchestrator for interleaved listening/responding.
+- **FastAPI Substrate**: Unified server on port 10760.
+
+## Links
+- [GitHub Repository](https://github.com/sandraschi/speech-mcp)
+- [Hume AI Documentation](https://dev.hume.ai/)
+- [ElevenLabs API](https://elevenlabs.io/docs)
+- [FastMCP Framework](https://github.com/jlowin/fastmcp)

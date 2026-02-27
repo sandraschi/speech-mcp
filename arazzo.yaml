@@ -1,0 +1,64 @@
+arazzo: 1.0.0
+info:
+  title: Speech-MCP Agentic Workflows
+  version: 0.2.0
+  description: Workflows for industrial "Alexa 2.0" conversational patterns and agentic coaching.
+
+sourceDescriptions:
+  - name: speech-mcp-api
+    url: http://localhost:10760
+    type: openapi
+    # Note: In a real implementation, this would point to the FastAPI OpenAPI spec
+
+workflows:
+  - workflowId: alexa-2.0-activation
+    description: Full cycle from vocal activation to interleaved conversation.
+    inputs:
+      type: object
+      properties:
+        goal:
+          type: string
+          description: The mission goal for the conversation.
+    steps:
+      - stepId: wake-word-detection
+        description: Listen for the vocal trigger.
+        operationId: detect_wake_word
+        successCriteria:
+          - condition: $response.body.status == 'activated'
+      
+      - stepId: initialize-orchestration
+        description: Sample strategy and prepare the emotional persona.
+        operationId: orchestrate_alexa_pattern
+        parameters:
+          - name: user_goal
+            in: body
+            value: $inputs.goal
+        successCriteria:
+          - condition: $response.body.status == 'orchestration_active'
+
+      - stepId: start-streaming
+        description: Initialize the high-bandwidth EVI session.
+        operationId: start_evi_session
+        parameters:
+          - name: provider
+            in: body
+            value: hume
+        successCriteria:
+          - condition: $response.body.status == 'session_started'
+
+  - workflowId: reactive-tts-briefing
+    description: Quick text-to-speech briefing with Dialogic guidance.
+    inputs:
+      type: object
+      properties:
+        text:
+          type: string
+    steps:
+      - stepId: synthesize-audio
+        operationId: text_to_speech
+        parameters:
+          - name: text
+            in: body
+            value: $inputs.text
+        successCriteria:
+          - condition: $response.body.success == true

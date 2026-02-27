@@ -1,0 +1,191 @@
+# Speech-MCP (Multi-Provider Speech Gateway)
+
+![Status: Beta](https://img.shields.io/badge/Status-Beta-orange?style=for-the-badge)
+![FastMCP: 2.14.5](https://img.shields.io/badge/FastMCP-2.14.5-blue?style=for-the-badge)
+![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+
+SOTA-grade MCP server and web application for industrial voice orchestration, supporting Hume AI (EVI/Octave) and ElevenLabs.
+
+> [!IMPORTANT]
+> **Status: Beta (v0.1.0)**. This project is in active development. Features are stable but subject to optimization in upcoming 0.x releases.
+
+## 🚀 Overview
+
+Speech-MCP is a federated gateway for advanced voice AI. It provides a unified MCP interface for text-to-speech, real-time empathic voice sessions, and high-fidelity voice cloning.
+
+## 🛠️ Key Capabilities
+
+- **Hume AI Integration**:
+    - **EVI 2/3**: Real-time empathic voice interface with prosody-driven responses.
+    - **Octave TTS**: Emotionally aware text-to-speech.
+- **ElevenLabs Integration** (Roadmap/Alpha):
+    - **Professional Voice Cloning (PVC)**: State-of-the-art neural cloning.
+    - **Multilingual TTS**: Support for 32+ languages with emotional nuances.
+- **SOTA Webapp**: A premium dark-mode interface with glassmorphism, emotion visualizers, and neural dynamic tracking.
+
+## 📦 Deployment & Setup
+
+### Ports
+- **Backend (MCP)**: `10760`
+- **Frontend (Web)**: `10761`
+
+### Environment Variables
+Create a `.env` file in the root:
+```env
+HUME_API_KEY=your_hume_key
+HUME_CONFIG_ID=your_evi_config_id
+ELEVENLABS_API_KEY=your_eleven_key
+```
+
+### Installation
+```powershell
+# Backend
+pip install -e .
+python -m speech_mcp.server
+
+# Frontend
+cd web
+npm install
+npm run dev
+```
+
+## 🧩 MCP Tools
+
+- `text_to_speech`: Synthesize audio across providers.
+- `start_evi_session`: Initialize real-time Hume sessions.
+- `manage_voice_clones`: Unified identity management (Create/List/Delete).
+
+## 🗺️ Roadmap & Next Steps (v0.x)
+
+As a **Beta** release, we have identified several orchestration frontiers and technical debt targets:
+
+### Current Shortcomings
+- **Emotion Visualization**: ElevenLabs currently lacks the deep prosody-to-visual mapping available for Hume EVI.
+- **Frontend State Persistence**: Audio stream settings do not currently persist across hard refreshes.
+- **Agentic Loop Latency**: Iterative sampling (SEP-1577) adds a cognitive overhead of ~2-3 seconds per mission phase.
+
+### Completion Estimates
+- [ ] **v0.2.0 (March 2026)**: ElevenLabs real-time emotion mapping.
+- [ ] **v0.3.0 (April 2026)**: Local-first persistence layer (SQLite/LanceDB).
+- [ ] **v1.0.0 (H2 2026)**: Production-ready industrial stability.
+
+---
+
+## ⚖️ Standards & Compliance
+
+- **FastMCP 2.14.5**: Full adherence to modern agentic standards.
+- **Dialogic Response Patterns**: All tools return structured metadata (`next_steps`, `recovery_options`, `quality_metrics`) for high-fidelity AI dialogue.
+- **Portmanteau Pattern**: Consolidated tool schema to prevent tool explosion.
+- **Networking**: Dual-server substrate on port **10760** (FastAPI + MCP SSE).
+
+## 🧠 Agentic Features
+
+### 1. SEP-1577 Sampling
+This server supports **Iterative AI Sampling**. When performing complex speech orchestration, tools can request the host LLM to "sample" and suggest cognitive strategies or refine prompts.
+
+**Workflow Example**:
+1. Client calls `agentic_conversation_workflow`.
+2. Server uses `ctx.sample()` to ask the LLM: *"Suggest a conversational strategy for: [User Goal]"*.
+3. Server adopts the suggested strategy and returns a `requires_sampling: true` signal to the agent.
+
+### 2. Dialogic Returns
+Tools provide "Dialogue Guidance" to the calling agent.
+```json
+{
+  "success": true,
+  "status": "ready_for_dispatch",
+  "next_steps": ["Connect to stream_url", "Begin audio playback"],
+  "recovery_options": ["Check .env file", "Use windows fallback"]
+}
+```
+
+### 3. Agentic Workflow Tool
+The `agentic_conversation_workflow` tool is a **Mission Orchestrator**. It doesn't just synthesize text; it reasons about the conversation's goal and adjusts provide parameters autonomously.
+
+## 📦 Deployment & Setup
+
+### Launchers (SOTA)
+- **`start.bat`**: Professional double-click launcher.
+- **`start.ps1`**: PowerShell script that kills zombie processes and spawns the dual-server environment.
+
+### Release Orchestration (SOTA)
+For professional deployments, use the `release.ps1` script:
+```powershell
+# Bump version and tag (patch, minor, or major)
+.\release.ps1 -Type patch -Message "feat: add neural dynamic tracking"
+```
+
+### CI/CD Pipeline
+- **Continuous Integration**: GitHub Actions runs `ruff` and `uv` sync checks on every push.
+- **Automated Releases**: Pushing tags (e.g., `v0.1.0`) triggers a GitHub Release with automated binary builds and release notes.
+
+### Installation & Environment
+This project is **UV-compatible**.
+```powershell
+# Install and lock environment
+uv sync
+uv lock
+
+# Launch
+.\start.bat
+```
+# Agentic Orchestration Guide (FastMCP 2.14.5)
+
+This document details the advanced cognitive orchestration layer of Speech-MCP, leveraging the **FastMCP 2.14.5** standards.
+
+> [!IMPORTANT]
+> **Antigravity Native**: Currently, the **Antigravity IDE** is the only orchestration environment capable of fully understanding and iteratively closing the cognitive loops defined in this specification.
+
+## 🧠 Core Agentic Standards
+
+### 1. Dialogic Tool Returns
+Tools in Speech-MCP do not return flat data. They return **Dialogic Structures** designed to guide the calling agent toward the mission goal.
+
+**Key Metadata**:
+- `status`: Categorical state (e.g., `ready`, `waiting_on_input`).
+- `next_steps`: Actionable follow-up suggestions for the agent.
+- `recovery_options`: Self-healing paths in case of failure.
+- `quality_metrics`: Empirical data about the synthesis/session quality.
+
+### 2. SEP-1577 Sampling
+We implement the **Sampling Protocol**, allowing tools to "glom on" to the host LLM's reasoning power.
+
+**Workflow**:
+1. Agent calls a tool (e.g., `agentic_conversation_workflow`).
+2. The tool uses `ctx.sample()` to ask the host LLM for strategy refinement.
+3. The tool executes based on the sampled intelligence.
+4. The tool returns `requires_sampling: true`, signaling to Antigravity that an iterative cognitive cycle is in progress.
+
+## 🔬 SOTA Dialogic Patterns (ArXiv Research 2026)
+
+Based on recent studies (e.g., *The Role of Prosodic and Lexical Cues in Turn-Taking*), Speech-MCP leverages the following advanced "tricks":
+
+### 1. Voice Activity Projection (VAP)
+Instead of relying on simple silent-segment detection (VAD), we implement (or simulate via Hume EVI) VAP-style turn-taking. 
+- **The Trick**: Scaling the synthesis delay based on the **Emotional Prosody** of the user's closing sentence. A "high-energy" unfinished thought prevents the agent from interrupting, even if lexical cues suggest a stop.
+
+### 2. Lexical-Prosodic Fallback
+Agents should prioritize **Prosodic Cues** (emotional tone) over **Lexical content** when ambiguity exists. 
+- **The Trick**: If a user says "Stop" but with a playful, high-energy tone, the agent might interpret it as a mock-protest and continue the empathic loop (Social Mimicry).
+
+### 3. Kinematic Prosodic Boundaries
+Predicting the end of a turn by analyzing the **micro-latency** and **pitch-bend** at sentence terminals.
+
+---
+
+## 💻 Integration Examples
+
+### Python Agentic Client
+[agentic_client.py](file:///D:/Dev/repos/speech-mcp/examples/agentic_client.py)
+> Demonstrates how a Python agent can consume Dialogic returns and orchestrate a multi-turn mission using the `stdio` transport.
+
+### Webapp Consumption (TypeScript)
+[webapp_consumption.ts](file:///D:/Dev/repos/speech-mcp/examples/webapp_consumption.ts)
+> Illustrates the "Proactive Orchestration" pattern for SOTA web interfaces on port 10761.
+
+---
+
+## 📈 Roadmap (v0.3.0+)
+- **Alexa 2.0 Pattern**: Interleaved VAD-driven listening and responding with near-zero latency.
+- **Cognitive Persistence**: Cross-session memory for agentic speech missions.
+- **Local LLM Glomming**: Direct orchestration with Ollama-hosted models for sub-100ms reasoning.
