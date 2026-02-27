@@ -1,0 +1,29 @@
+[project]
+name = "speech-mcp"
+version = "0.1.0"
+description = "SOTA MCP server for Hume AI EVI and Octave"
+dependencies = [
+    "fastmcp>=20.2.27",
+    "hume>=0.7.0",
+    "websockets",
+    "python-dotenv",
+    "pydantic>=2.0.0",
+    "fastapi",
+    "uvicorn"
+]
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
