@@ -1,17 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import AppLayout from './components/AppLayout';
 import ToolsPage from './components/ToolsPage';
 import VoicesPage from './components/VoicesPage';
 
+// Stable wave data generated outside component to avoid impure render calls
+const WAVE_DATA = [...Array(20)].map((_, i) => ({
+  height: `${20 + Math.random() * 80}%`,
+  delay: `${Math.random()}s`,
+  opacity: 0.3 + (i * 0.03)
+}));
+
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
-
-  // Stable wave data to avoid impure render calls
-  const waveData = useMemo(() => [...Array(20)].map((_, i) => ({
-    height: `${20 + Math.random() * 80}%`,
-    delay: `${Math.random()}s`,
-    opacity: 0.3 + (i * 0.03)
-  })), []);
 
   return (
     <AppLayout onNavigate={setActivePage} activePage={activePage}>
@@ -25,7 +25,7 @@ function App() {
             </div>
 
             <div className="wave-container">
-              {waveData.map((wave, i) => (
+              {WAVE_DATA.map((wave, i) => (
                 <div key={i} className="wave-bar" style={{
                   height: wave.height,
                   opacity: wave.opacity,

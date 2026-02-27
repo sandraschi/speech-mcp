@@ -8,37 +8,34 @@ const ToolsPage: React.FC = () => {
     ];
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        <div className="page-header">
             <section>
-                <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>MCP Tool Registry</h2>
+                <h2 className="page-title">MCP Tool Registry</h2>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
                     Real-time analysis of the Hume AI Speech-MCP server capabilities.
                 </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="tools-grid">
                     {tools.map(tool => (
                         <div key={tool.name} className="glass-card" style={{ padding: '24px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                                <div>
-                                    <h3 style={{ color: 'var(--accent-purple)', fontSize: '18px', marginBottom: '4px' }}>{tool.name}</h3>
-                                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{tool.desc}</p>
+                            <div className="tool-header">
+                                <div className="tool-name-wrap">
+                                    <h3 style={{ color: 'var(--accent-purple)', fontSize: '18px' }}>{tool.name}</h3>
+                                    <span className="tool-badge">Industrial</span>
                                 </div>
                                 <div className="glass-card" style={{ padding: '4px 12px', fontSize: '12px', background: 'rgba(139, 92, 246, 0.1)' }}>
                                     v1.2.0
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>{tool.desc}</p>
+
+                            <div className="tool-params">
                                 {tool.params.map(param => (
-                                    <code key={param} style={{
-                                        padding: '4px 10px',
-                                        background: 'var(--bg-primary)',
-                                        borderRadius: '6px',
-                                        fontSize: '12px',
-                                        border: '1px solid var(--glass-border)'
-                                    }}>
-                                        {param}
-                                    </code>
+                                    <div key={param} className="param-card">
+                                        <div className="param-name">{param}</div>
+                                        <div style={{ fontSize: '11px', opacity: 0.5 }}>neural_parameter</div>
+                                    </div>
                                 ))}
                             </div>
                         </div>
@@ -46,9 +43,9 @@ const ToolsPage: React.FC = () => {
                 </div>
             </section>
 
-            <section className="glass-card" style={{ padding: '32px', border: '1px dashed var(--glass-border)', background: 'transparent' }}>
+            <section className="rationale-card">
                 <h3 style={{ marginBottom: '12px' }}>Portmanteau Rationale</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6' }}>
+                <p style={{ fontSize: '14px', lineHeight: '1.6', opacity: 0.8 }}>
                     To prevent tool explosion, all related voice operations are consolidated into three high-performance gateways.
                     This follows the FastMCP 2.14.4+ standards for industrial-grade AI orchestration.
                 </p>
