@@ -28,9 +28,16 @@ body {
   transition: var(--transition-smooth);
 }
 
-.glass-card:hover {
+.glass-card:hover,
+.glass-card.active {
   border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
   transform: translateY(-2px);
+}
+
+.glass-card.active {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
 }
 
 /* Animations */

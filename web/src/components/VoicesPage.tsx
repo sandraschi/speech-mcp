@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { StreamPlayback } from './StreamPlayback';
 
 interface Voice {
     id: string;
@@ -9,15 +10,24 @@ interface Voice {
 }
 
 const VoicesPage: React.FC = () => {
+    const [provider, setProvider] = useState<'hume' | 'elevenlabs' | 'windows'>('hume');
+    const [activeStream, setActiveStream] = useState<{ url: string, text: string } | null>(null);
     const [voices, setVoices] = useState<Voice[]>([
         { id: 'ito', name: 'Ito', type: 'base', isFavorite: true, previewUrl: '#' },
         { id: 'koda', name: 'Koda', type: 'base', isFavorite: false, previewUrl: '#' },
-        { id: 'leo', name: 'Leo', type: 'base', isFavorite: false, previewUrl: '#' },
         { id: 'clone-1', name: 'Sandra Proxy', type: 'cloned', isFavorite: true, previewUrl: '#' },
+        { id: 'eleven-m1', name: 'Rachel (11L)', type: 'base', isFavorite: false, previewUrl: '#' },
+        { id: 'win-default', name: 'System Default (Local)', type: 'base', isFavorite: false, previewUrl: '#' },
     ]);
 
     const toggleFavorite = (id: string) => {
         setVoices(prev => prev.map(v => v.id === id ? { ...v, isFavorite: !v.isFavorite } : v));
+    };
+
+    const triggerPreview = (voiceId: string) => {
+        const url = `ws://localhost:10760/ws/stream?provider=${provider}&voice=${voiceId}`;
+        const text = "This is a neural synthesis preview from the Speech MCP Gateway.";
+        setActiveStream({ url, text });
     };
 
     return (
@@ -27,6 +37,14 @@ const VoicesPage: React.FC = () => {
                 <h2 className="page-title">Voice Architecture</h2>
                 <p style={{ color: 'var(--text-secondary)' }}>Manage base identities and neural clones for empathic synthesis.</p>
             </section>
+
+            {activeStream && (
+                <StreamPlayback
+                    streamUrl={activeStream.url}
+                    provider={provider}
+                    text={activeStream.text}
+                />
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
                 {/* Voice Cloning Card */}
@@ -71,8 +89,37 @@ const VoicesPage: React.FC = () => {
                         </div>
                     </div>
 
+                    <div className="provider-selector" style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                        <button
+                            className={`glass-card ${provider === 'hume' ? 'active' : ''}`}
+                            onClick={() => setProvider('hume')}
+                            style={{ padding: '8px 16px', fontSize: '14px', flex: 1 }}
+                        >
+                            Hume AI
+                        </button>
+                        <button
+                            className={`glass-card ${provider === 'elevenlabs' ? 'active' : ''}`}
+                            onClick={() => setProvider('elevenlabs')}
+                            style={{ padding: '8px 16px', fontSize: '14px', flex: 1 }}
+                        >
+                            ElevenLabs
+                        </button>
+                        <button
+                            className={`glass-card ${provider === 'windows' ? 'active' : ''}`}
+                            onClick={() => setProvider('windows')}
+                            style={{ padding: '8px 16px', fontSize: '14px', flex: 1 }}
+                        >
+                            Windows Local
+                        </button>
+                    </div>
+
                     <div className="voice-list">
-                        {voices.map(voice => (
+                        {voices.filter(v => {
+                            if (provider === 'hume') return !v.name.includes('(11L)') && !v.name.includes('(Local)');
+                            if (provider === 'elevenlabs') return v.name.includes('(11L)');
+                            if (provider === 'windows') return v.name.includes('(Local)');
+                            return false;
+                        }).map(voice => (
                             <div key={voice.id} className="voice-item">
                                 <div className="voice-avatar" style={{
                                     background: voice.type === 'base' ? 'var(--accent-blue)' : 'var(--accent-purple)'
@@ -88,7 +135,12 @@ const VoicesPage: React.FC = () => {
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                    <button style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>▶️</button>
+                                    <button
+                                        onClick={() => triggerPreview(voice.id)}
+                                        style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}
+                                    >
+                                        ▶️
+                                    </button>
                                     <button
                                         onClick={() => toggleFavorite(voice.id)}
                                         style={{

@@ -3,13 +3,15 @@ name = "speech-mcp"
 version = "0.1.0"
 description = "SOTA MCP server for Hume AI EVI and Octave"
 dependencies = [
-    "fastmcp>=20.2.27",
+    "fastmcp>=2.14.5",
     "hume>=0.7.0",
+    "elevenlabs>=1.0.0",
     "websockets",
     "python-dotenv",
     "pydantic>=2.0.0",
     "fastapi",
-    "uvicorn"
+    "uvicorn",
+    "pyttsx3"
 ]
 requires-python = ">=3.11"
 
