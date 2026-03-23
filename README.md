@@ -49,6 +49,8 @@ ELEVENLABS_API_KEY=your_eleven_key
 
 ### Installation
 ```powershell
+git clone https://github.com/sandraschi/speech-mcp.git
+Set-Location speech-mcp
 # Backend
 pip install -e .
 python -m speech_mcp.server
@@ -136,8 +138,11 @@ For professional deployments, use the `release.ps1` script:
 - **Automated Releases**: Pushing tags (e.g., `v0.1.0`) triggers a GitHub Release with automated binary builds and release notes.
 
 ### Installation & Environment
-This project is **UV-compatible**.
+This project is **UV-compatible**. Clone the repo first, then from the **repository root**:
+
 ```powershell
+git clone https://github.com/sandraschi/speech-mcp.git
+Set-Location speech-mcp
 # Install and lock environment
 uv sync
 uv lock
