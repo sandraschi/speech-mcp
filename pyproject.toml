@@ -43,10 +43,6 @@ packages = ["src/speech_mcp"]
 tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP"]
 
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-
 [tool.ruff]
 line-length = 120
 target-version = "py312"
