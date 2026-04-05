@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, Download, CheckCircle, AlertCircle, FileText, Search } from 'lucide-react';
+import { BACKEND } from '../api';
 
 interface HistoryItem {
     id: string;
@@ -10,14 +11,27 @@ interface HistoryItem {
     provider: string;
 }
 
-const HISTORY_DATA: HistoryItem[] = [
-    { id: '1', type: 'tts', content: "Hello, this is a test of the neural synthesis engine.", timestamp: '2026-02-27 14:30', status: 'success', provider: 'Hume EVI' },
-    { id: '2', type: 'clone', content: "Voice Clone: Sandra Prototype", timestamp: '2026-02-27 12:15', status: 'success', provider: 'ElevenLabs' },
-    { id: '3', type: 'evi', content: "Session: Emotional Analysis 001", timestamp: '2026-02-27 11:00', status: 'success', provider: 'Hume AI' },
-    { id: '4', type: 'tts', content: "Oskar Werner induction attempt.", timestamp: '2026-02-27 09:45', status: 'failed', provider: 'ElevenLabs' },
-];
-
 const HistoryPage: React.FC = () => {
+    const [history, setHistory] = React.useState<HistoryItem[]>([]);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const res = await fetch(`${BACKEND}/api/v1/history`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setHistory(data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch history:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchHistory();
+    }, []);
+
     return (
         <div className="h-full space-y-8 animate-in fade-in duration-700">
             {/* Header Card */}
@@ -47,60 +61,69 @@ const HistoryPage: React.FC = () => {
             <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
                 <table className="w-full text-left border-collapse">
                     <thead>
-                        <tr className="border-b border-slate-800 bg-slate-950/50">
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Event</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Cognitive Content</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Metadata</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                        <tr className="border-b border-white/5 bg-white/[0.02]">
+                            <th className="px-8 py-5 text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">Event</th>
+                            <th className="px-8 py-5 text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">Cognitive Content</th>
+                            <th className="px-8 py-5 text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">Metadata</th>
+                            <th className="px-8 py-5 text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">Status</th>
+                            <th className="px-8 py-5 text-xs font-black text-text-secondary uppercase tracking-widest opacity-40 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
-                        {HISTORY_DATA.map((item) => (
-                            <tr key={item.id} className="group hover:bg-slate-800/20 transition-colors">
-                                <td className="px-8 py-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${item.type === 'tts' ? 'bg-blue-500/10 text-blue-400' :
-                                            item.type === 'clone' ? 'bg-purple-500/10 text-purple-400' :
-                                                'bg-emerald-500/10 text-emerald-400'
-                                            }`}>
-                                            {item.type === 'tts' ? <FileText className="w-4 h-4" /> :
-                                                item.type === 'clone' ? <Download className="w-4 h-4" /> :
-                                                    <Clock className="w-4 h-4" />}
-                                        </div>
-                                        <span className="text-xs font-bold text-white uppercase tracking-tight">{item.type}</span>
+                        {history.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-8 py-20 text-center">
+                                    <div className="flex flex-col items-center justify-center opacity-20 uppercase tracking-[0.3em] font-black text-lg">
+                                        <Clock size={40} className="mb-4" />
+                                        {loading ? 'Synchronizing Substrate...' : 'Archival Trace Empty'}
                                     </div>
-                                </td>
-                                <td className="px-8 py-6">
-                                    <p className="text-slate-300 text-sm font-medium line-clamp-1">{item.content}</p>
-                                </td>
-                                <td className="px-8 py-6">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs text-slate-200 font-mono">{item.timestamp}</span>
-                                        <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{item.provider}</span>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-6">
-                                    <div className="flex items-center gap-2">
-                                        {item.status === 'success' ? (
-                                            <CheckCircle className="w-4 h-4 text-emerald-500" />
-                                        ) : item.status === 'failed' ? (
-                                            <AlertCircle className="w-4 h-4 text-rose-500" />
-                                        ) : (
-                                            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                                        )}
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${item.status === 'success' ? 'text-emerald-500' :
-                                            item.status === 'failed' ? 'text-rose-500' : 'text-indigo-500'
-                                            }`}>{item.status}</span>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-6 text-right">
-                                    <button className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all" title="Download interaction trace">
-                                        <Download className="w-4 h-4" />
-                                    </button>
                                 </td>
                             </tr>
-                        ))}
+                        ) : (
+                            history.map((item) => (
+                                <tr key={item.id} className="group hover:bg-white/[0.03] transition-colors border-b border-white/[0.02] last:border-0">
+                                    <td className="px-8 py-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-lg ${item.type === 'tts' ? 'bg-accent-blue/10 text-accent-blue' :
+                                                item.type === 'clone' ? 'bg-accent-purple/10 text-accent-purple' :
+                                                    'bg-emerald-500/10 text-emerald-400'
+                                                }`}>
+                                                {item.type === 'tts' || item.type === 'clone' ? <FileText className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                                            </div>
+                                            <span className="text-xs font-black text-white uppercase tracking-wider">{item.type}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-8 py-6">
+                                        <p className="text-text-secondary text-sm font-bold line-clamp-1">{item.content}</p>
+                                    </td>
+                                    <td className="px-8 py-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-text-secondary font-mono mb-1">{item.timestamp}</span>
+                                            <span className="text-xs text-text-secondary font-black uppercase tracking-widest opacity-40">{item.provider}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-8 py-6">
+                                        <div className="flex items-center gap-2">
+                                            {item.status === 'success' ? (
+                                                <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                            ) : item.status === 'failed' ? (
+                                                <AlertCircle className="w-4 h-4 text-rose-500" />
+                                            ) : (
+                                                <div className="w-4 h-4 border-2 border-accent-purple border-t-transparent rounded-full animate-spin" />
+                                            )}
+                                            <span className={`text-xs font-black uppercase tracking-widest ${item.status === 'success' ? 'text-emerald-500' :
+                                                item.status === 'failed' ? 'text-rose-500' : 'text-accent-purple'
+                                                }`}>{item.status}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-8 py-6 text-right">
+                                        <button className="p-2 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-all" title="Download interaction trace">
+                                            <Download className="w-4 h-4" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -112,8 +135,8 @@ const HistoryPage: React.FC = () => {
                     { label: 'Synthesis Success', value: '99.4%', color: 'text-emerald-400' },
                     { label: 'Storage Used', value: '4.2 GB', color: 'text-blue-400' },
                 ].map((stat) => (
-                    <div key={stat.label} className="bg-slate-900/30 border border-slate-800 p-6 rounded-3xl flex justify-between items-center">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
+                    <div key={stat.label} className="glass-card p-6 flex justify-between items-center bg-white/[0.02]">
+                        <span className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">{stat.label}</span>
                         <span className={`text-xl font-mono font-black ${stat.color}`}>{stat.value}</span>
                     </div>
                 ))}

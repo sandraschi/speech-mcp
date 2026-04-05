@@ -1,9 +1,10 @@
 {
     "name": "speech-mcp",
-    "version": "0.2.1",
+    "version": "0.3.0",
     "description": "SOTA-grade MCP server for multi-provider voice orchestration (Hume AI + ElevenLabs + Windows TTS) with RAG knowledge base.",
     "homepage": "https://github.com/sandraschi/speech-mcp",
     "license": "MIT",
+    "author": "Sandra Schipal",
     "keywords": [
         "mcp",
         "speech",
@@ -12,7 +13,8 @@
         "elevenlabs",
         "rag",
         "agentic",
-        "fastmcp"
+        "fastmcp",
+        "vienna"
     ],
     "mcp": {
         "transport": "stdio",
@@ -24,54 +26,34 @@
         "env": [
             "HUME_API_KEY",
             "HUME_CONFIG_ID",
-            "ELEVENLABS_API_KEY"
+            "ELEVENLABS_API_KEY",
+            "SPEECH_MCP_AUTH_TOKEN"
         ]
     },
     "tools": [
         {
             "name": "text_to_speech",
-            "description": "Synthesize speech via Hume AI, ElevenLabs, or Windows Local TTS. Returns a WebSocket stream URL for audio consumption.",
-            "status": "stable"
+            "description": "Synthesize speech via Hume AI, ElevenLabs, or Windows Local TTS. Returns a WebSocket stream URL for audio consumption."
         },
         {
             "name": "manage_domestic_utility",
-            "description": "Alexa-style domestic utility gateway: set/cancel/query timers, query weather, and schedule alarms.",
-            "status": "stable"
+            "description": "Alexa-style domestic utility gateway: set/cancel/query timers, query weather, and schedule alarms."
         },
         {
             "name": "trigger_action",
-            "description": "Elicit physical effects via IoT bridge (Tapo smart lights) or trigger UI notifications.",
-            "status": "stable"
+            "description": "Elicit physical effects via IoT bridge (Tapo smart lights) or trigger UI notifications."
         },
         {
             "name": "search_docs",
-            "description": "Semantic RAG search over the speech-mcp knowledge base (LanceDB + FastEmbed).",
-            "status": "stable"
+            "description": "Semantic RAG search over the speech-mcp knowledge base (LanceDB + FastEmbed)."
         },
         {
             "name": "ask_docs",
-            "description": "Ask complex questions about speech AI using RAG retrieval + LLM sampling (ctx.sample).",
-            "status": "stable"
-        },
-        {
-            "name": "detect_wake_word",
-            "description": "[UNDER CONSTRUCTION] Local wake-word detection (e.g. 'Hey Edna'). Planned for v0.3.0. Not yet functional.",
-            "status": "under_construction"
-        },
-        {
-            "name": "start_evi_session",
-            "description": "[UNDER CONSTRUCTION] Start a real-time Hume EVI (Empathic Voice Interface) session with bidirectional audio. Planned for v0.3.0. Not yet functional.",
-            "status": "under_construction"
-        },
-        {
-            "name": "agentic_conversation_workflow",
-            "description": "[UNDER CONSTRUCTION] Multi-turn agentic conversation orchestration with TTS output per turn. Planned for v0.3.0. Not yet functional.",
-            "status": "under_construction"
+            "description": "Ask complex questions about speech AI. Uses RAG retrieval + LLM sampling (ctx.sample) for grounded answers."
         },
         {
             "name": "manage_voice_clones",
-            "description": "[UNDER CONSTRUCTION] Manage ElevenLabs voice clone library (list, add, remove). Planned for v0.3.0. Not yet functional.",
-            "status": "under_construction"
+            "description": "Lifecycle management for voice clones (list, create, delete) across supported providers."
         }
     ],
     "runtime": "python>=3.11",
@@ -79,6 +61,7 @@
         "sampling": true,
         "dialogic_returns": true,
         "rag": true,
-        "agentic_workflows": true
+        "agentic_workflows": true,
+        "websocket_streaming": true
     }
 }

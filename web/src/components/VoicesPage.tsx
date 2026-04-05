@@ -1,147 +1,146 @@
-import React, { useState } from 'react';
-import { StreamPlayback } from './StreamPlayback';
+import React, { useState, useRef } from 'react';
+import { Play, Star, Music, Upload } from 'lucide-react';
 
-interface Voice {
-    id: string;
-    name: string;
-    type: 'base' | 'cloned';
-    isFavorite: boolean;
-    previewUrl: string;
-}
+import { BACKEND } from '../api';
+
+interface Voice { id: string; name: string; type: 'base' | 'cloned'; isFavorite: boolean; }
+
+const VOICES: Voice[] = [
+    { id: 'ito', name: 'Ito', type: 'base', isFavorite: true },
+    { id: 'koda', name: 'Koda', type: 'base', isFavorite: false },
+    { id: 'win-default', name: 'System Default (SAPI)', type: 'base', isFavorite: false },
+    { id: 'clone-1', name: 'Sandra Proxy', type: 'cloned', isFavorite: true },
+    { id: 'rachel-11l', name: 'Rachel (ElevenLabs)', type: 'base', isFavorite: false },
+];
 
 const VoicesPage: React.FC = () => {
-    const [provider, setProvider] = useState<'hume' | 'elevenlabs' | 'windows'>('hume');
-    const [activeStream, setActiveStream] = useState<{ url: string, text: string } | null>(null);
-    const [voices, setVoices] = useState<Voice[]>([
-        { id: 'ito', name: 'Ito', type: 'base', isFavorite: true, previewUrl: '#' },
-        { id: 'koda', name: 'Koda', type: 'base', isFavorite: false, previewUrl: '#' },
-        { id: 'clone-1', name: 'Sandra Proxy', type: 'cloned', isFavorite: true, previewUrl: '#' },
-        { id: 'eleven-m1', name: 'Rachel (11L)', type: 'base', isFavorite: false, previewUrl: '#' },
-        { id: 'win-default', name: 'System Default (Local)', type: 'base', isFavorite: false, previewUrl: '#' },
-    ]);
+    const [provider, setProvider] = useState<'windows' | 'elevenlabs' | 'hume'>('windows');
+    const [voices, setVoices] = useState<Voice[]>(VOICES);
+    const [isLoading, setIsLoading] = useState<string | null>(null);
+    const [ttsError, setTtsError] = useState('');
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    const toggleFavorite = (id: string) => {
+    const toggleFav = (id: string) =>
         setVoices(prev => prev.map(v => v.id === id ? { ...v, isFavorite: !v.isFavorite } : v));
+
+    const preview = async (voice: Voice) => {
+        if (isLoading) return;
+        setIsLoading(voice.id);
+        setTtsError('');
+        const text = 'This is a neural synthesis preview from the Speech MCP Gateway.';
+        try {
+            const res = await fetch(`${BACKEND}/api/v1/tts/wav?text=${encodeURIComponent(text)}&provider=${provider}`);
+            if (!res.ok) throw new Error(`Backend ${res.status}`);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            if (audioRef.current) {
+                audioRef.current.src = url;
+                await audioRef.current.play();
+            }
+        } catch (e) {
+            setTtsError(e instanceof Error ? e.message : String(e));
+        } finally {
+            setIsLoading(null);
+        }
     };
 
-    const triggerPreview = (voiceId: string) => {
-        const url = `ws://localhost:10760/ws/stream?provider=${provider}&voice=${voiceId}`;
-        const text = "This is a neural synthesis preview from the Speech MCP Gateway.";
-        setActiveStream({ url, text });
-    };
+    const filtered = voices.filter(v => {
+        if (provider === 'hume') return !v.name.includes('ElevenLabs') && !v.name.includes('SAPI');
+        if (provider === 'elevenlabs') return v.name.includes('ElevenLabs');
+        if (provider === 'windows') return v.name.includes('SAPI') || v.type === 'base';
+        return true;
+    });
 
     return (
-        <div className="page-header">
-            {/* Header Section */}
-            <section>
-                <h2 className="page-title">Voice Architecture</h2>
-                <p className="text-secondary">Manage base identities and neural clones for empathic synthesis.</p>
-            </section>
+        <div className="space-y-6">
+            <audio ref={audioRef} className="hidden" aria-hidden="true" />
 
-            {activeStream && (
-                <StreamPlayback
-                    streamUrl={activeStream.url}
-                    provider={provider}
-                    text={activeStream.text}
-                />
+            <header>
+                <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Voice Architecture</h1>
+                <p className="text-sm text-white/50 uppercase tracking-widest mt-1">Neural identity library</p>
+            </header>
+
+            {ttsError && (
+                <div className="glass-card p-3 border border-rose-500/30 text-rose-400 text-sm">{ttsError}</div>
             )}
 
-            <div className="display-grid grid-cols-12 gap-24">
-                {/* Voice Cloning Card */}
-                <section className="glass-card cloning-card">
-                    <h3 className="m-b-20 d-flex align-center gap-10">
-                        <span className="font-24">🧬</span> Neural Cloning
-                    </h3>
-                    <div className="cloning-dropzone">
-                        <span className="font-400">📤</span>
-                        <div className="text-center">
-                            <p className="font-600">Drop audio sample here</p>
-                            <p className="font-12 text-secondary">Minimum 5 seconds recommended</p>
-                        </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* Provider + Library */}
+                <div className="lg:col-span-2 glass-card p-6 space-y-5">
+                    {/* Provider tabs */}
+                    <div className="flex gap-2">
+                        {(['windows', 'hume', 'elevenlabs'] as const).map(p => (
+                            <button key={p} onClick={() => setProvider(p)}
+                                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${provider === p
+                                    ? 'bg-violet-600 text-white'
+                                    : 'bg-white/5 text-white/50 hover:bg-white/10'
+                                    }`}>
+                                {p === 'windows' ? 'Windows' : p === 'hume' ? 'Hume AI' : 'ElevenLabs'}
+                            </button>
+                        ))}
                     </div>
 
-                    <div className="m-t-24">
-                        <label className="font-13 text-secondary d-block m-b-8">Clone Name</label>
-                        <input type="text" placeholder="e.g. Executive Support" className="glass-card w-full p-12 bg-primary text-white outline-none" />
-                    </div>
-
-                    <button className="accent-glow btn-new-session w-full m-t-20">
-                        Start Cloning
-                    </button>
-                </section>
-
-                {/* Voice Library */}
-                <section className="glass-card library-card">
-                    <div className="d-flex justify-between align-center m-b-24">
-                        <h3 className="d-flex align-center gap-10">
-                            <span className="font-24">📚</span> Identity Library
-                        </h3>
-                        <div className="d-flex gap-8">
-                            <button className="glass-card p-6-12 font-12">All</button>
-                            <button className="glass-card p-6-12 font-12 opacity-50">Favorites</button>
-                        </div>
-                    </div>
-
-                    <div className="provider-selector d-flex gap-8 m-b-24">
-                        <button
-                            className={`glass-card p-8-16 font-14 flex-1 ${provider === 'hume' ? 'active' : ''}`}
-                            onClick={() => setProvider('hume')}
-                        >
-                            Hume AI
-                        </button>
-                        <button
-                            className={`glass-card p-8-16 font-14 flex-1 ${provider === 'elevenlabs' ? 'active' : ''}`}
-                            onClick={() => setProvider('elevenlabs')}
-                        >
-                            ElevenLabs
-                        </button>
-                        <button
-                            className={`glass-card p-8-16 font-14 flex-1 ${provider === 'windows' ? 'active' : ''}`}
-                            onClick={() => setProvider('windows')}
-                        >
-                            Windows Local
-                        </button>
-                    </div>
-
-                    <div className="voice-list">
-                        {voices.filter(v => {
-                            if (provider === 'hume') return !v.name.includes('(11L)') && !v.name.includes('(Local)');
-                            if (provider === 'elevenlabs') return v.name.includes('(11L)');
-                            if (provider === 'windows') return v.name.includes('(Local)');
-                            return false;
-                        }).map(voice => (
-                            <div key={voice.id} className="voice-item">
-                                <div className={`voice-item-avatar ${voice.type}`}>
-                                    {voice.type === 'base' ? '👤' : '🤖'}
+                    {/* Voice list */}
+                    <div className="space-y-2">
+                        {filtered.length === 0 ? (
+                            <div className="py-8 text-center text-white/30 text-sm">No voices for this provider</div>
+                        ) : filtered.map(voice => (
+                            <div key={voice.id}
+                                className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${voice.type === 'cloned' ? 'bg-violet-500/15 border border-violet-500/25' : 'bg-white/5 border border-white/10'
+                                    }`}>
+                                    {voice.type === 'cloned' ? '🤖' : '👤'}
                                 </div>
-
-                                <div className="voice-item-info">
-                                    <div className="voice-item-name">{voice.name}</div>
-                                    <div className="voice-item-meta">
-                                        {voice.type === 'base' ? 'Official Base Voice' : 'Neural Clone'}
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-white text-sm truncate">{voice.name}</div>
+                                    <div className="text-xs text-white/40 uppercase tracking-wider">
+                                        {voice.type === 'cloned' ? 'Neural Clone' : 'Base Voice'}
                                     </div>
                                 </div>
-
-                                <div className="d-flex gap-12 align-center">
-                                    <button
-                                        onClick={() => triggerPreview(voice.id)}
-                                        className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
-                                        title={`Preview ${voice.name}`}
-                                    >
-                                        ▶️
-                                    </button>
-                                    <button
-                                        onClick={() => toggleFavorite(voice.id)}
-                                        className={`btn-favorite ${voice.isFavorite ? 'active' : 'inactive'}`}
-                                        title={voice.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                                    >
-                                        {voice.isFavorite ? '⭐' : '☆'}
-                                    </button>
-                                </div>
+                                <button onClick={() => toggleFav(voice.id)} title="Toggle favorite"
+                                    className={`p-2 rounded-lg transition-all ${voice.isFavorite ? 'text-amber-400' : 'text-white/20 hover:text-white/50'}`}>
+                                    <Star size={15} fill={voice.isFavorite ? 'currentColor' : 'none'} />
+                                </button>
+                                <button onClick={() => preview(voice)} disabled={!!isLoading} title="Preview voice"
+                                    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all border ${isLoading === voice.id
+                                        ? 'bg-violet-600 border-violet-500 text-white'
+                                        : 'bg-white/5 border-white/10 text-white/40 hover:bg-violet-600 hover:text-white hover:border-violet-500'
+                                        }`}>
+                                    {isLoading === voice.id
+                                        ? <Music size={14} className="animate-bounce" />
+                                        : <Play size={14} className="fill-current ml-0.5" />}
+                                </button>
                             </div>
                         ))}
                     </div>
-                </section>
+                </div>
+
+                {/* Clone panel */}
+                <div className="glass-card p-6 space-y-5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center justify-center text-violet-400">
+                            <Upload size={16} />
+                        </div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-wider">Clone Voice</h3>
+                    </div>
+
+                    <div className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center hover:border-violet-500/30 transition-all">
+                        <div className="text-3xl mb-2">📤</div>
+                        <p className="text-sm font-bold text-white/60">Drop audio sample</p>
+                        <p className="text-xs text-white/30 mt-1">Min. 5 seconds recommended</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Clone Name</label>
+                        <input type="text" placeholder="e.g. My Voice"
+                            className="w-full bg-white/[0.03] border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-violet-500/40" />
+                    </div>
+
+                    <button className="w-full btn-primary py-3 text-sm">
+                        Start Cloning
+                    </button>
+                </div>
             </div>
         </div>
     );

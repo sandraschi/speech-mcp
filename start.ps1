@@ -1,47 +1,29 @@
-# Speech-MCP SOTA Dual-Server Launcher
-# Port 10760: FastAPI Backend + MCP SSE (webapp mode)
-# Port 10761: Vite Frontend
+# Webapp Start - Standardized SOTA (Auto-Repaired V2.5)
+$WebPort = 10917
+$BackendPort = 10918
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$BackendPort = 10760
-$FrontendPort = 10761
-$VenvPython = "$ProjectRoot\.venv\Scripts\python.exe"
-
-Write-Host "--- Speech-MCP SOTA Launcher ---" -ForegroundColor Cyan
-Write-Host "Backend:  http://localhost:$BackendPort" -ForegroundColor DarkGray
-Write-Host "Frontend: http://localhost:$FrontendPort" -ForegroundColor DarkGray
-
-# 1. Kill zombies on reserved ports
-Write-Host "Cleaning up ports $BackendPort and $FrontendPort..." -ForegroundColor Yellow
-
-$BackendJob = Get-NetTCPConnection -LocalPort $BackendPort -ErrorAction SilentlyContinue
-if ($BackendJob) {
-    $BackendJob | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
-    Write-Host "Cleared port $BackendPort" -ForegroundColor DarkYellow
+# 1. Kill any process squatting on the ports
+Write-Host "Checking for port squatters on $WebPort and $BackendPort..." -ForegroundColor Yellow
+$pids = Get-NetTCPConnection -LocalPort $WebPort, $BackendPort -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -gt 4 } | Select-Object -ExpandProperty OwningProcess -Unique
+foreach ($p in $pids) {
+    Write-Host "Found squatter (PID: $p). Terminating..." -ForegroundColor Red
+    try { Stop-Process -Id $p -Force -ErrorAction Stop } catch { Write-Host "Warning: Could not terminate PID $p." -ForegroundColor Gray }
 }
 
-$FrontendJob = Get-NetTCPConnection -LocalPort $FrontendPort -ErrorAction SilentlyContinue
-if ($FrontendJob) {
-    $FrontendJob | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
-    Write-Host "Cleared port $FrontendPort" -ForegroundColor DarkYellow
-}
+# 2. Setup
+Set-Location $PSScriptRoot
+if (-not (Test-Path "node_modules")) { npm install }
 
-# 2. Start Backend (webapp mode: FastAPI + MCP SSE)
-if (-not (Test-Path $VenvPython)) {
-    Write-Host "ERROR: .venv not found at $VenvPython" -ForegroundColor Red
-    Write-Host "Run: uv sync" -ForegroundColor Yellow
-    exit 1
-}
+# 3. Start the Python backend (Background)
+Write-Host "Starting Python backend on port $BackendPort ..." -ForegroundColor Cyan
 
-Write-Host "Launching Backend (webapp) on port $BackendPort..." -ForegroundColor Green
-Start-Process powershell -ArgumentList "-NoExit", "-Command", `
-    "`$env:PYTHONPATH='$ProjectRoot\src'; & '$VenvPython' -m speech_mcp.webapp"
+# Use TRIPLE backtick to ensure $env:PYTHONPATH reaches the REAL shell
+$backendCmd = "`$env:PYTHONPATH = '$PSScriptRoot;$PSScriptRoot\src'; Set-Location '$PSScriptRoot'; uv run uvicorn speech_mcp.server:app --host 127.0.0.1 --port $BackendPort --log-level info"
 
-Start-Sleep -Seconds 2
+Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCmd -WindowStyle Normal
 
-# 3. Start Frontend
-Write-Host "Launching Frontend on port $FrontendPort..." -ForegroundColor Green
-Start-Process powershell -ArgumentList "-NoExit", "-Command", `
-    "Set-Location '$ProjectRoot\web'; npm run dev"
+# 4. Run server (Vite dev)
+Write-Host "Starting Vite frontend on port $WebPort ..." -ForegroundColor Green
+npm run dev -- --port $WebPort --host
 
-Write-Host "Both servers are starting. Open http://localhost:$FrontendPort" -ForegroundColor Cyan

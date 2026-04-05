@@ -1,9 +1,11 @@
 import base64
 import json
+import logging
 import math
 import os
 import struct
 import tempfile
+from typing import Any
 
 import anyio
 import pyttsx3
@@ -12,29 +14,22 @@ from elevenlabs.client import ElevenLabs
 from fastapi import WebSocket, WebSocketDisconnect
 from pythonosc import udp_client
 
-# OSC Configuration for VRChat/Unity
+logger = logging.getLogger(__name__)
+
 OSC_HOST = "127.0.0.1"
 OSC_PORT = 9000
 osc_client = udp_client.SimpleUDPClient(OSC_HOST, OSC_PORT)
 
 
 def calculate_amplitude(audio_b64: str) -> float:
-    """Calculates RMS amplitude from base64 encoded PCM16 audio."""
     try:
         audio_data = base64.b64decode(audio_b64)
-        # Assuming 16-bit PCM (2 bytes per sample)
         count = len(audio_data) // 2
         if count == 0:
             return 0.0
         samples = struct.unpack(f"<{count}h", audio_data)
-
-        sum_squares = sum(s**2 for s in samples)
-        rms = math.sqrt(sum_squares / count)
-
-        # Normalize to 0.0 - 1.0 (rough approximation for speech)
-        # 32768 is max for INT16
-        normalized = min(1.0, rms / 8000.0)
-        return normalized
+        rms = math.sqrt(sum(s**2 for s in samples) / count)
+        return min(1.0, rms / 8000.0)
     except Exception:
         return 0.0
 
@@ -42,128 +37,148 @@ def calculate_amplitude(audio_b64: str) -> float:
 async def handle_websocket_stream(
     websocket: WebSocket,
     eleven_client: ElevenLabs | None,
-    hume_client: any | None = None,
+    hume_client: Any | None = None,
 ):
-    """
-    SOTA SIDE-CHANNEL STREAMING HANDLER:
-    Handles bidirectional binary audio flow.
-    Supports streaming from ElevenLabs and proxying for Hume EVI.
-    """
     await websocket.accept()
 
-    # Security: Verify Auth Token
+    # Auth check
     token = websocket.query_params.get("token")
     expected = os.getenv("SPEECH_MCP_AUTH_TOKEN")
     if expected and token != expected:
-        await websocket.close(code=1008, reason="Unauthorized: Invalid SPEECH_MCP_AUTH_TOKEN")
+        await websocket.close(code=1008, reason="Unauthorized")
         return
 
-    provider = websocket.query_params.get("provider", "hume")
-    voice_id = websocket.query_params.get("voice", "ito")
+    provider = websocket.query_params.get("provider", "windows")
+    voice_id = websocket.query_params.get("voice", "default")
 
     try:
-        if provider == "elevenlabs":
+        if provider == "windows":
+            await _handle_windows(websocket)
+
+        elif provider == "elevenlabs":
             if not eleven_client:
-                await websocket.close(code=1008, reason="ElevenLabs client not initialized")
+                await websocket.close(code=1008, reason="ElevenLabs key not configured")
                 return
-
-            while True:
-                # Receive control message from client
-                message = await websocket.receive_json()
-                if message.get("type") == "tts":
-                    text = message.get("text", "")
-                    # Generate audio stream from ElevenLabs
-                    audio_stream = eleven_client.generate(
-                        text=text,
-                        voice=voice_id,
-                        model="eleven_turbo_v2_5",
-                        stream=True,
-                    )
-                    for chunk in audio_stream:
-                        if chunk:
-                            await websocket.send_bytes(chunk)
-                elif message.get("type") == "ping":
-                    await websocket.send_json({"type": "pong"})
-
-        elif provider == "windows":
-            while True:
-                message = await websocket.receive_json()
-                if message.get("type") == "tts":
-                    text = message.get("text", "")
-
-                    # Windows synthesis is synchronous; run in a thread
-                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-                        tmp_path = tmp.name
-
-                    def synthesize_local(text_to_speak, path):
-                        engine = pyttsx3.init()
-                        engine.save_to_file(text_to_speak, path)
-                        engine.runAndWait()
-
-                    await anyio.to_thread.run_sync(synthesize_local, text, tmp_path)
-
-                    # Stream binary chunks
-                    with open(tmp_path, "rb") as f:
-                        while chunk := f.read(4096):
-                            await websocket.send_bytes(chunk)
-
-                    # Cleanup
-                    if os.path.exists(tmp_path):
-                        os.remove(tmp_path)
+            await _handle_elevenlabs(websocket, eleven_client, voice_id)
 
         elif provider == "hume":
-            # Real Hume EVI Proxy with OSC Lip Flap support
-            hume_url = "wss://api.hume.ai/v0/evi/chat"
             api_key = os.getenv("HUME_API_KEY")
-
             if not api_key:
                 await websocket.close(code=1008, reason="HUME_API_KEY not configured")
                 return
+            await _handle_hume(websocket, api_key)
 
-            # Connect to Hume
-            async with websockets.connect(
-                f"{hume_url}?api_key={api_key}",
-                extra_headers={"X-Hume-Client-Type": "Speech-MCP-Proxy"},
-            ) as hume_ws:
-
-                async def hume_to_client():
-                    try:
-                        async for message in hume_ws:
-                            msg_data = json.loads(message)
-
-                            # Intercept for Lip Flap
-                            if msg_data.get("type") == "audio_output":
-                                audio_b64 = msg_data.get("data")
-                                amp = calculate_amplitude(audio_b64)
-                                # Map amplitude to OSC MouthOpen parameter
-                                # We apply a slight boost for stylized lip flaps
-                                flap_val = min(1.0, amp * 1.5)
-                                if flap_val > 0.05:
-                                    osc_client.send_message(
-                                        "/avatar/parameters/MouthOpen", flap_val
-                                    )
-                                else:
-                                    osc_client.send_message("/avatar/parameters/MouthOpen", 0.0)
-
-                            await websocket.send_text(message)
-                    except Exception as e:
-                        print(f"Hume->Client Error: {e}")
-
-                async def client_to_hume():
-                    try:
-                        while True:
-                            message = await websocket.receive_text()
-                            await hume_ws.send(message)
-                    except Exception as e:
-                        print(f"Client->Hume Error: {e}")
-
-                # Run bidirectional proxy
-                await anyio.gather(hume_to_client(), client_to_hume())
+        else:
+            await websocket.close(code=1008, reason=f"Unknown provider: {provider}")
 
     except WebSocketDisconnect:
         pass
     except Exception as e:
+        logger.exception(f"WebSocket stream error: {e}")
         try:
             await websocket.send_json({"type": "error", "message": str(e)})
         except Exception:
             pass
+
+
+async def _handle_windows(websocket: WebSocket):
+    """
+    Protocol:
+      client -> server: {"type": "tts", "text": "..."}
+      server -> client: raw WAV bytes (chunks)
+      server closes connection when done
+      client onclose -> decode accumulated bytes -> play
+    """
+    tmp_path = None
+    try:
+        msg = await websocket.receive_json()
+        text = msg.get("text", "")
+        if not text:
+            await websocket.close()
+            return
+
+        logger.info(f"Windows TTS: '{text[:60]}'")
+
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        # pyttsx3 is synchronous COM — run in thread pool
+        def _synth():
+            engine = pyttsx3.init()
+            engine.save_to_file(text, tmp_path)
+            engine.runAndWait()
+
+        await anyio.to_thread.run_sync(_synth)
+
+        # Verify file was written
+        if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+            logger.error(f"pyttsx3 produced empty file at {tmp_path}")
+            await websocket.close(code=1011, reason="TTS synthesis failed")
+            return
+
+        logger.info(f"WAV size: {os.path.getsize(tmp_path)} bytes, streaming...")
+
+        with open(tmp_path, "rb") as f:
+            while chunk := f.read(8192):
+                await websocket.send_bytes(chunk)
+
+        # Close cleanly — this is what triggers onclose on the frontend
+        await websocket.close()
+
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+async def _handle_elevenlabs(websocket: WebSocket, client: ElevenLabs, voice_id: str):
+    """
+    Protocol: same as windows — receive text, send audio chunks, close.
+    ElevenLabs returns MP3 chunks which AudioContext can decode.
+    """
+    msg = await websocket.receive_json()
+    text = msg.get("text", "")
+    if not text:
+        await websocket.close()
+        return
+
+    logger.info(f"ElevenLabs TTS: voice={voice_id} text='{text[:60]}'")
+
+    audio_stream = client.generate(
+        text=text,
+        voice=voice_id,
+        model="eleven_turbo_v2_5",
+        stream=True,
+    )
+    for chunk in audio_stream:
+        if chunk:
+            await websocket.send_bytes(chunk)
+
+    await websocket.close()
+
+
+async def _handle_hume(websocket: WebSocket, api_key: str):
+    """Bidirectional proxy to Hume EVI with OSC lip-flap."""
+    hume_url = f"wss://api.hume.ai/v0/evi/chat?api_key={api_key}"
+
+    async with websockets.connect(
+        hume_url,
+        extra_headers={"X-Hume-Client-Type": "Speech-MCP-Proxy"},
+    ) as hume_ws:
+
+        async def hume_to_client():
+            async for message in hume_ws:
+                data = json.loads(message)
+                if data.get("type") == "audio_output":
+                    amp = calculate_amplitude(data.get("data", ""))
+                    flap = min(1.0, amp * 1.5)
+                    osc_client.send_message("/avatar/parameters/MouthOpen", flap if flap > 0.05 else 0.0)
+                await websocket.send_text(message)
+
+        async def client_to_hume():
+            while True:
+                message = await websocket.receive_text()
+                await hume_ws.send(message)
+
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(hume_to_client)
+            tg.start_soon(client_to_hume)

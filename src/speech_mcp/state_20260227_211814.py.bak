@@ -1,0 +1,87 @@
+import asyncio
+import logging
+from collections import deque
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from prometheus_client import Counter, Histogram
+
+from speech_mcp.rag.vector_store import DocumentStore
+
+# Global State Container
+# Following SOTA materialist pattern: Data constitutes the only objective reality.
+_store: Any | None = None
+_timers: dict[str, asyncio.Task] = {}
+_alarms: list[dict] = []
+
+# System Log Buffer (Circular, 1000 items)
+_log_buffer: deque[dict] = deque(maxlen=1000)
+_log_listeners: list[asyncio.Queue] = []
+
+# Prometheus Metrics
+M_REQUESTS = Counter(
+    "substrate_requests_total", "Total substrate requests", ["method", "endpoint"]
+)
+M_LATENCY = Histogram(
+    "substrate_request_latency_seconds", "Request latency in seconds", ["endpoint"]
+)
+M_ERRORS = Counter(
+    "substrate_errors_total", "Total substrate errors", ["type", "context"]
+)
+M_TOKENS = Counter(
+    "substrate_tokens_processed_total", "Total tokens processed", ["provider"]
+)
+
+
+def get_store() -> DocumentStore:
+    """Lazy-initialization for DocumentStore."""
+    global _store
+    if _store is None:
+        db_path = Path("data/lancedb")
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        _store = DocumentStore(db_path)
+    return _store
+
+
+async def run_timer(timer_id: str, seconds: int, label: str):
+    """Internal helper to manage timer lifecycle."""
+    try:
+        await asyncio.sleep(seconds)
+        # Log expiration to substrate logs
+        add_log("INFO", "TIMER", f"Timer expired: {label}")
+        if timer_id in _timers:
+            del _timers[timer_id]
+    except asyncio.CancelledError:
+        pass
+
+
+def add_log(level: str, context: str, msg: str):
+    """Add a log entry to the circular buffer and notify listeners."""
+    context = context.upper()
+    entry = {
+        "id": datetime.now().timestamp(),
+        "time": datetime.now().strftime("%H:%M:%S"),
+        "level": level.upper(),
+        "context": context,
+        "msg": msg,
+    }
+    _log_buffer.append(entry)
+    for q in _log_listeners:
+        q.put_nowait(entry)
+
+
+class SubstrateLogHandler(logging.Handler):
+    """Bridge for standard logging to our system log buffer."""
+
+    def emit(self, record: logging.LogRecord):
+        # Extract context from logger name
+        ctx = record.name.split(".")[-1]
+        add_log(record.levelname, ctx, record.getMessage())
+
+
+def get_log_handler() -> logging.Handler:
+    """Get the singleton log handler for the substrate."""
+    handler = SubstrateLogHandler()
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    return handler

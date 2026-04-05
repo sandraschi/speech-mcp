@@ -35,12 +35,12 @@ To re-index documents, delete `data/lancedb/` and restart the server.
 
 ## Webapp Ports
 
-| Service | Port | Config location |
+| Service | Default port | Config |
 |---|---|---|
-| Backend | 10760 | `start.ps1` + `webapp.py` |
-| Frontend | 10761 | `web/vite.config.ts` (strict) |
+| Backend | 10918 | `web/start.ps1` (`$BackendPort`); override via `PORT` when running uvicorn. |
+| Frontend | 10917 | `web/start.ps1` (`$WebPort`); Vite `--port`. |
 
-Ports are locked via `strictPort: true` in Vite — the frontend will refuse to start on a different port.
+Set `SPEECH_MCP_BACKEND_URL` (e.g. `http://localhost:10918`) when the backend runs on another host/port so tools and the webapp use it. Set `CORS_ORIGINS` (comma-separated) if the frontend origin differs (default includes `http://localhost:10917`).
 
 ## Claude Desktop Config Location
 

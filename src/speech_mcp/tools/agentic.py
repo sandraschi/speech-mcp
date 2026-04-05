@@ -4,6 +4,11 @@ from fastmcp import Context, FastMCP
 from hume import HumeClient
 
 
+def _local_proxy_url() -> str:
+    base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10918")
+    return base.replace("https://", "wss://").replace("http://", "ws://") + "/ws/stream"
+
+
 def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
     @mcp.tool()
@@ -21,7 +26,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
             "access_token": os.getenv("HUME_API_KEY", "MOCK_KEY"),
             "config_id": os.getenv("HUME_CONFIG_ID"),
             "provider": "Hume AI (EVI)",
-            "local_proxy": "ws://localhost:10760/ws/stream",
+            "local_proxy": _local_proxy_url(),
             "status": "ready",
             "next_steps": ["Initialize frontend WebSocket connection to local_proxy"],
         }

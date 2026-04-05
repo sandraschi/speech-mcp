@@ -1,6 +1,11 @@
+import os
 from elevenlabs.client import ElevenLabs
 from fastmcp import Context, FastMCP
 from hume import HumeClient
+
+def _stream_base_url() -> str:
+    base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10918")
+    return base.replace("https://", "wss://").replace("http://", "ws://")
 
 
 # We use a registration function patterns to keep dependencies local to the module
@@ -37,7 +42,7 @@ def register_speech_tools(
             await ctx.info(f"TTS [{provider}/{voice_id}]: {text[:40]}...")
 
         # Base stream URL (handled by the webapp binary proxy)
-        stream_url = f"ws://localhost:10760/ws/stream?provider={provider}&voice={voice_id}"
+        stream_url = f"{_stream_base_url()}/ws/stream?provider={provider}&voice={voice_id}"
 
         # Provider-specific logic and metadata
         if provider == "hume":

@@ -1,0 +1,191 @@
+import asyncio
+import logging
+import os
+import time
+from contextlib import asynccontextmanager
+
+from dotenv import load_dotenv
+from elevenlabs.client import ElevenLabs
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    Response,
+    WebSocket,
+    status,
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
+from fastmcp import FastMCP
+from hume import HumeClient
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+from speech_mcp.state import (
+    M_LATENCY,
+    M_REQUESTS,
+    _log_buffer,
+    _log_listeners,
+    _timers,
+    get_log_handler,
+    get_store,
+)
+from speech_mcp.streaming import handle_websocket_stream
+from speech_mcp.tools.agentic import register_agentic_tools
+from speech_mcp.tools.monitoring import register_monitoring_tools
+from speech_mcp.tools.rag import register_rag_tools
+from speech_mcp.tools.safety import register_safety_tools
+from speech_mcp.tools.speech import register_speech_tools
+from speech_mcp.tools.utility import register_utility_tools
+
+# Load environment variables
+load_dotenv()
+HUME_API_KEY = os.getenv("HUME_API_KEY")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+
+# Configure Substrate Logging Bridge
+logging.basicConfig(level=logging.INFO)
+logging.getLogger().addHandler(get_log_handler())
+logger = logging.getLogger("speech_mcp.server")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle initialization and cleanup."""
+    get_store()
+    yield
+    for task in _timers.values():
+        task.cancel()
+
+
+# FastMCP server (shared for both stdio and webapp modes)
+mcp = FastMCP("speech-mcp")
+
+# Clients (only initialized when API keys are present)
+hume_client = HumeClient(api_key=HUME_API_KEY) if HUME_API_KEY else None
+eleven_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
+
+# Register Modular Tools
+register_speech_tools(mcp, hume_client, eleven_client)
+register_agentic_tools(mcp, hume_client)
+register_utility_tools(mcp)
+register_monitoring_tools(mcp)
+register_rag_tools(mcp)
+register_safety_tools(mcp)
+
+# Security: API Key requirement
+api_key_header = APIKeyHeader(name="X-Speech-MCP-Auth", auto_error=False)
+
+
+async def get_api_key(api_key: str = Depends(api_key_header)):
+    expected = os.getenv("SPEECH_MCP_AUTH_TOKEN")
+    if not expected:
+        return True
+    if api_key == expected:
+        return api_key
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Unauthorized: Missing or invalid X-Speech-MCP-Auth header",
+    )
+
+
+def create_fastapi_app():
+    """Create and configure the FastAPI app with Prometheus metrics."""
+    fastapi_app = FastAPI(title="Speech MCP Substrate", lifespan=lifespan)
+
+    fastapi_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:10761", "http://127.0.0.1:10761"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Prometheus Instrumentation Middleware
+    @fastapi_app.middleware("http")
+    async def metrics_middleware(request: Request, call_next):
+        start_time = time.time()
+        endpoint = request.url.path
+        method = request.method
+
+        response = await call_next(request)
+
+        latency = time.time() - start_time
+        M_REQUESTS.labels(method=method, endpoint=endpoint).inc()
+        M_LATENCY.labels(endpoint=endpoint).observe(latency)
+
+        return response
+
+    @fastapi_app.get("/metrics")
+    async def metrics():
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+    @fastapi_app.get("/api/v1/health")
+    async def health_check(_: str = Depends(get_api_key)):
+        return {
+            "status": "healthy",
+            "version": "0.3.0",
+            "mcp_server": "online",
+            "rag_sources": get_store().list_sources(),
+            "active_timers": len(_timers),
+        }
+
+    @fastapi_app.get("/api/v1/stats")
+    async def api_stats():
+        store = get_store()
+        return {
+            "row_count": store.collection.count(),
+            "sources": store.list_sources(),
+        }
+
+    @fastapi_app.get("/api/v1/search")
+    async def api_search(q: str = ""):
+        results = get_store().search(q, limit=10)
+        return [
+            {
+                "filename": r["metadata"].get("filename", "unknown"),
+                "score": max(0.0, 1.0 - r.get("_distance", 0.0)),
+                "content": r["content"],
+            }
+            for r in results
+        ]
+
+    @fastapi_app.websocket("/ws/stream")
+    async def websocket_stream(websocket: WebSocket):
+        """SOTA Side-channel audio stream proxy."""
+        await handle_websocket_stream(websocket, eleven_client, hume_client)
+
+    @fastapi_app.websocket("/ws/logs")
+    async def websocket_logs(websocket: WebSocket):
+        """System Log Stream."""
+        await websocket.accept()
+        queue = asyncio.Queue()
+        _log_listeners.append(queue)
+
+        # Initial burst
+        for entry in list(_log_buffer):
+            await websocket.send_json(entry)
+
+        try:
+            while True:
+                entry = await queue.get()
+                await websocket.send_json(entry)
+        except Exception:
+            pass
+        finally:
+            if queue in _log_listeners:
+                _log_listeners.remove(queue)
+
+    return fastapi_app
+
+
+app = create_fastapi_app()
+
+
+def main():
+    """Main entry point for stdio mode."""
+    asyncio.run(mcp.run_stdio_async())
+
+
+if __name__ == "__main__":
+    main()

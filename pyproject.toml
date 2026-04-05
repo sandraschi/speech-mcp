@@ -3,21 +3,31 @@ name = "speech-mcp"
 version = "0.3.0"
 description = "SOTA MCP server for Hume AI EVI and Octave"
 dependencies = [
-    "fastmcp>=3.0.0",
+    "fastmcp>=3.1.0,<4",
     "hume>=0.7.0",
-    "elevenlabs>=1.0.0",
+    "elevenlabs>=0.2.0",
     "websockets",
     "python-dotenv",
     "pydantic>=2.0.0",
     "fastapi",
-    "uvicorn",
+    "uvicorn[standard]",
     "pyttsx3",
-    "lancedb",
-    "fastembed",
-    "pyarrow",
+    "anyio",
+    "lancedb>=0.5.0",
+    "fastembed>=0.2.0",
+    "pyarrow>=15.0.0",
+    "prometheus-client>=0.19.0",
     "python-osc"
 ]
-requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.20.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "ruff"
+]
 
 [project.scripts]
 speech-mcp = "speech_mcp.server:main"
@@ -30,13 +40,38 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/speech_mcp"]
 
-[tool.ruff]
-line-length = 100
-target-version = "py311"
-
-[tool.ruff.lint]
+tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# Hardened v13.1 Rule Set
+select = [
+    "E", "F", "I", "UP", "B", "S", "A", "ANN", "COM", "C4", "DTZ", "PIE", "T20", "PYI", "Q", "RSE", "RET", "SLF", "SIM", "TID", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "FLY", "PERF", "FURB", "LOG", "RUF"
+]
+ignore = [
+    "ANN101", # Missing type annotation for self
+    "ANN102", # Missing type annotation for cls
+    "COM812", # Trailing comma missing (handled by formatter)
+    "ISC001", # Single line implicit string concatenation (handled by formatter)
+    "PLR0913", # Too many arguments
+    "S101",   # Use of assert (standard for pytest)
+    "TRY003", # Avoid specifying long messages in exceptions
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "ANN", "PLR", "TRY", "S105", "S106", "SLF001", "ARG002", "PLC0415"]
+"server.py" = ["T20", "ARG001", "ARG002"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

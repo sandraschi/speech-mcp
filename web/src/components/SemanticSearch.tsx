@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Database, FileText, Activity, AlertCircle } from 'lucide-react';
+import { BACKEND } from '../api';
 
 interface SearchResult {
   filename: string;
@@ -18,6 +19,7 @@ const SemanticSearch: React.FC = () => {
   const [stats, setStats] = useState<RagStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
 
   useEffect(() => {
     fetchStats();
@@ -25,7 +27,7 @@ const SemanticSearch: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('http://localhost:10760/api/v1/stats');
+      const response = await fetch(`${BACKEND}/api/v1/stats`);
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -43,7 +45,7 @@ const SemanticSearch: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:10760/api/v1/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`${BACKEND}/api/v1/search?q=${encodeURIComponent(query)}`);
       if (!response.ok) throw new Error('Search failed');
       const data = await response.json();
       setResults(data);
@@ -55,125 +57,179 @@ const SemanticSearch: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Header & Stats */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="h-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-8">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-            Semantic Memory Hub
-          </h1>
-          <p className="text-slate-400 mt-2">
-            Deep-context retrieval across speech history and SOTA documentation.
-          </p>
+          <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Memory Hub</h1>
+          <p className="text-text-secondary text-sm font-bold uppercase tracking-widest opacity-60 text-accent-blue/80">Semantic Fragment Retrieval</p>
         </div>
 
         {stats && (
           <div className="flex gap-4">
-            <div className="bg-slate-800/50 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl flex items-center gap-4">
-              <div className="bg-blue-500/20 p-2 rounded-lg">
-                <Database className="w-5 h-5 text-blue-400" />
+            <div className="glass-card px-6 py-4 flex items-center gap-4 bg-accent-blue/5 border-accent-blue/10">
+              <div className="bg-accent-blue/10 p-2 rounded-lg text-accent-blue border border-accent-blue/20">
+                <Database size={16} />
               </div>
               <div>
-                <div className="text-2xl font-bold text-white">{stats.row_count}</div>
-                <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Fragments</div>
+                <div className="text-lg font-black text-white leading-tight tabular-nums">{stats.row_count}</div>
+                <div className="text-xs text-text-secondary uppercase tracking-widest font-black opacity-40">Fragments</div>
               </div>
             </div>
-            <div className="bg-slate-800/50 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl flex items-center gap-4">
-              <div className="bg-indigo-500/20 p-2 rounded-lg">
-                <FileText className="w-5 h-5 text-indigo-400" />
+            <div className="glass-card px-6 py-4 flex items-center gap-4 bg-accent-purple/5 border-accent-purple/10">
+              <div className="bg-accent-purple/10 p-2 rounded-lg text-accent-purple border border-accent-purple/20">
+                <FileText size={16} />
               </div>
               <div>
-                <div className="text-2xl font-bold text-white">{stats.sources.length}</div>
-                <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Sources</div>
+                <div className="text-lg font-black text-white leading-tight tabular-nums">{stats.sources.length}</div>
+                <div className="text-xs text-text-secondary uppercase tracking-widest font-black opacity-40">Sources</div>
               </div>
             </div>
           </div>
         )}
+      </header>
+
+      {/* Search Interface */}
+      <div className="glass-card p-10 shadow-2xl relative overflow-hidden group">
+        <div className="absolute inset-0 bg-accent-blue/5 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+
+        <form onSubmit={handleSearch} className="relative group/form">
+          <div className="absolute inset-0 bg-accent-blue/5 blur-3xl opacity-0 group-focus-within/form:opacity-100 transition-opacity" />
+          <div className="relative flex items-center gap-6 bg-white/[0.03] border border-white/10 rounded-3xl px-8 py-6 focus-within:border-accent-blue/50 focus-within:bg-white/[0.05] transition-all">
+            <Search className="w-8 h-8 text-text-secondary opacity-20 group-focus-within/form:text-accent-blue group-focus-within/form:opacity-100 transition-all" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Query semantic history..."
+              title="Semantic Query"
+              className="flex-1 bg-transparent border-none outline-none text-2xl font-black text-white placeholder-white/5 tracking-tight"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              title="Execute Retrieval"
+              className="bg-accent-blue hover:bg-accent-blue-hover text-white px-10 py-5 rounded-2xl font-black text-xs tracking-widest uppercase transition-all disabled:opacity-20 flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95"
+            >
+              {loading ? <Activity className="w-5 h-5 animate-spin" /> : 'Retrieve'}
+            </button>
+          </div>
+        </form>
+
+        {error && (
+          <div className="mt-6 bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl flex items-center gap-3 text-rose-500 text-[10px] font-black uppercase tracking-widest animate-in slide-in-from-top-2 duration-300">
+            <AlertCircle size={14} />
+            {error}
+          </div>
+        )}
       </div>
 
-      {/* Search Input */}
-      <form onSubmit={handleSearch} className="relative group">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 blur-xl group-focus-within:opacity-100 opacity-0 transition-opacity duration-500" />
-        <div className="relative flex items-center bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden focus-within:border-blue-500/50 transition-all duration-300">
-          <div className="pl-6 text-slate-500">
-            <Search className="w-6 h-6" />
-          </div>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ask about speech history, prosody, or modern AI patterns..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-xl px-10 py-8 text-white placeholder-slate-600"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="mr-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-12 py-5 rounded-xl font-bold transition-all duration-300 disabled:opacity-50 flex items-center gap-2 text-lg shadow-lg"
-          >
-            {loading ? <Activity className="w-6 h-6 animate-spin" /> : 'RETRIEVE'}
-          </button>
-        </div>
-      </form>
-
-      {/* Error State */}
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center gap-3 text-red-400">
-          <AlertCircle className="w-5 h-5" />
-          {error}
-        </div>
-      )}
-
-      {/* Results */}
+      {/* Results Matrix */}
       <div className="grid grid-cols-1 gap-6">
         {results.length > 0 ? (
           results.map((result, idx) => (
             <div
               key={idx}
-              className="group bg-slate-900/50 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 transition-all duration-300 animate-slide-up"
+              className="glass-card p-8 hover:border-white/20 hover:bg-white/[0.04] transition-all animate-in slide-in-from-bottom-4 duration-500 group/item cursor-pointer"
+              style={{ animationDelay: `${idx * 0.05}s` }}
+              onClick={() => setSelectedResult(result)}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-slate-800 p-2 rounded-lg">
-                    <FileText className="w-4 h-4 text-blue-400" />
+              <header className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="bg-accent-blue/10 p-2.5 rounded-xl border border-accent-blue/20 text-accent-blue group-hover/item:scale-110 transition-transform">
+                    <FileText size={18} />
                   </div>
-                  <span className="text-sm font-medium text-slate-300">{result.filename}</span>
+                  <div>
+                    <span className="text-white font-black text-base tracking-tight">{result.filename}</span>
+                    <div className="text-xs text-text-secondary uppercase tracking-[0.2em] opacity-40">Document Node</div>
+                  </div>
                 </div>
-                <div className="bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700">
-                  <span className="text-xs font-bold text-slate-500 uppercase mr-2">Relevance</span>
-                  <span className="text-sm font-mono text-blue-400">{(result.score * 100).toFixed(1)}%</span>
+                <div className="bg-white/5 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-3">
+                  <span className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">Relevance</span>
+                  <span className="text-xs font-black text-accent-blue/60 tabular-nums">
+                    {(result.score * 100).toFixed(0)}%
+                  </span>
                 </div>
-              </div>
-              <div className="text-slate-400 leading-relaxed font-light">
-                {result.content.split('\n').map((line, i) => (
-                  <p key={i} className={i > 0 ? 'mt-2' : ''}>
-                    {line}
-                  </p>
-                ))}
+              </header>
+              <div className="bg-black/20 rounded-2xl p-6 border border-white/5">
+                <div className="text-text-secondary leading-relaxed font-medium text-lg italic opacity-80 group-hover/item:opacity-100 transition-opacity">
+                  {result.content.split('\n').map((line, i) => (
+                    <p key={i} className={i > 0 ? 'mt-4' : ''}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
           ))
         ) : query && !loading ? (
-          <div className="text-center py-20 bg-slate-900/30 rounded-3xl border border-dashed border-slate-800">
-            <p className="text-slate-500">No fragments found for this query.</p>
+          <div className="py-32 flex flex-col items-center justify-center glass-card border-dashed opacity-50">
+            <Activity size={48} className="text-white/5 mb-6" />
+            <p className="text-text-secondary font-black uppercase tracking-[0.3em] text-xs">No fragments retrieved</p>
           </div>
         ) : !loading && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {['History of TTS', 'Hume Prosody', 'FastEmbed Optimization'].map((sample) => (
               <button
                 key={sample}
-                onClick={() => {
-                  setQuery(sample);
-                  // Trigger search manually since we're just updating state here
-                }}
-                className="bg-slate-900/30 border border-slate-800 p-6 rounded-2xl text-left hover:bg-slate-800 transition-colors group"
+                onClick={() => setQuery(sample)}
+                className="glass-card p-10 group text-left hover:bg-accent-blue/5 hover:border-accent-blue/30 transition-all hover:-translate-y-1 shadow-lg"
               >
-                <div className="text-xs font-bold text-slate-500 uppercase mb-2 group-hover:text-blue-400">Suggested</div>
-                <div className="text-slate-400 font-medium">{sample}</div>
+                <div className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40 mb-1 group-hover:text-accent-blue transition-colors">Suggested Query</div>
+                <div className="text-white font-black text-xl tracking-tighter group-hover:translate-x-1 transition-transform">{sample}</div>
               </button>
             ))}
           </div>
         )}
       </div>
+
+      {/* Reader Modal */}
+      {selectedResult && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="glass-card w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <header className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <div className="flex items-center gap-4">
+                <div className="bg-accent-blue/10 p-3 rounded-2xl border border-accent-blue/20 text-accent-blue">
+                  <FileText size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-white tracking-tighter">{selectedResult.filename}</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-text-secondary font-black uppercase tracking-widest opacity-40">Full Fragment Reader</span>
+                    <span className="w-1 h-1 rounded-full bg-accent-blue" />
+                    <span className="text-xs text-accent-blue font-black tracking-widest uppercase">{(selectedResult.score * 100).toFixed(1)}% Match</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedResult(null)}
+                className="p-3 bg-white/5 border border-white/10 rounded-2xl text-text-secondary hover:text-white hover:bg-rose-500/20 hover:border-rose-500/30 transition-all active:scale-95"
+              >
+                <AlertCircle size={20} className="rotate-45" />
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-12 bg-black/40 custom-scrollbar">
+              <div className="max-w-3xl mx-auto">
+                <div className="text-text-secondary leading-relaxed font-medium text-xl whitespace-pre-wrap selection:bg-accent-blue/30 selection:text-white">
+                  {selectedResult.content}
+                </div>
+              </div>
+            </div>
+
+            <footer className="p-6 border-t border-white/5 bg-white/[0.02] flex items-center justify-between">
+              <div className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">
+                Substrate Logic Vector Retrieval
+              </div>
+              <button
+                onClick={() => setSelectedResult(null)}
+                className="btn-primary px-8 py-3 text-sm"
+              >
+                Close Reader
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

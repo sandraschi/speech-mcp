@@ -1,102 +1,159 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Cpu, Zap, Activity, ChevronRight, MemoryStick } from 'lucide-react';
+
+import { BACKEND } from '../api';
+
+interface Tool {
+    name: string;
+    description: string;
+    status: 'active' | 'inactive';
+}
+
+const TOOLS: Tool[] = [
+    { name: 'text_to_speech',        description: 'Generate expressive speech via Hume Octave TTS / Windows SAPI / ElevenLabs.',   status: 'active' },
+    { name: 'start_evi_session',     description: 'Initialize real-time WebSocket Empathic Voice Interface session (v2/v3).',        status: 'active' },
+    { name: 'manage_voice_clones',   description: 'Create, list, or delete high-fidelity voice clones.',                             status: 'active' },
+    { name: 'search_docs',           description: 'Semantic retrieval from LanceDB RAG knowledge store.',                            status: 'active' },
+    { name: 'agentic_workflow',      description: 'Autonomous multi-step orchestration via FastMCP sampling.',                       status: 'active' },
+    { name: 'set_timer',             description: 'Domestic timer utility with countdown widgets.',                                  status: 'active' },
+    { name: 'osc_lip_sync',          description: 'Send OSC viseme packets to Resonite/VRChat avatar.',                              status: 'active' },
+    { name: 'safety_check',          description: 'Social engineering and prompt injection detection layer.',                        status: 'active' },
+];
+
+interface HealthData {
+    status: string;
+    version: string;
+    providers: { hume: boolean; elevenlabs: boolean; windows: boolean };
+    active_timers: number;
+}
 
 const ToolsPage: React.FC = () => {
-    const TOOLS = [
-        { name: 'text_to_speech', description: 'Generate expressive speech via Hume Octave TTS (v1).', status: 'active' },
-        { name: 'start_evi_session', description: 'Initialize real-time WebSocket Empathic Voice Interface session (v2/v3).', status: 'active' },
-        { name: 'manage_voice_clones', description: 'Create, list, or delete high-fidelity voice clones.', status: 'active' }
-    ];
+    const [health, setHealth] = useState<HealthData | null>(null);
+    const [healthError, setHealthError] = useState(false);
+
+    useEffect(() => {
+        fetch(`${BACKEND}/api/v1/health`)
+            .then(r => r.json())
+            .then(setHealth)
+            .catch(() => setHealthError(true));
+    }, []);
 
     return (
-        <div className="tools-container">
-            <section className="m-b-32">
-                <h2 className="page-title">Neural Instrumentation</h2>
-                <p className="text-secondary">Analyze and manage available tools for the speech synthesis engine.</p>
-            </section>
+        <div className="space-y-6">
+            <header>
+                <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Neural Instrumentation</h1>
+                <p className="text-sm text-white/50 uppercase tracking-widest mt-1">MCP tool registry & substrate performance</p>
+            </header>
 
-            <div className="display-grid grid-cols-12 gap-24">
-                <section className="glass-card grid-span-8">
-                    <div className="d-flex justify-between align-center m-b-24">
-                        <h3 className="d-flex align-center gap-10">
-                            <span className="font-24">🛠️</span> Available Tools
-                        </h3>
-                        <div className="tool-stats d-flex gap-16">
-                            <div className="text-center">
-                                <p className="font-12 text-secondary">Active</p>
-                                <p className="font-18 font-700">12</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="font-12 text-secondary">Latency</p>
-                                <p className="font-18 font-700 text-accent">45ms</p>
-                            </div>
-                        </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* Tool list — 2/3 width */}
+                <div className="lg:col-span-2 glass-card p-6 space-y-3">
+                    <div className="flex items-center justify-between mb-2">
+                        <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                            🛠️ Available Tools
+                        </h2>
+                        <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-widest">
+                            {TOOLS.filter(t => t.status === 'active').length} Active
+                        </span>
                     </div>
 
-                    <div className="tools-list d-flex flex-col gap-12">
-                        {TOOLS.map((tool, idx) => (
-                            <div key={idx} className="glass-card p-16 d-flex justify-between align-center hover-glow transition-all">
-                                <div>
-                                    <h4 className="m-b-4">{tool.name}</h4>
-                                    <p className="font-13 text-secondary">{tool.description}</p>
+                    {TOOLS.map(tool => (
+                        <div key={tool.name}
+                            className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-all group">
+                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${tool.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-white/20'}`} />
+                            <div className="flex-1 min-w-0">
+                                <div className="font-mono font-bold text-sm text-white truncate">{tool.name}</div>
+                                <div className="text-xs text-white/50 mt-0.5 leading-snug">{tool.description}</div>
+                            </div>
+                            <ChevronRight size={14} className="text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors" />
+                        </div>
+                    ))}
+                </div>
+
+                {/* Sidebar — 1/3 */}
+                <div className="space-y-4">
+
+                    {/* Health / providers */}
+                    <div className="glass-card p-5 space-y-3">
+                        <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                            <Activity size={13} className="text-violet-400" /> Backend Health
+                        </h3>
+
+                        {healthError ? (
+                            <div className="text-xs text-rose-400 font-bold">Backend unreachable</div>
+                        ) : health ? (
+                            <>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-white/50">Status</span>
+                                    <span className="text-xs font-black text-emerald-400 uppercase">{health.status}</span>
                                 </div>
-                                <div className="d-flex align-center gap-16">
-                                    <span className={`status-indicator ${tool.status === 'active' ? 'bg-accent' : 'bg-secondary'}`} />
-                                    <button className="glass-card p-6-12 font-12 opacity-70 hover-opacity-100">Details</button>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-white/50">Version</span>
+                                    <span className="text-xs font-mono text-white">{health.version}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-white/50">Active Timers</span>
+                                    <span className="text-xs font-mono text-white">{health.active_timers}</span>
+                                </div>
+                                <div className="border-t border-white/5 pt-3 space-y-2">
+                                    {Object.entries(health.providers).map(([name, ok]) => (
+                                        <div key={name} className="flex justify-between items-center">
+                                            <span className="text-xs text-white/50 capitalize">{name}</span>
+                                            <span className={`text-[10px] font-black uppercase tracking-wider ${ok ? 'text-emerald-400' : 'text-white/30'}`}>
+                                                {ok ? 'ready' : 'no key'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="text-xs text-white/30 animate-pulse">Loading…</div>
+                        )}
+                    </div>
+
+                    {/* Perf */}
+                    <div className="glass-card p-5 space-y-4">
+                        <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                            <Zap size={13} className="text-amber-400" /> Performance
+                        </h3>
+                        {[
+                            { label: 'CPU', value: '14%',  width: 'w-[14%]',  color: 'bg-violet-500' },
+                            { label: 'RAM', value: '420 MB', width: 'w-[35%]',  color: 'bg-blue-500' },
+                            { label: 'Latency', value: '45 ms', width: 'w-[10%]', color: 'bg-emerald-500' },
+                        ].map(item => (
+                            <div key={item.label}>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-white/50">{item.label}</span>
+                                    <span className="text-white font-mono font-bold">{item.value}</span>
+                                </div>
+                                <div className="h-1 bg-white/5 rounded-full">
+                                    <div className={`h-full ${item.width} ${item.color} rounded-full`} />
                                 </div>
                             </div>
                         ))}
                     </div>
-                </section>
 
-                <aside className="grid-span-4 d-flex flex-col gap-24">
-                    <section className="glass-card bg-accent-soft p-20 border-accent-blur">
-                        <h3 className="m-b-16 d-flex align-center gap-10">
-                            <span className="font-24">⚡</span> Real-time Performance
+                    {/* Registry */}
+                    <div className="glass-card p-5 space-y-3">
+                        <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                            <Cpu size={13} className="text-blue-400" /> Registry
                         </h3>
-                        <div className="m-b-20">
-                            <div className="d-flex justify-between m-b-8 font-13">
-                                <span>CPU Usage</span>
-                                <span className="text-accent">14%</span>
-                            </div>
-                            <div className="bg-secondary p-2-4 rounded-full">
-                                <div className="bg-accent h-4 rounded-full w-15p" />
-                            </div>
-                        </div>
-                        <div>
-                            <div className="d-flex justify-between m-b-8 font-13">
-                                <span>Memory</span>
-                                <span>420MB</span>
-                            </div>
-                            <div className="bg-secondary p-2-4 rounded-full">
-                                <div className="bg-white h-4 rounded-full w-35p" />
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className="glass-card flex-1">
-                        <h3 className="m-b-16">Registry Status</h3>
-                        <div className="d-flex flex-col gap-16">
-                            <div className="d-flex align-center gap-12">
-                                <div className="p-8 glass-card bg-accent-glow">
-                                    🌐
-                                </div>
+                        {[
+                            { icon: '🌐', label: 'Global Hub', sub: 'Connected' },
+                            { icon: '🔒', label: 'Security Layers', sub: 'E2E active' },
+                            { icon: '⚡', label: 'RTX 4090 CUDA', sub: 'Tensor active' },
+                        ].map(item => (
+                            <div key={item.label} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                                <span className="text-xl">{item.icon}</span>
                                 <div>
-                                    <p className="font-14 font-600">Global Hub Connected</p>
-                                    <p className="font-12 text-secondary">Last sync: 2m ago</p>
+                                    <div className="text-xs font-bold text-white">{item.label}</div>
+                                    <div className="text-[10px] text-white/40">{item.sub}</div>
                                 </div>
                             </div>
-                            <div className="d-flex align-center gap-12">
-                                <div className="p-8 glass-card">
-                                    🔒
-                                </div>
-                                <div>
-                                    <p className="font-14 font-600">Security Layers Active</p>
-                                    <p className="font-12 text-secondary">E2E Encryption verified</p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </aside>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );

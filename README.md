@@ -16,11 +16,11 @@ SOTA-grade MCP server and web application for industrial voice orchestration, le
 > - **ElevenLabs Turbo v2.5**: 2026 industry standard for low-latency neural TTS.
 > - **LanceDB + FastEmbed**: Industrial RAG substrate for cognitive persistence.
 
-## 🚀 Overview
+##  Overview
 
 Speech-MCP is a federated gateway for advanced voice AI. It provides a unified MCP interface for text-to-speech, real-time empathic voice sessions, and high-fidelity voice cloning.
 
-## 🛠️ Key Capabilities
+##  Key Capabilities
 
 - **Hume AI Integration**:
     - **EVI 2/3**: Real-time empathic voice interface with prosody-driven responses.
@@ -33,7 +33,7 @@ Speech-MCP is a federated gateway for advanced voice AI. It provides a unified M
 - **Interaction Lab**: Domestic utility gateway for timers, weather reports, and IoT (Tapo/Ring) orchestration.
 - **Creative Labs**: Expressive reader with poem narration and translation bridge.
 
-## 📦 Deployment & Setup
+##  Deployment & Setup
 
 ### Ports
 - **Backend (MCP)**: `10760`
@@ -61,7 +61,7 @@ npm install
 npm run dev
 ```
 
-## 🧩 MCP Tools
+##  MCP Tools
 
 - `text_to_speech`: Synthesize audio across providers (Hume/Eleven/Windows).
 - `start_evi_session`: Initialize real-time Hume EVI sessions.
@@ -73,7 +73,7 @@ npm run dev
 - `detect_wake_word`: VAD-ready activation trigger.
 - `check_vocal_safety`: Intent-based risk analysis for vocal output.
 
-## 🗺️ Roadmap & Next Steps (v0.x)
+##  Roadmap & Next Steps (v0.x)
 
 As a **Beta** release, we have identified several orchestration frontiers and technical debt targets:
 
@@ -89,14 +89,14 @@ As a **Beta** release, we have identified several orchestration frontiers and te
 
 ---
 
-## ⚖️ Standards & Compliance
+##  Standards & Compliance
 
 - **FastMCP 3.1.x**: Full adherence to the latest agentic standards (GA Feb 18, 2026).
 - **Security Bastion (v0.2.1)**: Hardened authentication and vocal scam detection (Released: Feb 27, 2026).
 - **Portmanteau Pattern**: Consolidated tool schema to prevent tool explosion.
 - **Networking**: Dual-server substrate on port **10760** (FastAPI + MCP SSE).
 
-## 🧠 Agentic Features & RAG
+##  Agentic Features & RAG
 
 ### 1. SEP-1577 Sampling
 This server supports **Iterative AI Sampling**. When performing complex speech orchestration, tools can request the host LLM to "sample" and suggest cognitive strategies or refine prompts.
@@ -120,7 +120,7 @@ Tools provide "Dialogue Guidance" to the calling agent.
 ### 3. Agentic Workflow Tool
 The `agentic_conversation_workflow` tool is a **Mission Orchestrator**. It doesn't just synthesize text; it reasons about the conversation's goal and adjusts provide parameters autonomously.
 
-## 📦 Deployment & Setup
+##  Deployment & Setup
 
 ### Launchers (SOTA)
 - **`start.bat`**: Professional double-click launcher.
