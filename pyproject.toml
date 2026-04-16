@@ -17,7 +17,8 @@ dependencies = [
     "fastembed>=0.2.0",
     "pyarrow>=15.0.0",
     "prometheus-client>=0.19.0",
-    "python-osc"
+    "python-osc",
+    "prefab-ui>=0.14.0",
 ]
 
 [project.optional-dependencies]
