@@ -1,6 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Database, FileText, Activity, AlertCircle } from 'lucide-react';
-import { BACKEND } from '../api';
+import {
+  Activity,
+  AlertCircle,
+  Database,
+  FileText,
+  Search,
+} from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { BACKEND } from "../api";
 
 interface SearchResult {
   filename: string;
@@ -14,12 +21,16 @@ interface RagStats {
 }
 
 const SemanticSearch: React.FC = () => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [stats, setStats] = useState<RagStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
+  const [askMode, setAskMode] = useState(false);
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(
+    null,
+  );
 
   useEffect(() => {
     fetchStats();
@@ -33,7 +44,7 @@ const SemanticSearch: React.FC = () => {
         setStats(data);
       }
     } catch (err) {
-      console.error('Failed to fetch RAG stats:', err);
+      console.error("Failed to fetch RAG stats:", err);
     }
   };
 
@@ -45,14 +56,64 @@ const SemanticSearch: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${BACKEND}/api/v1/search?q=${encodeURIComponent(query)}`);
-      if (!response.ok) throw new Error('Search failed');
+      const response = await fetch(
+        `${BACKEND}/api/v1/search?q=${encodeURIComponent(query)}`,
+      );
+      if (!response.ok) throw new Error("Search failed");
       const data = await response.json();
       setResults(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAsk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+
+    setLoading(true);
+    setAskMode(true);
+    setError(null);
+    setAnswer(null);
+
+    try {
+      const localProvider = localStorage.getItem("LOCAL_PROVIDER") || "ollama";
+      const ollamaUrl = localStorage.getItem("OLLAMA_URL") || "http://localhost:11434";
+      const lmstudioUrl = localStorage.getItem("LMSTUDIO_URL") || "http://localhost:1234";
+      const localModel = localStorage.getItem("LOCAL_MODEL") || "llama3.1:8b";
+
+      const api_url = localProvider === "ollama" ? ollamaUrl : lmstudioUrl;
+
+      const response = await fetch(`${BACKEND}/api/v1/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          question: query, 
+          model: localModel,
+          provider: localProvider,
+          api_url: api_url
+        }),
+      });
+      });
+      if (!response.ok) throw new Error('AI Query failed');
+      const data = await response.json();
+      setAnswer(data.answer);
+      // Results are still shown as grounded context
+      const contextResults = data.context.split('\n').map((c: string) => ({
+        filename: 'Grounded Context',
+        score: 1.0,
+        content: c
+      }));
+      setResults(contextResults);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setLoading(false);
+      setAskMode(false);
     }
   };
 
@@ -60,8 +121,12 @@ const SemanticSearch: React.FC = () => {
     <div className="h-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-8">
         <div>
-          <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Memory Hub</h1>
-          <p className="text-text-secondary text-sm font-bold uppercase tracking-widest opacity-60 text-accent-blue/80">Semantic Fragment Retrieval</p>
+          <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
+            Memory Hub
+          </h1>
+          <p className="text-text-secondary text-sm font-bold uppercase tracking-widest opacity-60 text-accent-blue/80">
+            Semantic Fragment Retrieval
+          </p>
         </div>
 
         {stats && (
@@ -71,8 +136,12 @@ const SemanticSearch: React.FC = () => {
                 <Database size={16} />
               </div>
               <div>
-                <div className="text-lg font-black text-white leading-tight tabular-nums">{stats.row_count}</div>
-                <div className="text-xs text-text-secondary uppercase tracking-widest font-black opacity-40">Fragments</div>
+                <div className="text-lg font-black text-white leading-tight tabular-nums">
+                  {stats.row_count}
+                </div>
+                <div className="text-xs text-text-secondary uppercase tracking-widest font-black opacity-40">
+                  Fragments
+                </div>
               </div>
             </div>
             <div className="glass-card px-6 py-4 flex items-center gap-4 bg-accent-purple/5 border-accent-purple/10">
@@ -80,8 +149,12 @@ const SemanticSearch: React.FC = () => {
                 <FileText size={16} />
               </div>
               <div>
-                <div className="text-lg font-black text-white leading-tight tabular-nums">{stats.sources.length}</div>
-                <div className="text-xs text-text-secondary uppercase tracking-widest font-black opacity-40">Sources</div>
+                <div className="text-lg font-black text-white leading-tight tabular-nums">
+                  {stats.sources.length}
+                </div>
+                <div className="text-xs text-text-secondary uppercase tracking-widest font-black opacity-40">
+                  Sources
+                </div>
               </div>
             </div>
           </div>
@@ -110,7 +183,16 @@ const SemanticSearch: React.FC = () => {
               title="Execute Retrieval"
               className="bg-accent-blue hover:bg-accent-blue-hover text-white px-10 py-5 rounded-2xl font-black text-xs tracking-widest uppercase transition-all disabled:opacity-20 flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95"
             >
-              {loading ? <Activity className="w-5 h-5 animate-spin" /> : 'Retrieve'}
+              {loading && !askMode ? <Activity className="w-5 h-5 animate-spin" /> : 'Retrieve'}
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              title="Grounded AI Query"
+              onClick={handleAsk}
+              className="bg-accent-purple hover:bg-accent-purple-hover text-white px-10 py-5 rounded-2xl font-black text-xs tracking-widest uppercase transition-all disabled:opacity-20 flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 border border-accent-purple/30"
+            >
+              {loading && askMode ? <Activity className="w-5 h-5 animate-spin" /> : 'Ask AI'}
             </button>
           </div>
         </form>
@@ -122,6 +204,23 @@ const SemanticSearch: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {answer && (
+        <div className="glass-card p-10 bg-accent-purple/10 border-accent-purple/20 animate-in fade-in zoom-in-95 duration-500">
+          <header className="flex items-center gap-4 mb-6">
+            <div className="bg-accent-purple/20 p-2.5 rounded-xl border border-accent-purple/30 text-accent-purple">
+              <Brain size={20} />
+            </div>
+            <div>
+              <h3 className="text-white font-black text-lg tracking-tight uppercase">AI Response</h3>
+              <div className="text-[10px] text-text-secondary font-black uppercase tracking-[0.2em] opacity-40">Grounded Synthesis</div>
+            </div>
+          </header>
+          <div className="text-white text-xl font-medium leading-relaxed italic border-l-4 border-accent-purple/30 pl-8 py-2">
+            {answer}
+          </div>
+        </div>
+      )}
 
       {/* Results Matrix */}
       <div className="grid grid-cols-1 gap-6">
@@ -139,12 +238,18 @@ const SemanticSearch: React.FC = () => {
                     <FileText size={18} />
                   </div>
                   <div>
-                    <span className="text-white font-black text-base tracking-tight">{result.filename}</span>
-                    <div className="text-xs text-text-secondary uppercase tracking-[0.2em] opacity-40">Document Node</div>
+                    <span className="text-white font-black text-base tracking-tight">
+                      {result.filename}
+                    </span>
+                    <div className="text-xs text-text-secondary uppercase tracking-[0.2em] opacity-40">
+                      Document Node
+                    </div>
                   </div>
                 </div>
                 <div className="bg-white/5 px-4 py-2 rounded-xl border border-white/5 flex items-center gap-3">
-                  <span className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">Relevance</span>
+                  <span className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">
+                    Relevance
+                  </span>
                   <span className="text-xs font-black text-accent-blue/60 tabular-nums">
                     {(result.score * 100).toFixed(0)}%
                   </span>
@@ -152,8 +257,8 @@ const SemanticSearch: React.FC = () => {
               </header>
               <div className="bg-black/20 rounded-2xl p-6 border border-white/5">
                 <div className="text-text-secondary leading-relaxed font-medium text-lg italic opacity-80 group-hover/item:opacity-100 transition-opacity">
-                  {result.content.split('\n').map((line, i) => (
-                    <p key={i} className={i > 0 ? 'mt-4' : ''}>
+                  {result.content.split("\n").map((line, i) => (
+                    <p key={i} className={i > 0 ? "mt-4" : ""}>
                       {line}
                     </p>
                   ))}
@@ -164,21 +269,31 @@ const SemanticSearch: React.FC = () => {
         ) : query && !loading ? (
           <div className="py-32 flex flex-col items-center justify-center glass-card border-dashed opacity-50">
             <Activity size={48} className="text-white/5 mb-6" />
-            <p className="text-text-secondary font-black uppercase tracking-[0.3em] text-xs">No fragments retrieved</p>
+            <p className="text-text-secondary font-black uppercase tracking-[0.3em] text-xs">
+              No fragments retrieved
+            </p>
           </div>
-        ) : !loading && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {['History of TTS', 'Hume Prosody', 'FastEmbed Optimization'].map((sample) => (
-              <button
-                key={sample}
-                onClick={() => setQuery(sample)}
-                className="glass-card p-10 group text-left hover:bg-accent-blue/5 hover:border-accent-blue/30 transition-all hover:-translate-y-1 shadow-lg"
-              >
-                <div className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40 mb-1 group-hover:text-accent-blue transition-colors">Suggested Query</div>
-                <div className="text-white font-black text-xl tracking-tighter group-hover:translate-x-1 transition-transform">{sample}</div>
-              </button>
-            ))}
-          </div>
+        ) : (
+          !loading && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {["History of TTS", "Hume Prosody", "FastEmbed Optimization"].map(
+                (sample) => (
+                  <button
+                    key={sample}
+                    onClick={() => setQuery(sample)}
+                    className="glass-card p-10 group text-left hover:bg-accent-blue/5 hover:border-accent-blue/30 transition-all hover:-translate-y-1 shadow-lg"
+                  >
+                    <div className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40 mb-1 group-hover:text-accent-blue transition-colors">
+                      Suggested Query
+                    </div>
+                    <div className="text-white font-black text-xl tracking-tighter group-hover:translate-x-1 transition-transform">
+                      {sample}
+                    </div>
+                  </button>
+                ),
+              )}
+            </div>
+          )
         )}
       </div>
 
@@ -192,11 +307,17 @@ const SemanticSearch: React.FC = () => {
                   <FileText size={24} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-white tracking-tighter">{selectedResult.filename}</h2>
+                  <h2 className="text-2xl font-black text-white tracking-tighter">
+                    {selectedResult.filename}
+                  </h2>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-text-secondary font-black uppercase tracking-widest opacity-40">Full Fragment Reader</span>
+                    <span className="text-xs text-text-secondary font-black uppercase tracking-widest opacity-40">
+                      Full Fragment Reader
+                    </span>
                     <span className="w-1 h-1 rounded-full bg-accent-blue" />
-                    <span className="text-xs text-accent-blue font-black tracking-widest uppercase">{(selectedResult.score * 100).toFixed(1)}% Match</span>
+                    <span className="text-xs text-accent-blue font-black tracking-widest uppercase">
+                      {(selectedResult.score * 100).toFixed(1)}% Match
+                    </span>
                   </div>
                 </div>
               </div>

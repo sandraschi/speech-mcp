@@ -2,7 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.3.0] - 2026-02-27
+## [0.3.2] - 2026-04-17
+
+### Added
+- **Grounded Generation**: Replaced RAG placeholders with real LLM synthesis via Ollama and LM Studio.
+- **Context-Aware Synthesis**: Integrated retrieved semantic fragments directly into the local LLM prompt for grounded Q&A.
+- **Provider Parity**: Ensured both Ollama and LM Studio support the new generation pipeline.
+
+## [0.3.1] - 2026-04-17
+
+### Added
+- **Local LLM Elicitation**: Proactive model discovery for Ollama and LM Studio.
+- **Dynamic Model Selection**: Select local models directly from the UI dropdown in Settings.
+- **Grounded Chat**: Implemented "Ask AI" mode in Semantic Search with local model awareness.
+
+### Fixed
+- **Industrial Hardening**: Recursively purged all `.bak` rubble files and fixed core Ruff linting violations.
+- **Accessibility**: Resolved Biome-detected accessibility issues in Settings and Semantic Search UI.
+- **Security**: Hardened backend host bindings (127.0.0.1) and enhanced WebSocket error handling.
+
+## [0.3.0] - 2026-04-17
 
 ### Added
 - **Hume AI EVI & Octave**: Deep integration for expressive vocal interaction and SOTA TTS.

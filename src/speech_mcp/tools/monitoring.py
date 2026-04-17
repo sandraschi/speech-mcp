@@ -43,8 +43,7 @@ def register_monitoring_tools(mcp: FastMCP):
                 "status": "pending_orchestration",
                 "requires_bridge": True,
                 "next_steps": [
-                    f"Call 'devices-mcp.trigger_tapo' with action='{action_type}' "
-                    f"and room='{room}'",
+                    f"Call 'devices-mcp.trigger_tapo' with action='{action_type}' and room='{room}'",
                     "Verify physical state change via camera-mcp",
                 ],
             }

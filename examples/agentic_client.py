@@ -34,6 +34,7 @@ async def run_agentic_mission():
             # 3. Simulate high-bandwidth interaction
             if "Initialize high-bandwidth stream" in mission.content[0].text["next_steps"]:
                 import os
+
                 base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10918")
                 ws_url = base.replace("http://", "ws://").replace("https://", "wss://") + "/ws/stream"
                 print(f"Connecting to WebSocket side-channel at {ws_url}...")

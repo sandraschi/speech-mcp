@@ -78,9 +78,7 @@ def register_utility_tools(mcp: FastMCP):
                             "location": location,
                             "condition_report": weather_text,
                             "status": "realtime_data",
-                            "recommendation": "Wear a reductionist coat."
-                            if "C" in weather_text
-                            else "Stay optimal.",
+                            "recommendation": "Wear a reductionist coat." if "C" in weather_text else "Stay optimal.",
                             "source": "wttr.in",
                         }
             except Exception as e:

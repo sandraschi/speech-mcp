@@ -20,4 +20,5 @@ if __name__ == "__main__":
     mcp_app = mcp.http_app(transport="sse")
     app.mount("/mcp", mcp_app)
 
-    uvicorn.run(app, host="0.0.0.0", port=10760)
+    # Binding to localhost for security (Docker/Production should override via env)
+    uvicorn.run(app, host="127.0.0.1", port=10760)

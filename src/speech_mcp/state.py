@@ -21,18 +21,10 @@ _log_buffer: deque[dict] = deque(maxlen=1000)
 _log_listeners: list[asyncio.Queue] = []
 
 # Prometheus Metrics
-M_REQUESTS = Counter(
-    "substrate_requests_total", "Total substrate requests", ["method", "endpoint"]
-)
-M_LATENCY = Histogram(
-    "substrate_request_latency_seconds", "Request latency in seconds", ["endpoint"]
-)
-M_ERRORS = Counter(
-    "substrate_errors_total", "Total substrate errors", ["type", "context"]
-)
-M_TOKENS = Counter(
-    "substrate_tokens_processed_total", "Total tokens processed", ["provider"]
-)
+M_REQUESTS = Counter("substrate_requests_total", "Total substrate requests", ["method", "endpoint"])
+M_LATENCY = Histogram("substrate_request_latency_seconds", "Request latency in seconds", ["endpoint"])
+M_ERRORS = Counter("substrate_errors_total", "Total substrate errors", ["type", "context"])
+M_TOKENS = Counter("substrate_tokens_processed_total", "Total tokens processed", ["provider"])
 
 
 def get_store() -> DocumentStore:
@@ -50,9 +42,7 @@ def get_store() -> DocumentStore:
             if docs_dir.exists():
                 import threading
 
-                threading.Thread(
-                    target=_ingest_docs, args=(_store, docs_dir), daemon=True
-                ).start()
+                threading.Thread(target=_ingest_docs, args=(_store, docs_dir), daemon=True).start()
     return _store
 
 
@@ -66,9 +56,7 @@ def _ingest_docs(store: "DocumentStore", docs_dir: Path):
     for file_path in docs_dir.glob("*.md"):
         try:
             content = file_path.read_text(encoding="utf-8")
-            paragraphs = [
-                p.strip() for p in content.split("\n\n") if len(p.strip()) > 40
-            ]
+            paragraphs = [p.strip() for p in content.split("\n\n") if len(p.strip()) > 40]
             for i, para in enumerate(paragraphs):
                 documents.append(
                     {
@@ -81,9 +69,7 @@ def _ingest_docs(store: "DocumentStore", docs_dir: Path):
             log.warning(f"Failed to read {file_path.name}: {e}")
     if documents:
         store.add_documents(documents, overwrite=True)
-        log.info(
-            f"Auto-ingested {len(documents)} chunks from {len(list(docs_dir.glob('*.md')))} docs"
-        )
+        log.info(f"Auto-ingested {len(documents)} chunks from {len(list(docs_dir.glob('*.md')))} docs")
     else:
         log.warning("No documents found to ingest")
 
@@ -94,8 +80,7 @@ async def run_timer(timer_id: str, seconds: int, label: str):
         await asyncio.sleep(seconds)
         # Log expiration to substrate logs
         add_log("INFO", "TIMER", f"Timer expired: {label}")
-        if timer_id in _timers:
-            del _timers[timer_id]
+        _timers.pop(timer_id, None)
     except asyncio.CancelledError:
         pass
 

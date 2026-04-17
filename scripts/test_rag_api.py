@@ -1,4 +1,5 @@
 import os
+
 import requests
 
 BASE_URL = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10918") + "/api/v1"

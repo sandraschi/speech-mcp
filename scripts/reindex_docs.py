@@ -2,9 +2,10 @@
 Reindex all docs in docs/ into LanceDB.
 Run from repo root: python scripts/reindex_docs.py
 """
+
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Make sure src is on path
 repo_root = Path(__file__).parent.parent
@@ -32,11 +33,13 @@ def ingest_docs():
         content = file_path.read_text(encoding="utf-8")
         paragraphs = [p.strip() for p in content.split("\n\n") if len(p.strip()) > 40]
         for i, para in enumerate(paragraphs):
-            documents.append({
-                "id": f"{file_path.name}_{i}",
-                "content": para,
-                "metadata": {"filename": file_path.name, "chunk": i},
-            })
+            documents.append(
+                {
+                    "id": f"{file_path.name}_{i}",
+                    "content": para,
+                    "metadata": {"filename": file_path.name, "chunk": i},
+                }
+            )
 
     if documents:
         store.add_documents(documents, overwrite=True)

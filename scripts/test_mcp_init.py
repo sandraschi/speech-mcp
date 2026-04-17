@@ -1,6 +1,5 @@
-import subprocess
 import json
-import time
+import subprocess
 
 
 def test_mcp():

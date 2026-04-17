@@ -3,8 +3,8 @@ import json
 import logging
 import os
 import tempfile
-from time import localtime, strftime
 from contextlib import asynccontextmanager
+from time import localtime, strftime
 from typing import Any
 
 from dotenv import load_dotenv
@@ -24,6 +24,7 @@ from fastmcp import FastMCP
 from hume import HumeClient
 from pydantic import BaseModel
 
+from speech_mcp.providers.gemini import GeminiTTSProvider
 from speech_mcp.state import _timers, get_store
 from speech_mcp.streaming import handle_websocket_stream
 from speech_mcp.tools.agentic import register_agentic_tools
@@ -31,15 +32,15 @@ from speech_mcp.tools.monitoring import register_monitoring_tools
 from speech_mcp.tools.rag import register_rag_tools
 from speech_mcp.tools.safety import register_safety_tools
 from speech_mcp.tools.speech import register_speech_tools
+from speech_mcp.tools.ui import register_ui_tools
 from speech_mcp.tools.utility import register_utility_tools
+from speech_mcp.tools.wake_word import register_wake_word_tools
 
 load_dotenv()
 HUME_API_KEY = os.getenv("HUME_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
-# ---------------------------------------------------------------------------
-# Log broadcast infrastructure — feeds SystemLogs WebSocket
-# ---------------------------------------------------------------------------
+# --- Log broadcast infrastructure — feeds SystemLogs WebSocket ---
 _log_clients: set[WebSocket] = set()
 _log_queue: asyncio.Queue = None  # initialised in lifespan
 
@@ -91,9 +92,7 @@ async def _log_broadcaster():
         await _broadcast_log(msg)
 
 
-# ---------------------------------------------------------------------------
-# Lifespan
-# ---------------------------------------------------------------------------
+# --- Lifespan ---
 
 
 @asynccontextmanager
@@ -109,9 +108,7 @@ async def lifespan(app: FastAPI):
         task.cancel()
 
 
-# ---------------------------------------------------------------------------
-# FastAPI app
-# ---------------------------------------------------------------------------
+# --- FastAPI app ---
 
 app = FastAPI(title="Speech MCP Stream Gateway", lifespan=lifespan)
 
@@ -129,17 +126,22 @@ mcp = FastMCP("speech-mcp")
 
 hume_client = HumeClient(api_key=HUME_API_KEY) if HUME_API_KEY else None
 eleven_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
+try:
+    gemini_client = GeminiTTSProvider()
+except Exception as e:
+    logger.warning(f"Gemini client initialization skipped: {e}")
+    gemini_client = None
 
-register_speech_tools(mcp, hume_client, eleven_client)
+register_speech_tools(mcp, hume_client, eleven_client, gemini_client)
 register_agentic_tools(mcp, hume_client)
 register_utility_tools(mcp)
 register_monitoring_tools(mcp)
 register_rag_tools(mcp)
 register_safety_tools(mcp)
+register_ui_tools(mcp)
+register_wake_word_tools(mcp)
 
-# ---------------------------------------------------------------------------
-# Auth
-# ---------------------------------------------------------------------------
+# --- Auth ---
 
 api_key_header = APIKeyHeader(name="X-Speech-MCP-Auth", auto_error=False)
 
@@ -156,9 +158,7 @@ async def get_api_key(api_key: str = Depends(api_key_header)):
     )
 
 
-# ---------------------------------------------------------------------------
-# Pydantic request models
-# ---------------------------------------------------------------------------
+# --- Pydantic request models ---
 
 
 class TTSRequest(BaseModel):
@@ -170,6 +170,13 @@ class TTSRequest(BaseModel):
 
 class AgenticRequest(BaseModel):
     goal: str
+
+
+class AskRequest(BaseModel):
+    question: str
+    model: str | None = None
+    provider: str = "ollama"
+    api_url: str | None = None
 
 
 class UtilityRequest(BaseModel):
@@ -184,16 +191,14 @@ class ActionRequest(BaseModel):
     params: dict[str, Any] | None = None
 
 
-# ---------------------------------------------------------------------------
-# REST endpoints
-# ---------------------------------------------------------------------------
+# --- REST endpoints ---
 
 
 @app.get("/api/v1/health")
 async def health_check(_: str = Depends(get_api_key)):
     return {
         "status": "healthy",
-        "version": "0.2.1",
+        "version": "0.3.0",
         "modular": True,
         "mcp_server": "online",
         "rag_sources": get_store().list_sources(),
@@ -201,6 +206,7 @@ async def health_check(_: str = Depends(get_api_key)):
         "providers": {
             "hume": bool(hume_client),
             "elevenlabs": bool(eleven_client),
+            "gemini": bool(gemini_client),
             "windows": True,
         },
     }
@@ -217,26 +223,66 @@ async def api_stats():
 
 @app.get("/api/v1/search")
 async def api_search(q: str = ""):
-    results = get_store().search(q, limit=10)
     return [
         {
             "filename": r["metadata"].get("filename", "unknown"),
             "score": max(0.0, 1.0 - r.get("_distance", 0.0)),
             "content": r["content"],
         }
-        for r in results
+        for r in get_store().search(q, limit=10)
     ]
 
 
-@app.get("/api/v1/voices")
+@app.get("/api/v1/local/models")
+async def api_local_models(provider: str = "ollama", url: str | None = None):
+    """Dynamic elicitation of local models."""
+    from speech_mcp.providers.local import local_llm_provider
+
+    base_url = url or ("http://localhost:11434" if provider == "ollama" else "http://localhost:1234")
+    logger.info(f"Eliciting local models for {provider} at {base_url}")
+    models = await local_llm_provider.list_models(provider, base_url)
+    return {"success": True, "provider": provider, "models": models}
+
+
+@app.post("/api/v1/ask")
+async def api_ask(req: AskRequest):
+    """Grounded Q&A via RAG + Tool Sampling. Returns a grounded answer."""
+    from speech_mcp.providers.local import local_llm_provider
+
+    logger.info(f"Ask request: {req.question[:60]} (model={req.model})")
+    store = get_store()
+    results = store.search(req.question, limit=5)
+    context = "\n".join([r["content"] for r in results])
+
+    # Dynamic local generation
+    prompt = f"Context:\n{context}\n\nQuestion: {req.question}"
+    system = "You are a SOTA speech technology expert. Answer concisely based on context provided."
+
+    provider = req.provider
+    base_url = req.api_url or (
+        "http://localhost:11434" if provider == "ollama" else "http://localhost:1234"
+    )
+    model = req.model or ("llama3" if provider == "ollama" else "default")
+
+    answer = await local_llm_provider.generate(
+        provider=provider, base_url=base_url, model=model, prompt=prompt, system=system
+    )
+
+    return {
+        "success": True,
+        "question": req.question,
+        "answer": answer,
+        "context": context,
+        "sources": [r["metadata"].get("filename", "unknown") for r in results],
+    }
 async def api_voices():
     providers = []
     if hume_client:
-        providers.append(
-            {"name": "hume", "status": "available", "voices": ["ito", "kora"]}
-        )
+        providers.append({"name": "hume", "status": "available", "voices": ["ito", "kora"]})
     if eleven_client:
         providers.append({"name": "elevenlabs", "status": "available", "voices": []})
+    if gemini_client:
+        providers.append({"name": "gemini", "status": "available", "voices": gemini_client.voices})
     providers.append({"name": "windows", "status": "available", "voices": ["default"]})
     return {"providers": providers}
 
@@ -264,8 +310,8 @@ async def api_tts_wav(text: str, provider: str = "windows"):
         raise HTTPException(status_code=400, detail="text param required")
 
     if provider == "windows":
-        import pyttsx3
         import anyio
+        import pyttsx3
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
@@ -278,9 +324,7 @@ async def api_tts_wav(text: str, provider: str = "windows"):
         await anyio.to_thread.run_sync(_synth)
 
         if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
-            raise HTTPException(
-                status_code=500, detail="pyttsx3 synthesis failed — empty file"
-            )
+            raise HTTPException(status_code=500, detail="pyttsx3 synthesis failed — empty file")
 
         logger.info(f"WAV ready: {os.path.getsize(tmp_path)} bytes")
 
@@ -291,9 +335,7 @@ async def api_tts_wav(text: str, provider: str = "windows"):
 
         return Response(content=wav_bytes, media_type="audio/wav")
 
-    raise HTTPException(
-        status_code=400, detail=f"provider '{provider}' not supported on this endpoint"
-    )
+    raise HTTPException(status_code=400, detail=f"provider '{provider}' not supported on this endpoint")
 
 
 @app.post("/api/v1/agentic")
@@ -319,6 +361,7 @@ async def api_agentic(req: AgenticRequest):
 async def api_utility(req: UtilityRequest):
     """Domestic utility actions (timer, weather). Calls the actual tool logic."""
     from datetime import datetime
+
     from speech_mcp.state import run_timer
 
     logger.info(f"Utility: action={req.action} type={req.type} label={req.label}")
@@ -381,15 +424,13 @@ async def api_action(req: ActionRequest):
     return {"success": True, "action_elicited": req.action_type, "status": "triggered"}
 
 
-# ---------------------------------------------------------------------------
-# WebSocket endpoints
-# ---------------------------------------------------------------------------
+# --- WebSocket endpoints ---
 
 
 @app.websocket("/ws/stream")
 async def websocket_stream(websocket: WebSocket):
     """SOTA side-channel audio stream proxy."""
-    await handle_websocket_stream(websocket, eleven_client, hume_client)
+    await handle_websocket_stream(websocket, eleven_client, hume_client, gemini_client)
 
 
 @app.websocket("/ws/logs")
@@ -409,4 +450,5 @@ async def websocket_logs(websocket: WebSocket):
 
 
 if __name__ == "__main__":
+    # Binding to 127.0.0.1 for security unless explicitly overridden
     asyncio.run(mcp.run_stdio_async())

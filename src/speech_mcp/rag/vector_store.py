@@ -23,10 +23,4 @@ class DocumentStore(BaseVectorStore):
 
         tbl = self.db.open_table(self.table_name)
         # Using a set comprehension on the arrow data for distinct sources
-        return list(
-            {
-                r["metadata"].get("filename", "unknown")
-                for r in tbl.to_arrow().to_pylist()
-                if "metadata" in r
-            }
-        )
+        return list({r["metadata"].get("filename", "unknown") for r in tbl.to_arrow().to_pylist() if "metadata" in r})

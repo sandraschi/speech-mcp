@@ -28,7 +28,6 @@
 }
 
 @layer components {
-
   /* Glass card — readable contrast */
   .glass-card {
     background: rgba(255, 255, 255, 0.06);
@@ -37,7 +36,10 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-    transition: border-color 0.2s, background 0.2s, transform 0.2s;
+    transition:
+      border-color 0.2s,
+      background 0.2s,
+      transform 0.2s;
   }
 
   .glass-card:hover {
@@ -63,7 +65,9 @@
     border-radius: 10px;
     border: none;
     cursor: pointer;
-    transition: opacity 0.15s, transform 0.15s;
+    transition:
+      opacity 0.15s,
+      transform 0.15s;
     box-shadow: 0 4px 16px rgba(167, 139, 250, 0.3);
   }
 
@@ -114,7 +118,6 @@
 }
 
 @keyframes glow {
-
   0%,
   100% {
     box-shadow: 0 0 12px rgba(167, 139, 250, 0.2);
@@ -126,7 +129,6 @@
 }
 
 @keyframes pulse-wave {
-
   0%,
   100% {
     opacity: 0.6;

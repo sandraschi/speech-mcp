@@ -3,9 +3,10 @@ name = "speech-mcp"
 version = "0.3.0"
 description = "SOTA MCP server for Hume AI EVI and Octave"
 dependencies = [
-    "fastmcp>=3.1.0,<4",
+    "fastmcp>=3.2.0,<4",
     "hume>=0.7.0",
     "elevenlabs>=0.2.0",
+    "pvporcupine>=3.0.0",
     "websockets",
     "python-dotenv",
     "pydantic>=2.0.0",
@@ -19,6 +20,7 @@ dependencies = [
     "prometheus-client>=0.19.0",
     "python-osc",
     "prefab-ui>=0.14.0",
+    "google-generativeai>=0.8.6",
 ]
 
 [project.optional-dependencies]

@@ -90,8 +90,7 @@ async def log_speech_audit(text: str, provider: str, emotional_intensity: float)
     Used for forensic analysis of synthetic speech generation.
     """
     logger.info(
-        f"[AUDIT] Speech Generated | Provider: {provider} | "
-        f"Intensity: {emotional_intensity} | Text: {text[:50]}..."
+        f"[AUDIT] Speech Generated | Provider: {provider} | Intensity: {emotional_intensity} | Text: {text[:50]}..."
     )
     return f"Speech generation audit logged successfully. forensic_trace_id: {id(text)}"
 

@@ -1,5 +1,6 @@
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import AsyncMock, Mock, patch
 
 
 def _tool_result_data(result):
@@ -8,6 +9,7 @@ def _tool_result_data(result):
         return result.structured_content
     if hasattr(result, "content") and result.content:
         import json
+
         text = result.content[0].text if hasattr(result.content[0], "text") else str(result.content[0])
         try:
             return json.loads(text)
@@ -61,9 +63,7 @@ async def test_manage_domestic_utility_timer_query(mcp_app):
 @pytest.mark.skip(reason="Requires MCP session; TTS behavior covered by test_server.test_tts_wav_* and API")
 async def test_text_to_speech_windows(mcp_app):
     """Test TTS tool with windows provider (no API key required)."""
-    result = await mcp_app.call_tool(
-        "text_to_speech", {"text": "Hello world", "provider": "windows"}
-    )
+    result = await mcp_app.call_tool("text_to_speech", {"text": "Hello world", "provider": "windows"})
     data = _tool_result_data(result)
     assert isinstance(data, dict)
     assert data.get("success") is True
@@ -75,9 +75,7 @@ async def test_text_to_speech_windows(mcp_app):
 @pytest.mark.skip(reason="Requires MCP session; error-path covered by API tests")
 async def test_text_to_speech_hume_missing_key(mcp_app):
     """Test TTS with hume provider when key missing returns error."""
-    result = await mcp_app.call_tool(
-        "text_to_speech", {"text": "Hi", "provider": "hume"}
-    )
+    result = await mcp_app.call_tool("text_to_speech", {"text": "Hi", "provider": "hume"})
     data = _tool_result_data(result)
     assert isinstance(data, dict)
     assert data.get("success") is False
@@ -97,17 +95,19 @@ async def test_start_evi_session_returns_proxy(mcp_app):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Requires MCP session (Context/sample); RAG search covered by test_server.test_search_endpoint")
+@pytest.mark.skip(
+    reason="Requires MCP session (Context/sample); RAG search covered by test_server.test_search_endpoint"
+)
 async def test_ask_docs_sampling(mcp_app, mock_ctx):
     """Test ask_docs with mocked store returns sampled or grounded answer."""
     with patch("speech_mcp.tools.rag.get_store") as mock_get_store:
         mock_store = Mock()
-        mock_store.search.return_value = [
-            {"content": "Speech AI is cool", "metadata": {"filename": "doc1.md"}}
-        ]
+        mock_store.search.return_value = [{"content": "Speech AI is cool", "metadata": {"filename": "doc1.md"}}]
         mock_get_store.return_value = mock_store
 
         result = await mcp_app.call_tool("ask_docs", {"question": "What is speech AI?"})
         data = _tool_result_data(result)
         out = str(data) if not isinstance(data, dict) else str(data.get("raw", data))
-        assert "Sampled response" in out or "Speech AI" in out or (isinstance(data, dict) and data.get("success") is True)
+        assert (
+            "Sampled response" in out or "Speech AI" in out or (isinstance(data, dict) and data.get("success") is True)
+        )

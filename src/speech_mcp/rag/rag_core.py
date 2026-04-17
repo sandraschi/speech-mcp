@@ -63,7 +63,7 @@ class BaseVectorStore:
             return []
 
         tbl = self.db.open_table(self.table_name)
-        query_embedding = list(self.embedding_model.embed([query]))[0]
+        query_embedding = next(iter(self.embedding_model.embed([query])))
 
         search_req = tbl.search(query_embedding).limit(limit)
         if where:

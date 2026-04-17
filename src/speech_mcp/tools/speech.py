@@ -1,7 +1,10 @@
 import os
+from typing import Any
+
 from elevenlabs.client import ElevenLabs
 from fastmcp import Context, FastMCP
 from hume import HumeClient
+
 
 def _stream_base_url() -> str:
     base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10918")
@@ -10,24 +13,24 @@ def _stream_base_url() -> str:
 
 # We use a registration function patterns to keep dependencies local to the module
 def register_speech_tools(
-    mcp: FastMCP, hume_client: HumeClient | None, eleven_client: ElevenLabs | None
+    mcp: FastMCP, hume_client: HumeClient | None, eleven_client: ElevenLabs | None, gemini_client: Any | None = None
 ):
 
     @mcp.tool()
     async def text_to_speech(
         text: str,
-        voice_id: str = "ito",
-        provider: str = "hume",
+        voice_id: str = "Aoede",
+        provider: str = "gemini",
         emotion: str | None = None,
         ctx: Context = None,
     ) -> dict:
         """
-        Synthesize speech via Hume AI, ElevenLabs, or Windows Local TTS.
+        Synthesize speech via Gemini 3.1 Flash, Hume AI, ElevenLabs, or Windows Local.
 
         PORTMANTEAU PATTERN RATIONALE:
-        Consolidates three TTS providers (Hume, ElevenLabs, Windows) into a single
-        interface. Prevents tool explosion while exposing a unified stream-ready URL
-        for all provider backends. Follows FastMCP 3.x SOTA standards.
+        Consolidates four TTS providers into a single interface. Prevents tool
+        explosion while exposing a unified stream-ready URL for all provider
+        backends. Follows FastMCP 3.x SOTA standards.
 
         Args:
             text (str, required): Text to synthesize.
@@ -85,6 +88,29 @@ def register_speech_tools(
                 "voice": "Default",
                 "stream_url": stream_url,
                 "status": "local_fallback_ready",
+            }
+
+        elif provider == "gemini":
+            if not gemini_client:
+                return {
+                    "success": False,
+                    "error": "Gemini API key missing",
+                    "recovery_options": ["Check GOOGLE_API_KEY in .env"],
+                }
+
+            # For Gemini, we automatically wrap the text in emotion tags if provided
+            if emotion:
+                text = f"[{emotion}] {text}"
+
+            return {
+                "success": True,
+                "provider": "Gemini 3.1 Flash (SOTA)",
+                "voice": voice_id,
+                "stream_url": stream_url,
+                "tags_applied": emotion if emotion else "none",
+                "status": "ready_for_dispatch",
+                "next_steps": ["Connect to stream_url", "Begin audio playback"],
+                "quality_metrics": {"interruptible": True, "barge_in_ready": True},
             }
 
         return {"success": False, "error": f"Unsupported provider: {provider}"}

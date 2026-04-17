@@ -1,126 +1,196 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { Activity, Volume2, XCircle } from "lucide-react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface StreamPlaybackProps {
-    streamUrl: string | null;
-    provider: 'hume' | 'elevenlabs' | 'windows';
-    text?: string;
-    playKey?: number; // increment to force re-play same URL
+  streamUrl: string | null;
+  provider: "gemini" | "hume" | "elevenlabs" | "windows";
+  text?: string;
+  playKey?: number; // increment to force re-play same URL
+  onDone?: () => void;
 }
 
-export const StreamPlayback: React.FC<StreamPlaybackProps> = ({ streamUrl, provider, text, playKey }) => {
-    const socketRef = useRef<WebSocket | null>(null);
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const chunksRef = useRef<Uint8Array[]>([]);
-    const [status, setStatus] = useState<'idle' | 'connecting' | 'streaming' | 'playing' | 'error'>('idle');
-    const [errorMsg, setErrorMsg] = useState('');
+/**
+ * SOTA Stream Playback with Real-time Chunking and Interrupt Support.
+ */
+export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
+  streamUrl,
+  provider,
+  text,
+  playKey,
+  onDone,
+}) => {
+  const socketRef = useRef<WebSocket | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const nextStartTimeRef = useRef<number>(0);
+  const isPlayingRef = useRef<boolean>(false);
 
-    useEffect(() => {
-        if (!streamUrl) return;
+  const [status, setStatus] = useState<
+    "idle" | "connecting" | "streaming" | "playing" | "error"
+  >("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
-        // Close any previous connection
-        socketRef.current?.close();
-        audioContextRef.current?.close().catch(() => {});
-        chunksRef.current = [];
+  const interrupt = () => {
+    if (socketRef.current) {
+      socketRef.current.send(JSON.stringify({ type: "interrupt" }));
+      socketRef.current.close();
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+    }
+    setStatus("idle");
+    if (onDone) onDone();
+  };
 
-        let isMounted = true;
-        setStatus('connecting');
-        setErrorMsg('');
+  useEffect(() => {
+    if (!streamUrl) return;
 
-        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-        const audioCtx = new AudioContextClass();
-        audioContextRef.current = audioCtx;
+    // Cleanup previous
+    socketRef.current?.close();
+    audioContextRef.current?.close().catch(() => {});
 
-        const socket = new WebSocket(streamUrl);
-        socketRef.current = socket;
-        socket.binaryType = 'arraybuffer';
+    let isMounted = true;
+    setStatus("connecting");
+    setErrorMsg("");
+    nextStartTimeRef.current = 0;
+    isPlayingRef.current = true;
 
-        socket.onopen = () => {
-            if (!isMounted) return;
-            setStatus('streaming');
-            // Send TTS request immediately on connect
-            if ((provider === 'elevenlabs' || provider === 'windows') && text) {
-                socket.send(JSON.stringify({ type: 'tts', text }));
-            }
-        };
+    const AudioContextClass =
+      (window as any).AudioContext || (window as any).webkitAudioContext;
+    const audioCtx = new AudioContextClass();
+    audioContextRef.current = audioCtx;
 
-        socket.onmessage = async (event: MessageEvent) => {
-            if (!isMounted) return;
-            if (event.data instanceof ArrayBuffer && event.data.byteLength > 0) {
-                chunksRef.current.push(new Uint8Array(event.data));
-            }
-        };
+    const socket = new WebSocket(streamUrl);
+    socketRef.current = socket;
+    socket.binaryType = "arraybuffer";
 
-        socket.onclose = async () => {
-            if (!isMounted) return;
-            // All chunks received — decode and play
-            const chunks = chunksRef.current;
-            if (chunks.length > 0) {
-                setStatus('playing');
-                try {
-                    // Concatenate all chunks into a single buffer
-                    const totalLen = chunks.reduce((acc, c) => acc + c.byteLength, 0);
-                    const merged = new Uint8Array(totalLen);
-                    let offset = 0;
-                    for (const c of chunks) {
-                        merged.set(c, offset);
-                        offset += c.byteLength;
-                    }
-                    const audioBuffer = await audioCtx.decodeAudioData(merged.buffer);
-                    const source = audioCtx.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(audioCtx.destination);
-                    source.onended = () => { if (isMounted) setStatus('idle'); };
-                    source.start();
-                } catch (e) {
-                    console.error('Audio decode error:', e);
-                    if (isMounted) {
-                        setErrorMsg(`Decode failed: ${e instanceof Error ? e.message : String(e)}`);
-                        setStatus('error');
-                    }
-                }
-            } else {
-                if (isMounted) setStatus('idle');
-            }
-        };
+    socket.onopen = () => {
+      if (!isMounted) return;
+      setStatus("streaming");
 
-        socket.onerror = (e) => {
-            console.error('WebSocket error:', e);
-            if (isMounted) {
-                setErrorMsg('WebSocket connection failed');
-                setStatus('error');
-            }
-        };
+      // Standard TTS request payload for the Gateway
+      if (text) {
+        socket.send(JSON.stringify({ type: "tts", text }));
+      }
+    };
 
-        return () => {
-            isMounted = false;
-            socketRef.current?.close();
-            audioContextRef.current?.close().catch(() => {});
-        };
-    // playKey in deps so same URL can re-trigger
-    }, [streamUrl, provider, text, playKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    socket.onmessage = async (event: MessageEvent) => {
+      if (!isMounted || !isPlayingRef.current) return;
 
-    if (status === 'idle') return null;
+      // Handle metadata messages (like interrupts from server)
+      if (typeof event.data === "string") {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "interrupted") {
+            setStatus("idle");
+            return;
+          }
+        } catch (e) {}
+        return;
+      }
 
-    return (
-        <div className="glass-card p-4 mt-2 animate-fade-in border border-white/5 bg-slate-900/40 backdrop-blur-md rounded-2xl">
-            <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                    status === 'playing'    ? 'bg-emerald-500 animate-pulse' :
-                    status === 'streaming' ? 'bg-yellow-400 animate-pulse' :
-                    status === 'connecting' ? 'bg-yellow-600' :
-                    status === 'error'     ? 'bg-rose-500' :
-                    'bg-gray-500'
-                }`} />
-                <span className="text-sm font-black text-white/70 uppercase tracking-widest">
-                    {provider}: {status}
-                </span>
-                {errorMsg && <span className="text-xs text-rose-400 ml-2">{errorMsg}</span>}
-            </div>
-            {(status === 'streaming' || status === 'playing') && (
-                <div className="mt-2 h-1.5 bg-slate-950 rounded-full overflow-hidden border border-white/5">
-                    <div className="h-full bg-indigo-500 animate-[progress_2s_ease-in-out_infinite] w-1/3" />
-                </div>
+      // High-fidelity chunked playback
+      if (event.data instanceof ArrayBuffer && event.data.byteLength > 0) {
+        try {
+          const audioBuffer = await audioCtx.decodeAudioData(event.data);
+          const source = audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(audioCtx.destination);
+
+          // Schedule next chunk at the end of the last one
+          const startTime = Math.max(
+            audioCtx.currentTime,
+            nextStartTimeRef.current,
+          );
+          source.start(startTime);
+          nextStartTimeRef.current = startTime + audioBuffer.duration;
+
+          if (status !== "playing") setStatus("playing");
+        } catch (e) {
+          console.error("Audio chunk decode error:", e);
+        }
+      }
+    };
+
+    socket.onclose = () => {
+      if (!isMounted) return;
+      // Wait a bit for the last scheduled buffer to play
+      setTimeout(() => {
+        if (isMounted) {
+          setStatus("idle");
+          if (onDone) onDone();
+        }
+      }, 500);
+    };
+
+    socket.onerror = (e) => {
+      console.error("WebSocket error:", e);
+      if (isMounted) {
+        setErrorMsg("Stream connection failed");
+        setStatus("error");
+      }
+    };
+
+    return () => {
+      isMounted = false;
+      isPlayingRef.current = false;
+      socketRef.current?.close();
+      audioContextRef.current?.close().catch(() => {});
+    };
+  }, [streamUrl, provider, text, playKey]);
+
+  if (status === "idle") return null;
+
+  return (
+    <div className="glass-card p-5 mt-4 animate-in fade-in zoom-in-95 duration-500 border border-white/10 bg-slate-900/60 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden relative group">
+      <div className="absolute inset-0 bg-accent-blue/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+      <div className="flex items-center justify-between relative">
+        <div className="flex items-center gap-4">
+          <div
+            className={`p-3 rounded-xl border ${
+              status === "error"
+                ? "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                : "bg-accent-blue/10 border-accent-blue/20 text-accent-blue"
+            }`}
+          >
+            {status === "playing" ? (
+              <Activity className="w-5 h-5 animate-pulse" />
+            ) : (
+              <Volume2 className="w-5 h-5" />
             )}
+          </div>
+          <div>
+            <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5">
+              {provider} • {status}
+            </div>
+            <div className="text-sm font-bold text-white/90 truncate max-w-[200px]">
+              {text || "Aggregating flux..."}
+            </div>
+          </div>
         </div>
-    );
+
+        <div className="flex items-center gap-3">
+          {errorMsg && (
+            <span className="text-[10px] font-black text-rose-400 uppercase bg-rose-500/10 px-2 py-1 rounded-md">
+              {errorMsg}
+            </span>
+          )}
+          <button
+            onClick={interrupt}
+            className="p-3 bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-white/40 hover:text-rose-500 rounded-xl transition-all active:scale-95"
+            title="Interrupt / Stop"
+          >
+            <XCircle size={18} />
+          </button>
+        </div>
+      </div>
+
+      {(status === "streaming" || status === "playing") && (
+        <div className="mt-4 h-1 bg-white/5 rounded-full overflow-hidden">
+          <div className="h-full bg-accent-blue animate-[progress_3s_ease-in-out_infinite] w-full origin-left" />
+        </div>
+      )}
+    </div>
+  );
 };

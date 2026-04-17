@@ -1,152 +1,108 @@
 # Speech-MCP (Multi-Provider Speech Gateway)
 
-![Status: Production-Ready](https://img.shields.io/badge/Status-Production--Ready-green?style=for-the-badge)
-![FastMCP: 3.1.2](https://img.shields.io/badge/FastMCP-3.1.2-blue?style=for-the-badge)
-![Release: February 2026](https://img.shields.io/badge/Release-Feb%202026-purple?style=for-the-badge)
+[![FastMCP Version](https://img.shields.io/badge/FastMCP-3.2.0-blue?style=flat-square&logo=python&logoColor=white)](https://github.com/sandraschi/fastmcp) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![Linted with Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat-square&logo=biome&logoColor=white)](https://biomejs.dev/) [![Built with Just](https://img.shields.io/badge/Built_with-Just-000000?style=flat-square&logo=gnu-bash&logoColor=white)](https://github.com/casey/just)
+[![Status: Industrial](https://img.shields.io/badge/Status-Industrial-green?style=for-the-badge)](https://github.com/sandraschi/speech-mcp)
 
-SOTA-grade MCP server and web application for industrial voice orchestration, leveraging the latest **February 2026** AI stack.
+SOTA-grade MCP server and web application for industrial voice orchestration. This gateway leverages the **April 2026** AI stack, featuring native Generative UI and deep emotional prosody.
 
-> [!IMPORTANT]
-> **SOTA Technology Context (As of Feb 27, 2026)**:
-> This project is built using bleeding-edge standards and models released in the last 10 days:
-> - **FastMCP 3.1.2+** (GA: Feb 18, 2026): Powering agentic sampling and session management.
-> - **Gemini 3 Pro / Flash** (Released: Feb 19, 2026): Driving the RAG reasoning and strategy sampling.
-> - **Gemini 3.1 Flash Image** (Published: Feb 26, 2026): Employed for UI asset generation.
-> - **Hume EVI v3 / Octave**: 2026 industry standard for empathic prosody.
-> - **ElevenLabs Turbo v2.5**: 2026 industry standard for low-latency neural TTS.
-> - **LanceDB + FastEmbed**: Industrial RAG substrate for cognitive persistence.
+---
 
-##  Overview
+## 🎭 The Gemini 3.1 Revolution: Emotion Dominance
 
-Speech-MCP is a federated gateway for advanced voice AI. It provides a unified MCP interface for text-to-speech, real-time empathic voice sessions, and high-fidelity voice cloning.
+While other providers offer high fidelity, **Gemini 3.1 Flash TTS wipes the floor with the competition in raw emotional intelligence.**
 
-##  Key Capabilities
+Through natural language tags (e.g., `[whispers]`, `[happy]`, `[serious]`), Gemini 3.1 can shift its psychological state mid-sentence, providing a level of "acting" that traditional models cannot match.
 
-- **Hume AI Integration**:
-    - **EVI 2/3**: Real-time empathic voice interface with prosody-driven responses.
-    - **Octave TTS**: Emotionally aware text-to-speech.
-- **ElevenLabs Integration** (Roadmap/Alpha):
-    - **Professional Voice Cloning (PVC)**: State-of-the-art neural cloning.
-    - **Multilingual TTS**: Support for 32+ languages with emotional nuances.
-- **SOTA Webapp**: A premium dark-mode interface with glassmorphism, emotion visualizers, and neural dynamic tracking.
-- **Service Linkage Hub (Apps Hub)**: Central discovery portal for navigating the local MCP fleet (OpenClaw style).
-- **Interaction Lab**: Domestic utility gateway for timers, weather reports, and IoT (Tapo/Ring) orchestration.
-- **Creative Labs**: Expressive reader with poem narration and translation bridge.
+> [!TIP]
+> **Deep Dives**: See our specialized provider guides:
+> - [**Gemini 3.1 Deep-Dive**](docs/providers/gemini.md): The SOTA standard for emotional performance.
+> - [**Hume AI EVI**](docs/providers/hume.md): The leader in empathic user detection.
+> - [**ElevenLabs**](docs/providers/elevenlabs.md): The gold standard for professional voice cloning.
 
-##  Deployment & Setup
+---
+
+## 🛠️ SOTA Technology Stack (April 2026)
+This project is built using bleeding-edge standards:
+- **FastMCP 3.2.0 (The "Apps" Release)**: Powering Generative UI dashboards and server-side interactive elements.
+- **Gemini 3.1 Flash TTS**: Driving the fleet's emotional synthesis and native barge-in.
+- **PvPorcupine 3.0**: Industrial-grade local wake-word trigger logic.
+- **SEP-1577**: Standardized agentic sampling for conversational strategy.
+
+---
+
+## 🎙️ Key Capabilities
+
+- **Local LLM Elicitation**: Proactive model discovery for Ollama and LM Studio directly via the web interface.
+- **Generative UI Dashboards**: FastMCP 3.2 powered real-time prosody and status monitors.
+- **Barge-in (Interruptible TTS)**: Gemini Live VAD allows for natural conversation overlap without "babbling."
+- **Local Wake-Word**: Picovoice integration for physical activation fallback ("Hey Computer").
+- **Empathic Feedback**: Hume EVI v3 for tracking user emotional vectors.
+
+---
+
+## 🔬 Local LLM Infrastructure
+
+Speech-MCP now supports **Dynamic Local Intelligence**. 
+
+1. **Ollama**: Connect via `http://localhost:11434` (Default).
+2. **LM Studio**: Connect via `http://localhost:1234`.
+
+The webapp proactively elicites available models on page load, allowing you to switch between local inference clusters without manual configuration. **Semantic Retrieval is fully integrated with Ollama/LM Studio for real-time grounded generation.**
+
+---
+
+---
+
+## 🛠️ Deployment & Setup
 
 ### Ports
-- **Backend (MCP)**: `10760`
-- **Frontend (Web)**: `10761`
+- **Backend (MCP)**: `10918` (Updated for April 2026 fleet)
+- **Frontend (Web)**: `10917`
 
 ### Environment Variables
 Create a `.env` file in the root:
 ```env
+# Required for SOTA Features
+GOOGLE_API_KEY=your_gemini_key
+PICOVOICE_API_KEY=your_pvporcupine_key
+
+# Additional Providers
 HUME_API_KEY=your_hume_key
-HUME_CONFIG_ID=your_evi_config_id
 ELEVENLABS_API_KEY=your_eleven_key
 ```
 
 ### Installation
 ```powershell
 git clone https://github.com/sandraschi/speech-mcp.git
-Set-Location speech-mcp
-# Backend
-pip install -e .
+cd speech-mcp
+uv pip install -e .
 python -m speech_mcp.server
-
-# Frontend
-cd web
-npm install
-npm run dev
 ```
-
-##  MCP Tools
-
-- `text_to_speech`: Synthesize audio across providers (Hume/Eleven/Windows).
-- `start_evi_session`: Initialize real-time Hume EVI sessions.
-- `manage_voice_clones`: Unified identity management (Create/List/Delete).
-- `agentic_conversation_workflow`: **[SEP-1577]** Mission orchestrator using iterative sampling.
-- `orchestrate_alexa_pattern`: Specialized Alexa-style domestic mission logic.
-- `search_docs`: Semantic RAG search over tech documentation.
-- `ask_docs`: Grounded Q&A using retrieved context + AI sampling.
-- `detect_wake_word`: VAD-ready activation trigger.
-- `check_vocal_safety`: Intent-based risk analysis for vocal output.
-
-##  Roadmap & Next Steps (v0.x)
-
-As a **Beta** release, we have identified several orchestration frontiers and technical debt targets:
-
-### Current Shortcomings
-- **Emotion Visualization**: ElevenLabs currently lacks the deep prosody-to-visual mapping available for Hume EVI.
-- **Frontend State Persistence**: Audio stream settings do not currently persist across hard refreshes.
-- **Agentic Loop Latency**: Iterative sampling (SEP-1577) adds a cognitive overhead of ~2-3 seconds per mission phase.
-
-### Completion Estimates
-- [ ] **v0.2.0 (March 2026)**: ElevenLabs real-time emotion mapping.
-- [ ] **v0.3.0 (April 2026)**: Local-first persistence layer (SQLite/LanceDB).
-- [ ] **v1.0.0 (H2 2026)**: Production-ready industrial stability.
 
 ---
 
-##  Standards & Compliance
+## 🛠️ FastMCP 3.2 Tools
 
-- **FastMCP 3.1.x**: Full adherence to the latest agentic standards (GA Feb 18, 2026).
-- **Security Bastion (v0.2.1)**: Hardened authentication and vocal scam detection (Released: Feb 27, 2026).
-- **Portmanteau Pattern**: Consolidated tool schema to prevent tool explosion.
-- **Networking**: Dual-server substrate on port **10760** (FastAPI + MCP SSE).
+- `agentic_conversation_workflow`: **[Hardened]** Autonomous mission orchestrator with clarify-on-ambiguity (`ctx.elicit`).
+- `configure_local_wake_word`: Sets up Porcupine monitoring for physical triggers.
+- `text_to_speech`: Multi-provider synthesis with Gemini emotion support.
+- `Prosody Dashboard`: **[Generative UI]** Real-time emotional telemetry.
 
-##  Agentic Features & RAG
+---
 
-### 1. SEP-1577 Sampling
-This server supports **Iterative AI Sampling**. When performing complex speech orchestration, tools can request the host LLM to "sample" and suggest cognitive strategies or refine prompts.
+## 🚀 Industrial Roadmap
+- [x] FastMCP 3.2 Upgrade (Apps Release)
+- [x] Gemini 3.1 Flash TTS Integration
+- [x] SOTA Bidirectional WebSocket Proxy
+- [ ] Multimodal Video Synthesis (Roadmap Q3 2026)
 
-**Workflow Example**:
-1. Client calls `agentic_conversation_workflow`.
-2. Server uses `ctx.sample()` to ask the LLM: *"Suggest a conversational strategy for: [User Goal]"*.
-3. Server adopts the suggested strategy and returns a `requires_sampling: true` signal to the agent.
 
-### 2. Dialogic Returns
-Tools provide "Dialogue Guidance" to the calling agent.
-```json
-{
-  "success": true,
-  "status": "ready_for_dispatch",
-  "next_steps": ["Connect to stream_url", "Begin audio playback"],
-  "recovery_options": ["Check .env file", "Use windows fallback"]
-}
-```
+## 🛡️ Industrial Quality Stack
 
-### 3. Agentic Workflow Tool
-The `agentic_conversation_workflow` tool is a **Mission Orchestrator**. It doesn't just synthesize text; it reasons about the conversation's goal and adjusts provide parameters autonomously.
+This project adheres to **SOTA 14.1** industrial standards for high-fidelity agentic orchestration:
 
-##  Deployment & Setup
-
-### Launchers (SOTA)
-- **`start.bat`**: Professional double-click launcher.
-- **`start.ps1`**: PowerShell script that kills zombie processes and spawns the dual-server environment.
-
-### Release Orchestration (SOTA)
-For professional deployments, use the `release.ps1` script:
-```powershell
-# Bump version and tag (patch, minor, or major)
-.\release.ps1 -Type patch -Message "feat: add neural dynamic tracking"
-```
-
-### CI/CD Pipeline
-- **Continuous Integration**: GitHub Actions runs `ruff` and `uv` sync checks on every push.
-- **Automated Releases**: Pushing tags (e.g., `v0.1.0`) triggers a GitHub Release with automated binary builds and release notes.
-
-### Installation & Environment
-This project is **UV-compatible**. Clone the repo first, then from the **repository root**:
-
-```powershell
-git clone https://github.com/sandraschi/speech-mcp.git
-Set-Location speech-mcp
-# Install and lock environment
-uv sync
-uv lock
-
-# Launch
-.\start.bat
-```
+- **Python (Core)**: [Ruff](https://astral.sh/ruff) for linting and formatting. Zero-tolerance for `print` statements in core handlers (`T201`).
+- **Webapp (UI)**: [Biome](https://biomejs.dev/) for sub-millisecond linting. Strict `noConsoleLog` enforcement.
+- **Protocol Compliance**: Hardened `stdout/stderr` isolation to ensure crash-resistant JSON-RPC communication.
+- **Automation**: [Justfile](./justfile) recipes for all fleet operations (`just lint`, `just fix`, `just dev`).
+- **Security**: Automated audits via `bandit` and `safety`.

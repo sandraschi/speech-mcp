@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from speech_mcp.server import app, mcp
 
 client = TestClient(app)

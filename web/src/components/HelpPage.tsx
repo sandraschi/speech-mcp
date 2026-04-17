@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
-import { HelpCircle, ChevronDown, ChevronRight, Mic, Cloud, Monitor, ExternalLink } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Cloud,
+  ExternalLink,
+  HelpCircle,
+  Mic,
+  Monitor,
+} from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 
 const HelpPage: React.FC = () => {
-    return (
+  return (
         <div className="max-w-4xl space-y-8 animate-in fade-in duration-500">
             <header>
                 <h2 className="text-3xl font-black text-white tracking-tighter">Documentation & Help</h2>
@@ -19,11 +28,18 @@ const HelpPage: React.FC = () => {
                     notes="Required for EVI sessions and Hume TTS. Get keys at beta.hume.ai. HUME_CONFIG_ID is needed for EVI."
                 />
                 <ProviderDoc
+                    name="Gemini 3.1 Flash"
+                    envKey="GOOGLE_API_KEY"
+                    docsUrl="https://ai.google.dev/gemini-api/docs"
+                    features={['SOTA Emotional Synthesis (Natural Language Tags)', 'Ultra-low latency streaming', 'Native Barge-in (Server-side VAD)']}
+                    notes="Recommended for emotional performance. Wipes the floor with competition in prosody. Get API key at aistudio.google.com."
+                />
+                <ProviderDoc
                     name="ElevenLabs"
                     envKey="ELEVENLABS_API_KEY"
                     docsUrl="https://elevenlabs.io/docs"
-                    features={['High-fidelity TTS and voice cloning', 'Streaming', 'Multiple voices via API']}
-                    notes="Optional. Use for best quality and cloning. Get API key from elevenlabs.io app settings."
+                    features={['High-fidelity TTS and professional voice cloning', 'Turbo v2.5 for 2026 conversations', 'Elite stability']}
+                    notes="Optional. Use for best audio quality and PVC. Key from elevenlabs.io."
                 />
                 <ProviderDoc
                     name="Windows (SAPI5)"
@@ -52,8 +68,28 @@ const HelpPage: React.FC = () => {
                 <p className="text-slate-400 text-sm">Use the Semantic page to search the LanceDB vector store. Documents are indexed via MCP tools. Default embedding: BAAI/bge-small-en-v1.5. Data path: <code className="text-accent-purple">data/lancedb/</code>.</p>
             </Section>
 
+            <Section title="Gemini audio tags (Emotion Cheat Sheet)">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <TagItem tag="[whispers]" desc="Breathiness & intimacy" />
+                    <TagItem tag="[happy]" desc="Bright & energetic" />
+                    <TagItem tag="[shouts]" desc="Loud & proyecting" />
+                    <TagItem tag="[sad]" desc="Downward & empathetic" />
+                    <TagItem tag="[serious]" desc="Flattened & authoritative" />
+                    <TagItem tag="[confused]" desc="Hesitant & inquisitive" />
+                </div>
+                <p className="mt-4 text-xs text-slate-500 italic">Example: "[happy] Hello! [whispers] Let's keep this quiet..."</p>
+            </Section>
+
+            <Section title="Barge-in & Interrupts">
+                <p className="text-slate-400 text-sm mb-3">SOTA conversational flow requires immediate feedback. Speech-MCP implements two levels of interruption:</p>
+                <ul className="list-disc list-inside text-slate-400 text-sm space-y-2">
+                    <li><strong>Native Barge-in (Gemini)</strong>: The server automatically stops generating if it detects yours voice (Server-side VAD).</li>
+                    <li><strong>Global Interrupt</strong>: Clicking the Stop button in the playback widget sends a <code className="text-accent-purple">{"type": "interrupt"}</code> signal to kill the active stream instantly.</li>
+                </ul>
+            </Section>
+
             <Section title="Prosody and emotion">
-                <p className="text-slate-400 text-sm">Hume supports emotion hints for expressive synthesis. ElevenLabs has limited emotion control. Windows TTS has no emotion control. EVI uses Hume&#39;s emotional dynamics for real-time conversation.</p>
+                <p className="text-slate-400 text-sm">Gemini leads the fleet with Natural Language Tags. Hume supports configuration-based emotional hints. ElevenLabs uses stability/similarity sliders. SAPI5 is emotionless.</p>
             </Section>
 
             <Section title="Log viewer">
@@ -87,64 +123,100 @@ const HelpPage: React.FC = () => {
     );
 };
 
-function Section({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
-    const [open, setOpen] = useState(defaultOpen);
-    return (
-        <div className="glass-card overflow-hidden">
-            <button
-                type="button"
-                className="w-full p-6 flex items-center justify-between text-left hover:bg-white/[0.03] transition-colors"
-                onClick={() => setOpen(!open)}
-            >
-                <span className="font-bold text-lg text-white">{title}</span>
-                {open ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronRight size={20} className="text-slate-400" />}
-            </button>
-            {open && <div className="px-6 pb-6 pt-0 border-t border-white/5">{children}</div>}
-        </div>
-    );
+function Section({
+  title,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="glass-card overflow-hidden">
+      <button
+        type="button"
+        className="w-full p-6 flex items-center justify-between text-left hover:bg-white/[0.03] transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        <span className="font-bold text-lg text-white">{title}</span>
+        {open ? (
+          <ChevronDown size={20} className="text-slate-400" />
+        ) : (
+          <ChevronRight size={20} className="text-slate-400" />
+        )}
+      </button>
+      {open && (
+        <div className="px-6 pb-6 pt-0 border-t border-white/5">{children}</div>
+      )}
+    </div>
+  );
 }
 
 function ProviderDoc({
-    name,
-    envKey,
-    docsUrl,
-    features,
-    notes,
+  name,
+  envKey,
+  docsUrl,
+  features,
+  notes,
 }: {
-    name: string;
-    envKey: string;
-    docsUrl: string;
-    features: string[];
-    notes: string;
+  name: string;
+  envKey: string;
+  docsUrl: string;
+  features: string[];
+  notes: string;
 }) {
-    const Icon = name.startsWith('Hume') ? Mic : name.startsWith('Eleven') ? Cloud : Monitor;
-    return (
-        <div className="mb-6 p-4 rounded-xl bg-white/[0.03] border border-white/5">
-            <div className="flex items-center gap-2 mb-2">
-                <Icon size={18} className="text-accent-purple" />
-                <h4 className="font-bold text-white">{name}</h4>
-                {envKey !== '—' && <span className="text-xs text-slate-500 font-mono">{envKey}</span>}
-                {docsUrl && (
-                    <a href={docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-accent-blue flex items-center gap-1 ml-auto">
-                        Docs <ExternalLink size={12} />
-                    </a>
-                )}
-            </div>
-            <ul className="list-disc list-inside text-slate-400 text-sm mb-2">
-                {features.map((f, i) => (
-                    <li key={i}>{f}</li>
-                ))}
-            </ul>
-            <p className="text-slate-500 text-xs">{notes}</p>
-        </div>
-    );
+  const Icon = name.startsWith("Hume")
+    ? Mic
+    : name.startsWith("Eleven")
+      ? Cloud
+      : Monitor;
+  return (
+    <div className="mb-6 p-4 rounded-xl bg-white/[0.03] border border-white/5">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={18} className="text-accent-purple" />
+        <h4 className="font-bold text-white">{name}</h4>
+        {envKey !== "—" && (
+          <span className="text-xs text-slate-500 font-mono">{envKey}</span>
+        )}
+        {docsUrl && (
+          <a
+            href={docsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-accent-blue flex items-center gap-1 ml-auto"
+          >
+            Docs <ExternalLink size={12} />
+          </a>
+        )}
+      </div>
+      <ul className="list-disc list-inside text-slate-400 text-sm mb-2">
+        {features.map((f, i) => (
+          <li key={i}>{f}</li>
+        ))}
+      </ul>
+      <p className="text-slate-500 text-xs">{notes}</p>
+    </div>
+  );
 }
 
 const FaqItem = ({ q, a }: { q: string; a: string }) => (
-    <div className="border-b border-slate-800 pb-4 last:border-0 last:pb-0">
-        <h4 className="text-indigo-400 font-bold mb-2 text-sm">Q: {q}</h4>
-        <p className="text-slate-400 text-sm leading-relaxed">{a}</p>
-    </div>
+  <div className="border-b border-slate-800 pb-4 last:border-0 last:pb-0">
+    <h4 className="text-indigo-400 font-bold mb-2 text-sm">Q: {q}</h4>
+    <p className="text-slate-400 text-sm leading-relaxed">{a}</p>
+  </div>
+);
+
+const TagItem = ({ tag, desc }: { tag: string; desc: string }) => (
+  <div className="bg-white/[0.02] border border-white/5 p-3 rounded-lg">
+    <code className="text-accent-blue text-xs font-black block mb-1">
+      {tag}
+    </code>
+    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+      {desc}
+    </span>
+  </div>
 );
 
 export default HelpPage;

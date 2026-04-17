@@ -38,6 +38,7 @@ async def handle_websocket_stream(
     websocket: WebSocket,
     eleven_client: ElevenLabs | None,
     hume_client: Any | None = None,
+    gemini_client: Any | None = None,
 ):
     await websocket.accept()
 
@@ -68,6 +69,13 @@ async def handle_websocket_stream(
                 return
             await _handle_hume(websocket, api_key)
 
+        elif provider == "gemini":
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                await websocket.close(code=1008, reason="GOOGLE_API_KEY not configured")
+                return
+            await _handle_gemini(websocket, api_key, voice_id)
+
         else:
             await websocket.close(code=1008, reason=f"Unknown provider: {provider}")
 
@@ -77,8 +85,8 @@ async def handle_websocket_stream(
         logger.exception(f"WebSocket stream error: {e}")
         try:
             await websocket.send_json({"type": "error", "message": str(e)})
-        except Exception:
-            pass
+        except Exception as ws_err:
+            logger.debug(f"Failed to send error to closed websocket: {ws_err}")
 
 
 async def _handle_windows(websocket: WebSocket):
@@ -182,3 +190,76 @@ async def _handle_hume(websocket: WebSocket, api_key: str):
         async with anyio.create_task_group() as tg:
             tg.start_soon(hume_to_client)
             tg.start_soon(client_to_hume)
+
+
+async def _handle_gemini(websocket: WebSocket, api_key: str, voice_id: str):
+    """
+    SOTA Bidirectional proxy to Gemini Multimodal Live API.
+    Supports native barge-in and client-side interrupts.
+    """
+    # Gemini Live WebSocket URL (SOTA April 2026)
+    gemini_url = (
+        "wss://generativelanguage.googleapis.com/ws/"
+        "google.ai.generativelanguage.v1alpha.GenerativeService/MultimodalLive"
+        f"?key={api_key}"
+    )
+
+    async with websockets.connect(gemini_url) as gemini_ws:
+        # Initial Setup Frame
+        setup_frame = {
+            "setup": {
+                "model": "models/gemini-3.1-flash-tts-preview",
+                "generation_config": {
+                    "response_modalities": ["audio"],
+                    "speech_config": {"voice_config": {"prebuilt_voice_config": {"voice_name": voice_id}}},
+                },
+            }
+        }
+        await gemini_ws.send(json.dumps(setup_frame))
+
+        async def gemini_to_client():
+            async for message in gemini_ws:
+                data = json.loads(message)
+
+                # Forward server content (audio chunks)
+                if "serverContent" in data:
+                    content = data["serverContent"]
+                    if "modelTurn" in content:
+                        for part in content["modelTurn"]["parts"]:
+                            if "inlineData" in part:
+                                audio_b64 = part["inlineData"]["data"]
+                                await websocket.send_bytes(base64.b64decode(audio_b64))
+
+                                # OSC lip-flap for SOTA immersion
+                                amp = calculate_amplitude(audio_b64)
+                                flap = amp * 1.5 if amp > 0.05 else 0.0
+                                osc_client.send_message("/avatar/parameters/MouthOpen", flap)
+
+                    if content.get("interrupted"):
+                        logger.info("Gemini Live: Interrupt detected (Barge-in).")
+                        await websocket.send_json({"type": "interrupted", "source": "server"})
+
+                elif "setupComplete" in data:
+                    logger.info("Gemini Live: Setup complete.")
+
+        async def client_to_gemini():
+            while True:
+                msg_text = await websocket.receive_text()
+                msg = json.loads(msg_text)
+
+                if msg.get("type") == "interrupt":
+                    # Send cancellation frame to Gemini
+                    # (In Multimodal Live, sending a new 'clientContent' often resets the turn
+                    # but we can also send an explicit cancel if the protocol supports it)
+                    logger.warning("Gemini Live: Client-side interrupt received.")
+                    await gemini_ws.send(json.dumps({"clientContent": {"turnComplete": True, "interrupt": True}}))
+
+                elif msg.get("type") == "tts":
+                    # Send text as client content
+                    text = msg.get("text", "")
+                    client_frame = {"clientContent": {"turns": [{"parts": [{"text": text}]}], "turnComplete": True}}
+                    await gemini_ws.send(json.dumps(client_frame))
+
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(gemini_to_client)
+            tg.start_soon(client_to_gemini)

@@ -47,16 +47,12 @@ def register_rag_tools(mcp: FastMCP):
             return {**search_result, "recovery_options": ["Try search_docs directly"]}
 
         chunks = search_result["data"]
-        context_text = "\n\n".join(
-            f"SOURCE: {r['filename']}\nCONTENT: {r['content']}" for r in chunks
-        )
+        context_text = "\n\n".join(f"SOURCE: {r['filename']}\nCONTENT: {r['content']}" for r in chunks)
         sources = list({r["filename"] for r in chunks})
 
         result = await ctx.sample(
             messages=f"Context:\n{context_text}\n\nQuestion: {question}",
-            system_prompt=(
-                "You are a SOTA speech technology expert. Answer concisely based on the context."
-            ),
+            system_prompt=("You are a SOTA speech technology expert. Answer concisely based on the context."),
         )
 
         return {
