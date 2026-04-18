@@ -16,45 +16,60 @@ import { StreamPlayback } from "./StreamPlayback";
 
 const GEMINI_VOICES = ["Aoede", "Charon", "Fenrir", "Kore", "Orion", "Puck"];
 
-interface Poem {
-  title: string;
-  author: string;
-  lang: string;
-  content: string;
+interface LanguageSample {
+  name: string;
+  code: string;
+  native: string;
+  flag: string;
+  samples: {
+    title: string;
+    author: string;
+    content: string;
+  }[];
 }
 
-const POEMS: Poem[] = [
+const LANGUAGES: LanguageSample[] = [
   {
-    title: "Le Bateau Ivre",
-    author: "Arthur Rimbaud",
-    lang: "fr",
-    content:
-      "Comme je descendais des Fleuves impassibles,\nJe ne me sentis plus guidé par les haleurs...",
+    name: "English", code: "en", native: "English", flag: "🇺🇸",
+    samples: [{ title: "The Raven", author: "Edgar Allan Poe", content: "[serious] Once upon a midnight dreary, while I pondered, weak and weary, [whispers] Over many a quaint and curious volume of forgotten lore..." }]
   },
   {
-    title: "The Raven",
-    author: "Edgar Allan Poe",
-    lang: "en",
-    content:
-      "Once upon a midnight dreary, while I pondered, weak and weary,\nOver many a quaint and curious volume of forgotten lore...",
+    name: "Hindi", code: "hi", native: "हिन्दी", flag: "🇮🇳",
+    samples: [{ title: "Pratishodh", author: "Jai Shankar Prasad", content: "वह देख, उस आकाश में कैसे बादलों का जमघट है। वह सब मेरी आँखों के आँसू हैं।" }]
   },
   {
-    title: "Sa Aking Mga Kabata",
-    author: "José Rizal",
-    lang: "tl",
-    content:
-      "Kapagka ang baya'y sadyang umiibig\nSa kanyang salitang kaloob ng langit...",
+    name: "Kiswahili", code: "sw", native: "Kiswahili", flag: "🇰🇪",
+    samples: [{ title: "Mshairi", author: "Shaaban Robert", content: "Kila mtu ni mshairi wa maisha yake mwenyewe. Maneno ni nguvu, na sauti ni roho." }]
   },
-];
-
-const TONGUE_TWISTERS = [
-  "Betty Botter bought some butter, but she said the butter's bitter.",
-  "Ang relo ni Leroy ay rolex.",
-  "Six slippery snails slid slowly seaward.",
+  {
+    name: "Cantonese", code: "zh-HK", native: "廣東話", flag: "🇭🇰",
+    samples: [{ title: "Quiet Night", author: "Li Bai (Cantonese)", content: "床前明月光，疑是地上霜。舉頭望明月，低頭思故鄉。" }]
+  },
+  {
+    name: "Hungarian", code: "hu", native: "Magyar", flag: "🇭🇺",
+    samples: [{ title: "Nemzeti Dal", author: "Petőfi Sándor", content: "Talpra magyar, hí hí a haza! Itt az idő, most vagy soha! Rabok legyünk, vagy szabadok? Ez a kérdés, válasszatok!" }]
+  },
+  {
+    name: "Latin", code: "la", native: "Latina", flag: "🏛️",
+    samples: [{ title: "Aeneid", author: "Virgil", content: "Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora." }]
+  },
+  {
+    name: "Classical Greek", code: "grc", native: "Ἑλληνική", flag: "📜",
+    samples: [{ title: "Odyssey", author: "Homer", content: "Ἄνδρα μοι ἔννεπε, Μοῦσα, πολύτροπον, ὃς μάλα πολλὰ πλάγχθη, ἐπεὶ Τροίης ἱερὸν πτολίεθρον ἔπερσεν." }]
+  },
+  {
+    name: "French", code: "fr", native: "Français", flag: "🇫🇷",
+    samples: [{ title: "Le Bateau Ivre", author: "Arthur Rimbaud", content: "[happy] Comme je descendais des Fleuves impassibles, [whispers] Je ne me sentis plus guidé par les haleurs..." }]
+  },
+  {
+    name: "Tagalog", code: "tl", native: "Tagalog", flag: "🇵🇭",
+    samples: [{ title: "Sa Aking Mga Kabata", author: "José Rizal", content: "Kapagka ang baya'y sadyang umiibig Sa kanyang salitang kaloob ng langit." }]
+  }
 ];
 
 const CreativeLabs: React.FC = () => {
-  const [selectedPoem, setSelectedPoem] = useState<Poem | null>(null);
+  const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
+  const [selectedSample, setSelectedSample] = useState(LANGUAGES[0].samples[0]);
   const [emotion, setEmotion] = useState(50);
   const [translation, setTranslation] = useState("");
   const [isLoading, _setIsLoading] = useState(false);
@@ -208,115 +223,117 @@ const CreativeLabs: React.FC = () => {
         {/* Left Column */}
         <div className="lg:col-span-8 space-y-8">
           {/* Poem Reader */}
-          <div className="glass-card p-8 relative overflow-hidden">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+              <div className="flex items-center gap-4">
                 <div className="bg-violet-500/10 p-2.5 rounded-xl border border-violet-500/20 text-violet-400">
-                  <Book size={18} />
+                  <Languages size={18} />
                 </div>
-                <h2 className="text-lg font-black text-white uppercase tracking-tighter">
-                  Poem Reader
-                </h2>
+                <div>
+                    <h2 className="text-lg font-black text-white uppercase tracking-tighter">
+                    Polyglot Lab
+                    </h2>
+                    <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Dozens of Languages</p>
+                </div>
               </div>
-              <div className="flex items-center gap-4 glass-card px-4 py-2 bg-white/[0.02]">
-                <label
-                  htmlFor="voiceSelect"
-                  className="text-xs font-bold text-white/60 uppercase tracking-wider"
-                >
-                  Voice
-                </label>
-                <select
-                  id="voiceSelect"
-                  value={selectedVoice}
-                  onChange={(e) => setSelectedVoice(e.target.value)}
-                  className="bg-transparent text-xs font-black text-violet-400 outline-none border-none cursor-pointer"
-                >
-                  {GEMINI_VOICES.map((v) => (
-                    <option key={v} value={v} className="bg-slate-900">
-                      {v}
-                    </option>
-                  ))}
-                </select>
+              
+              <div className="flex flex-wrap items-center gap-4 glass-card px-4 py-2 bg-white/[0.02] border-white/10">
+                <div className="flex items-center gap-3">
+                    <label htmlFor="langSelect" className="text-xs font-bold text-white/50 uppercase tracking-wider">Language</label>
+                    <select
+                        id="langSelect"
+                        className="bg-transparent text-xs font-black text-violet-400 outline-none border-none cursor-pointer"
+                        value={selectedLang.code}
+                        onChange={(e) => {
+                            const lang = LANGUAGES.find(l => l.code === e.target.value) || LANGUAGES[0];
+                            setSelectedLang(lang);
+                            setSelectedSample(lang.samples[0]);
+                        }}
+                    >
+                        {LANGUAGES.map(l => (
+                            <option key={l.code} value={l.code} className="bg-slate-900">{l.flag} {l.name}</option>
+                        ))}
+                    </select>
+                </div>
+                
                 <div className="h-4 w-px bg-white/10" />
-                <Sliders size={13} className="text-white/40" />
-                <label
-                  htmlFor="prosody"
-                  className="text-xs font-bold text-white/60 uppercase tracking-wider"
-                >
-                  Prosody
-                </label>
-                <input
-                  type="range"
-                  id="prosody"
-                  min="0"
-                  max="100"
-                  value={emotion}
-                  onChange={(e) => setEmotion(parseInt(e.target.value, 10))}
-                  className="w-28 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-violet-500"
-                />
-                <span className="text-xs font-black text-violet-400 w-8 text-right tabular-nums">
-                  {emotion}%
-                </span>
+
+                <div className="flex items-center gap-3">
+                    <label htmlFor="voiceSelect" className="text-xs font-bold text-white/50 uppercase tracking-wider">Voice</label>
+                    <select
+                        id="voiceSelect"
+                        value={selectedVoice}
+                        onChange={(e) => setSelectedVoice(e.target.value)}
+                        className="bg-transparent text-xs font-black text-violet-400 outline-none border-none cursor-pointer"
+                    >
+                        {GEMINI_VOICES.map((v) => (
+                            <option key={v} value={v} className="bg-slate-900">{v}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="h-4 w-px bg-white/10" />
+                
+                <div className="flex items-center gap-3">
+                    <label htmlFor="prosody" className="text-xs font-bold text-white/50 uppercase tracking-wider">Prosody</label>
+                    <input
+                        type="range"
+                        id="prosody"
+                        min="0"
+                        max="100"
+                        value={emotion}
+                        onChange={(e) => setEmotion(parseInt(e.target.value, 10))}
+                        className="w-20 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-violet-500"
+                    />
+                </div>
               </div>
             </div>
 
-            {/* Poem selector */}
+            {/* Language samples */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-              {POEMS.map((p) => (
+              {selectedLang.samples.map((s) => (
                 <button
-                  key={p.title}
+                  key={s.title}
                   type="button"
-                  onClick={() => setSelectedPoem(p)}
+                  onClick={() => setSelectedSample(s)}
                   className={`p-4 rounded-xl border transition-all text-left ${
-                    selectedPoem?.title === p.title
+                    selectedSample.title === s.title
                       ? "bg-violet-500/10 border-violet-500/40"
                       : "bg-white/[0.02] border-white/8 hover:border-white/15 hover:bg-white/[0.04]"
                   }`}
                 >
-                  <div
-                    className={`text-xs font-black uppercase tracking-widest mb-1 ${selectedPoem?.title === p.title ? "text-violet-400" : "text-white/40"}`}
-                  >
-                    {p.lang}
+                  <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${selectedSample.title === s.title ? "text-violet-400" : "text-white/40"}`}>
+                    {selectedLang.native}
                   </div>
                   <div className="font-black text-white text-sm truncate">
-                    {p.title}
+                    {s.title}
                   </div>
                   <div className="text-xs text-white/40 truncate mt-0.5">
-                    {p.author}
+                    {s.author}
                   </div>
                 </button>
               ))}
             </div>
 
-            {selectedPoem ? (
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-8 relative">
+            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-8 relative">
                 <button
-                  type="button"
-                  onClick={() => handleRead(selectedPoem.content)}
-                  disabled={isLoading}
-                  title="Play"
-                  className="absolute top-4 right-4 w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white flex items-center justify-center transition-all shadow-lg"
+                    type="button"
+                    onClick={() => handleRead(selectedSample.content)}
+                    disabled={isLoading}
+                    className="absolute top-4 right-4 w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white flex items-center justify-center transition-all shadow-lg active:scale-95 z-10"
                 >
-                  {isLoading ? (
-                    <Music className="w-6 h-6 animate-bounce" />
-                  ) : (
-                    <Play className="w-6 h-6 fill-current ml-0.5" />
-                  )}
+                    {isLoading ? (
+                        <Music className="w-6 h-6 animate-bounce" />
+                    ) : (
+                        <Play className="w-6 h-6 fill-current ml-0.5" />
+                    )}
                 </button>
-                <pre
-                  className="text-white text-lg leading-relaxed whitespace-pre-wrap italic pr-20"
-                  style={{ fontFamily: "Georgia, serif" }}
-                >
-                  {selectedPoem.content}
-                </pre>
-              </div>
-            ) : (
-              <div className="h-40 flex items-center justify-center border-2 border-dashed border-white/8 rounded-2xl">
-                <p className="text-sm text-white/30 uppercase tracking-widest">
-                  Select a poem above
-                </p>
-              </div>
-            )}
+                <textarea
+                    className="w-full bg-transparent text-white text-xl leading-relaxed whitespace-pre-wrap italic pr-20 outline-none border-none resize-none min-h-[160px]"
+                    style={{ fontFamily: "Georgia, serif" }}
+                    value={selectedSample.content}
+                    onChange={(e) => setSelectedSample({...selectedSample, content: e.target.value})}
+                />
+            </div>
           </div>
 
           {/* Translation Bridge */}
