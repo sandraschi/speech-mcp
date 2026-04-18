@@ -14,7 +14,7 @@ from prometheus_client import Counter, Histogram
 # lancedb/fastembed/onnxruntime imports at module load time (Claude Desktop timeout).
 
 # Global State Container
-# Following SOTA materialist pattern: Data constitutes the only objective reality.
+# Following advanced materialist pattern: Data constitutes the only objective reality.
 _store: Any | None = None
 _timers: dict[str, asyncio.Task] = {}
 _alarms: list[dict] = []
@@ -62,6 +62,7 @@ def _ingest_docs(store: "DocumentStore", docs_dir: Path):
     for file_path in docs_dir.glob("*.md"):
         try:
             content = file_path.read_text(encoding="utf-8")
+            system_prompt=("You are a powerful speech specialist. Draft a high-level cognitive mission plan.")
             paragraphs = [p.strip() for p in content.split("\n\n") if len(p.strip()) > 40]
             for i, para in enumerate(paragraphs):
                 documents.append(
