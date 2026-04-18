@@ -46,8 +46,8 @@ const HelpPage: React.FC = () => {
           envKey="GOOGLE_API_KEY"
           docsUrl="https://ai.google.dev/gemini-api/docs"
           features={[
-            "SOTA Emotional Synthesis (Natural Language Tags)",
-            "Ultra-low latency streaming",
+            "Powerful Emotional Synthesis (Natural Language Tags)",
+            "Dozens of supported languages (Kiswahili, Hindi, etc.)",
             "Native Barge-in (Server-side VAD)",
           ]}
           notes="Recommended for emotional performance. Wipes the floor with competition in prosody. Get API key at aistudio.google.com."
@@ -141,7 +141,7 @@ const HelpPage: React.FC = () => {
 
       <Section title="Barge-in & Interrupts">
         <p className="text-slate-400 text-sm mb-3">
-          SOTA conversational flow requires immediate feedback. Speech-MCP
+          Refined conversational flow requires immediate feedback. Speech-MCP
           implements two levels of interruption:
         </p>
         <ul className="list-disc list-inside text-slate-400 text-sm space-y-2">
@@ -162,9 +162,9 @@ const HelpPage: React.FC = () => {
 
       <Section title="Prosody and emotion">
         <p className="text-slate-400 text-sm">
-          Gemini leads the fleet with Natural Language Tags. Hume supports
-          configuration-based emotional hints. ElevenLabs uses
-          stability/similarity sliders. SAPI5 is emotionless.
+          Gemini leads the fleet with Natural Language Tags and excellent 
+          emotional mastery. Hume supports configuration-based emotional hints. 
+          ElevenLabs uses stability/similarity sliders.
         </p>
       </Section>
 
