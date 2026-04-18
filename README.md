@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge)](https://github.com/sandraschi/speech-mcp)
 
-A professional gateway for multi-provider speech services, including **Gemini 3.1 Flash**, **Hume AI**, and **ElevenLabs**. Features a modern web dashboard for real-time control and offline wake-word detection.
+An industrial tool for multi-provider speech services, including the state-of-the-art **Gemini 3.1 Flash TTS** (released April 16, 2026), **Hume AI**, and **ElevenLabs**. Features a modern web dashboard for real-time control and offline wake-word detection.
 
 ---
 
