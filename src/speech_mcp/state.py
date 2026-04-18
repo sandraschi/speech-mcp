@@ -62,7 +62,6 @@ def _ingest_docs(store: "DocumentStore", docs_dir: Path):
     for file_path in docs_dir.glob("*.md"):
         try:
             content = file_path.read_text(encoding="utf-8")
-            system_prompt=("You are a powerful speech specialist. Draft a high-level cognitive mission plan.")
             paragraphs = [p.strip() for p in content.split("\n\n") if len(p.strip()) > 40]
             for i, para in enumerate(paragraphs):
                 documents.append(
