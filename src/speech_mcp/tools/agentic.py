@@ -54,7 +54,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
                 "Await 'serverContent.interrupted' or 'clientContent.audio' events",
                 "Begin ambient emotional tracking upon speech detection",
             ],
-            "quality_metrics": {"vad_latency_ms": 10, "activation_fidelity": "industrial"},
+            "quality_metrics": {"vad_latency_ms": 10, "activation_fidelity": "precise"},
         }
 
     @mcp.tool()
@@ -63,12 +63,12 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
         user_goal: str,
     ) -> dict:
         """
-        'Alexa 2.0' Style Industrial Mission Orchestrator.
+        'Alexa 2.0' Style Modern Mission Orchestrator.
         Interleaves listening, emotional prosody analysis, and adaptive responding.
         Uses FastMCP 3.x sampling for strategy.
         """
         if ctx:
-            await ctx.info(f"Orchestrating industrial conversational pattern for goal: {user_goal}")
+            await ctx.info(f"Orchestrating modern conversational pattern for goal: {user_goal}")
 
         # SEP-1577 Sampling for strategy
         strategy_prompt = (
