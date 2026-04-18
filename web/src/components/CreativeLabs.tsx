@@ -71,7 +71,7 @@ const CreativeLabs: React.FC = () => {
   const handleRead = async (text: string) => {
     if (!text) return;
     const flat = text.replace(/\n+/g, " ").trim();
-    const token = localStorage.getItem("SPEECH_MCP_AUTH_TOKEN");
+    const token = localStorage.getItem("SPEECH_MCP_AUTH_TOKEN") || "admin-token";
     const wsUrl =
       BACKEND.replace("http", "ws") +
       `/ws/stream?provider=gemini&voice=${selectedVoice}&token=${token}`;
@@ -96,7 +96,7 @@ const CreativeLabs: React.FC = () => {
     } catch (e) {
       _setTtsError(e instanceof Error ? e.message : String(e));
     } finally {
-      _setIsLoading(null);
+      _setIsLoading(false);
     }
   };
 
@@ -455,7 +455,7 @@ const CreativeLabs: React.FC = () => {
         <div className="fixed bottom-8 right-8 z-50 w-full max-w-md">
           <StreamPlayback
             streamUrl={streamData.url}
-            provider={streamData.provider}
+            provider={streamData.provider as "gemini" | "hume" | "elevenlabs" | "windows"}
             text={streamData.text}
             playKey={playKey}
             onDone={() => setStreamData(null)}

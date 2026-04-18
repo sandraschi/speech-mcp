@@ -6,11 +6,11 @@ import tempfile
 import os
 
 sys.path.insert(0, 'src')
-from speech_mcp.providers.gemini import GeminiTTSProvider
+from speech_mcp.providers.gemini import GeminiProvider
 
 def run():
     print("Synthesizing Shakespeare Monologue with Gemini 3.1...")
-    p = GeminiTTSProvider()
+    p = GeminiProvider()
     
     # Hamlet - To be, or not to be
     # Using triple pause for audio driver sync

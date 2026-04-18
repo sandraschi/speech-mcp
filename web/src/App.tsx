@@ -130,18 +130,6 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
 
 function App() {
   const [activePage, setActivePage] = useState("dashboard");
-  const [authToken, setAuthToken] = useState<string | null>(
-    localStorage.getItem("SPEECH_MCP_AUTH_TOKEN"),
-  );
-
-  const handleLogin = (token: string) => {
-    localStorage.setItem("SPEECH_MCP_AUTH_TOKEN", token);
-    setAuthToken(token);
-  };
-
-  if (!authToken) {
-    return <AuthOverlay onLogin={handleLogin} />;
-  }
 
   return (
     <BackendProvider>
@@ -215,65 +203,5 @@ const ActionCard = ({
   </button>
 );
 
-const AuthOverlay = ({ onLogin }: { onLogin: (token: string) => void }) => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const handleAuth = () => {
-    if (username === "admin" && password === "admin") {
-      onLogin("admin-token");
-    } else {
-      setError("Invalid credentials");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-bg-primary/95 backdrop-blur-2xl z-[100] flex items-center justify-center p-6">
-      <div className="glass-card w-full max-w-md p-10 accent-glow">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl font-black tracking-tighter text-white uppercase">
-            Speech MCP
-          </h2>
-          <p className="text-xs text-text-secondary mt-3 font-bold uppercase tracking-widest">
-            Sign in
-          </p>
-        </div>
-
-        {error && (
-          <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs px-4 py-3 rounded-xl mb-6 text-center font-bold animate-shake">
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
-            title="Username"
-            className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-4 py-4 text-white focus:border-accent-purple/50 outline-none font-mono text-sm transition-all"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            title="Password"
-            className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-4 py-4 text-white focus:border-accent-purple/50 outline-none font-mono text-sm transition-all"
-          />
-          <button
-            type="button"
-            onClick={handleAuth}
-            className="w-full btn-primary py-4 mt-4"
-          >
-            Sign In
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default App;

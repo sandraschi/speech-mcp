@@ -227,10 +227,15 @@ fix-web:
     Set-Location '{{justfile_directory()}}\web'
     npx -y @biomejs/biome check --write src/
 
-# Run test suite
+# Run mock-based test suite (suitable for GitHub CI)
 test:
     Set-Location '{{justfile_directory()}}'
-    uv run pytest tests/ -v
+    uv run pytest tests/ -v -m "not live"
+
+# Run high-fidelity audio integration tests (Local only, produces sound)
+verify-speech:
+    Set-Location '{{justfile_directory()}}'
+    uv run pytest tests/live/ -s -v --live
 
 # ── Maintenance ────────────────────────────────────────────────────────────────
 

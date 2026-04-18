@@ -1,12 +1,13 @@
 import {
   Activity,
   AlertCircle,
+  Brain,
   Database,
   FileText,
   Search,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BACKEND } from "../api";
 
 interface SearchResult {

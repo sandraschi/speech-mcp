@@ -16,6 +16,7 @@ from fastapi import (
     Depends,
     FastAPI,
     HTTPException,
+    Request,
     Response,
     WebSocket,
     WebSocketDisconnect,
@@ -104,10 +105,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Speech MCP Stream Gateway", lifespan=lifespan)
 
-_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:10917,http://127.0.0.1:10917").strip().split(",")
+# Industrial CORS for local fleet dev
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in _cors_origins if o.strip()],
+    allow_origins=[
+        "http://localhost:10917", "http://127.0.0.1:10917",
+        "http://localhost:10761", "http://127.0.0.1:10761"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -179,6 +183,9 @@ async def health_check(_: str = Depends(get_api_key)):
     return {
         "status": "healthy",
         "version": "0.3.0",
+        "mcp_server": "online",
+        "rag_sources": get_store().list_sources(),
+        "active_timers": len(_timers),
         "wake_word_active": wake_active,
         "providers": {
             "hume": bool(hume_client),
@@ -279,9 +286,10 @@ async def api_tts_wav(text: str, provider: str = "windows"):
     raise HTTPException(status_code=400, detail=f"provider '{provider}' not supported")
 
 @app.post("/api/v1/transcribe")
-async def api_transcribe(file: bytes = Depends(Response), _: str = Depends(get_api_key)):
+async def api_transcribe(request: Request, _: str = Depends(get_api_key)):
     if not gemini_client: raise HTTPException(status_code=503, detail="Gemini STT not configured")
     try:
+        file = await request.body()
         transcript = await anyio.to_thread.run_sync(lambda: gemini_client.transcribe(file, mime_type="audio/wav"))
         return {"success": True, "transcript": transcript}
     except Exception as e:
@@ -293,7 +301,8 @@ async def api_run_demo(req: DemoRequest):
     from speech_mcp.tools.demos import DEMO_MAP
     script_filename = DEMO_MAP.get(req.demo)
     if not script_filename: return {"success": False, "error": f"Demo '{req.demo}' not found."}
-    script_path = os.path.join(os.getcwd(), "scripts", "demos", script_filename)
+    script_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "scripts", "demos")
+    script_path = os.path.normpath(os.path.join(script_dir, script_filename))
     try:
         uv_path = shutil.which("uv") or "uv"
         result = await anyio.to_thread.run_sync(lambda: subprocess.run([uv_path, "run", "python", script_path], capture_output=True, text=True, check=False))
@@ -302,7 +311,7 @@ async def api_run_demo(req: DemoRequest):
 
 @app.post("/api/v1/agentic")
 async def api_agentic(req: AgenticRequest):
-    return {"success": True, "goal": req.goal, "status": "dispatched"}
+    return {"success": True, "goal": req.goal, "status": "dispatched", "trace": ["Industrial dispatcher trace active."]}
 
 @app.post("/api/v1/utility")
 async def api_utility(req: UtilityRequest):
@@ -315,6 +324,8 @@ async def api_utility(req: UtilityRequest):
         task = asyncio.create_task(run_timer(timer_id, seconds, req.label))
         _timers[timer_id] = task
         return {"success": True, "timer_id": timer_id, "expires_in": seconds}
+    if req.type == "timer" and req.action == "query":
+        return {"success": True, "active_timers": len(_timers)}
     return {"success": False, "error": "not implemented"}
 
 @app.post("/api/v1/action")

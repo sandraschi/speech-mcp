@@ -23,8 +23,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onNavigate,
   activePage,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem("SPEECH_MCP_SIDEBAR_COLLAPSED") === "true";
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem("SPEECH_MCP_SIDEBAR_COLLAPSED", String(newState));
+  };
   const { health, error } = useBackend();
   const backendOnline = !error && health?.status === "healthy";
 
@@ -55,8 +63,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           <button
             type="button"
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            className="p-1.5 bg-white/5 border border-white/10 text-text-secondary rounded-lg hover:text-white transition-colors"
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden lg:flex p-1.5 bg-white/5 border border-white/10 text-text-secondary rounded-lg hover:text-white transition-colors"
+            onClick={toggleSidebar}
           >
             <ChevronLeft
               size={16}

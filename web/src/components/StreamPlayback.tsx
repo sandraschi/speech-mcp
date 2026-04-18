@@ -70,6 +70,11 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
       if (!isMounted) return;
       setStatus("streaming");
 
+      // Ensure audio context is actually running (browser security)
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+
       // Standard TTS request payload for the Gateway
       if (text) {
         socket.send(JSON.stringify({ type: "tts", text }));
@@ -139,7 +144,7 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
       socketRef.current?.close();
       audioContextRef.current?.close().catch(() => {});
     };
-  }, [streamUrl, text, onDone, status]);
+  }, [streamUrl, text, onDone]);
 
   if (status === "idle") return null;
 

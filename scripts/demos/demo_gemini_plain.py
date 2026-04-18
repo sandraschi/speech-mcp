@@ -4,11 +4,11 @@ import tempfile
 import os
 
 sys.path.insert(0, 'src')
-from speech_mcp.providers.gemini import GeminiTTSProvider
+from speech_mcp.providers.gemini import GeminiProvider
 
 def run():
     print("Synthesizing with Gemini 3.1 (Plain)...")
-    p = GeminiTTSProvider()
+    p = GeminiProvider()
     
     text = 'The reductionist universe has no room for miracles, but it has plenty of room for wonder.'
     wav = p.synthesize_wav(text, voice_name='Kore')

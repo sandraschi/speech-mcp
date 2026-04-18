@@ -16,9 +16,16 @@ logger = logging.getLogger(__name__)
 async def _play_wav_file(path: str) -> None:
     """Play a WAV file via winsound (stdlib, zero dependencies)."""
     import winsound
-    await anyio.to_thread.run_sync(
-        lambda: winsound.PlaySound(path, winsound.SND_FILENAME)
-    )
+    import anyio
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Audio file not found: {path}")
+
+    # Use SND_FILENAME (131072) and SND_NODEFAULT (2) to ensure we don't play a beep on failure
+    def _play():
+        winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_NODEFAULT)
+
+    await anyio.to_thread.run_sync(_play)
 
 
 async def _play_mp3_bytes(data: bytes) -> None:
@@ -46,6 +53,38 @@ def register_speech_tools(
     eleven_client: ElevenLabs | None,
     gemini_client: Any | None = None,
 ):
+
+    @mcp.tool()
+    async def play_audio_file(path: str, ctx: Context = None) -> dict:
+        """
+        DIAGNOSTIC TOOL: Play an arbitrary audio file on the system speaker.
+        Supports .wav and .mp3.
+
+        Args:
+            path: Absolute path to the audio file.
+        """
+        if not os.path.exists(path):
+            return {"success": False, "error": f"File not found: {path}"}
+
+        ext = os.path.splitext(path)[1].lower()
+        try:
+            if ext == ".wav":
+                if ctx:
+                    ctx.info(f"Playing WAV: {path}")
+                await _play_wav_file(path)
+            elif ext == ".mp3":
+                if ctx:
+                    ctx.info(f"Playing MP3: {path}")
+                # _play_mp3_bytes expects bytes, so read them
+                with open(path, "rb") as f:
+                    content = f.read()
+                await _play_mp3_bytes(content)
+            else:
+                return {"success": False, "error": f"Unsupported format: {ext}"}
+
+            return {"success": True, "path": path}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @mcp.tool()
     async def text_to_speech(

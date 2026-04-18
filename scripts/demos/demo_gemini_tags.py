@@ -4,11 +4,11 @@ import tempfile
 import os
 
 sys.path.insert(0, 'src')
-from speech_mcp.providers.gemini import GeminiTTSProvider
+from speech_mcp.providers.gemini import GeminiProvider
 
 def run():
     print("Synthesizing with Gemini 3.1 (Audio Tags)...")
-    p = GeminiTTSProvider()
+    p = GeminiProvider()
     
     text = '[cheerfully] Welcome to speech-mcp! [pause] [whispers] Did you know this model was released just two days ago? [normal] Gemini 3.1 Flash TTS. Two hundred audio tags. Seventy languages.'
     

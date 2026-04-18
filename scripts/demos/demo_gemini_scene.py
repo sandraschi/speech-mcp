@@ -4,11 +4,11 @@ import tempfile
 import os
 
 sys.path.insert(0, 'src')
-from speech_mcp.providers.gemini import GeminiTTSProvider
+from speech_mcp.providers.gemini import GeminiProvider
 
 def run():
     print("Synthesizing Dramatic Scene with Gemini 3.1...")
-    p = GeminiTTSProvider()
+    p = GeminiProvider()
     
     text = """[in the style of a late-night radio host, warm and unhurried]
     Good evening, Vienna.

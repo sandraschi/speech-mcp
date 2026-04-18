@@ -6,11 +6,11 @@ import tempfile
 import os
 
 sys.path.insert(0, 'src')
-from speech_mcp.providers.gemini import GeminiTTSProvider
+from speech_mcp.providers.gemini import GeminiProvider
 
 def run():
     print("Synthesizing 'Wagahai wa Neko de Aru' (Japanese) with Gemini 3.1...")
-    p = GeminiTTSProvider()
+    p = GeminiProvider()
     
     # Natsume Soseki - I Am a Cat (Opening lines)
     # Adding triple [pause] to decisively prevent audio clipping on start

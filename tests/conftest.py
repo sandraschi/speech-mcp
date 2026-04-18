@@ -39,9 +39,23 @@ def mock_elevenlabs():
     return client
 
 
+def pytest_addoption(parser):
+    """Add --live flag to pytest."""
+    parser.addoption(
+        "--live", action="store_true", default=False, help="Run live integration tests with real keys"
+    )
+
+
 @pytest.fixture(autouse=True)
-def mock_env(monkeypatch):
-    """Ensure environment variables are set for testing."""
-    monkeypatch.setenv("HUME_API_KEY", "test_hume_key")
-    monkeypatch.setenv("ELEVENLABS_API_KEY", "test_eleven_key")
-    monkeypatch.setenv("SPEECH_MCP_AUTH_TOKEN", "test_token")
+def mock_env(monkeypatch, request):
+    """
+    Ensure environment variables are set for testing.
+    If --live is NOT passed, we use mock keys to ensure safety in CI.
+    """
+    if not request.config.getoption("--live"):
+        monkeypatch.setenv("HUME_API_KEY", "test_hume_key")
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "test_eleven_key")
+        monkeypatch.setenv("GOOGLE_API_KEY", "test_google_key")
+        monkeypatch.setenv("GEMINI_API_KEY", "test_google_key")
+        monkeypatch.setenv("PICOVOICE_API_KEY", "test_picovoice_key")
+        monkeypatch.setenv("SPEECH_MCP_AUTH_TOKEN", "test_token")
