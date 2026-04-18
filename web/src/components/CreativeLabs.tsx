@@ -30,20 +30,24 @@ interface LanguageSample {
 
 const LANGUAGES: LanguageSample[] = [
   {
-    name: "English", code: "en", native: "English", flag: "🇺🇸",
+    name: "English", code: "en", native: "English", flag: "🇬🇧",
     samples: [{ title: "The Raven", author: "Edgar Allan Poe", content: "[serious] Once upon a midnight dreary, while I pondered, weak and weary, [whispers] Over many a quaint and curious volume of forgotten lore..." }]
   },
   {
-    name: "Hindi", code: "hi", native: "हिन्दी", flag: "🇮🇳",
-    samples: [{ title: "Pratishodh", author: "Jai Shankar Prasad", content: "वह देख, उस आकाश में कैसे बादलों का जमघट है। वह सब मेरी आँखों के आँसू हैं।" }]
+    name: "French", code: "fr", native: "Français", flag: "🇫🇷",
+    samples: [{ title: "Le Bateau Ivre", author: "Arthur Rimbaud", content: "[happy] Comme je descendais des Fleuves impassibles, [whispers] Je ne me sentis plus guidé par les haleurs..." }]
   },
   {
-    name: "Kiswahili", code: "sw", native: "Kiswahili", flag: "🇰🇪",
-    samples: [{ title: "Mshairi", author: "Shaaban Robert", content: "Kila mtu ni mshairi wa maisha yake mwenyewe. Maneno ni nguvu, na sauti ni roho." }]
+    name: "German", code: "de", native: "Deutsch", flag: "🇩🇪",
+    samples: [{ title: "An die Freude", author: "Friedrich Schiller", content: "[excited] Freude, schöner Götterfunken, Tochter aus Elysium, Wir betreten feuertrunken, Himmlische, dein Heiligtum!" }]
   },
   {
-    name: "Cantonese", code: "zh-HK", native: "廣東話", flag: "🇭🇰",
-    samples: [{ title: "Quiet Night", author: "Li Bai (Cantonese)", content: "床前明月光，疑是地上霜。舉頭望明月，低頭思故鄉。" }]
+    name: "Spanish", code: "es", native: "Español", flag: "🇪🇸",
+    samples: [{ title: "Don Quijote", author: "Miguel de Cervantes", content: "En un lugar de la Mancha, de cuyo nombre no quiero acordarme, no ha mucho tiempo que vivía un hidalgo de los de lanza en astillero." }]
+  },
+  {
+    name: "Italian", code: "it", native: "Italiano", flag: "🇮🇹",
+    samples: [{ title: "Divina Commedia", author: "Dante Alighieri", content: "Nel mezzo del cammin di nostra vita mi ritrovai per una selva oscura, ché la diritta via era smarrita." }]
   },
   {
     name: "Hungarian", code: "hu", native: "Magyar", flag: "🇭🇺",
@@ -55,11 +59,19 @@ const LANGUAGES: LanguageSample[] = [
   },
   {
     name: "Classical Greek", code: "grc", native: "Ἑλληνική", flag: "📜",
-    samples: [{ title: "Odyssey", author: "Homer", content: "Ἄνδρα μοι ἔννεπε, Μοῦσα, πολύτροπον, ὃς μάλα πολλὰ πλάγχθη, ἐπεὶ Τροίης ἱερὸν πτολίεθρον ἔπερσεν." }]
+    samples: [{ title: "Odyssey", author: "Homer", content: "Ἄνδρα μοι ἔννεπε, Ἑλληνική, πολύτροπον, ὃς μάλα πολλὰ πλάγχθη, ἐπεὶ Τροίης ἱερὸν πτολίεθρον ἔπερσεν." }]
   },
   {
-    name: "French", code: "fr", native: "Français", flag: "🇫🇷",
-    samples: [{ title: "Le Bateau Ivre", author: "Arthur Rimbaud", content: "[happy] Comme je descendais des Fleuves impassibles, [whispers] Je ne me sentis plus guidé par les haleurs..." }]
+    name: "Hindi", code: "hi", native: "हिन्दी", flag: "🇮🇳",
+    samples: [{ title: "Pratishodh", author: "Jai Shankar Prasad", content: "वह देख, उस आकाश में कैसे बादलों का जमघट है। वह सब मेरी आँखों के आँसू हैं।" }]
+  },
+  {
+    name: "Cantonese", code: "zh-HK", native: "廣東話", flag: "🇭🇰",
+    samples: [{ title: "Quiet Night", author: "Li Bai (Cantonese)", content: "床前明月光，疑是地上霜。舉頭望明月，低頭思故鄉。" }]
+  },
+  {
+    name: "Kiswahili", code: "sw", native: "Kiswahili", flag: "🇰🇪",
+    samples: [{ title: "Mshairi", author: "Shaaban Robert", content: "Kila mtu ni mshairi wa maisha yake mwenyewe. Maneno ni nguvu, na sauti ni roho." }]
   },
   {
     name: "Tagalog", code: "tl", native: "Tagalog", flag: "🇵🇭",
