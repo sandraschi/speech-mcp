@@ -3,11 +3,15 @@ import logging
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from speech_mcp.rag.vector_store import DocumentStore
 
 from prometheus_client import Counter, Histogram
 
-from speech_mcp.rag.vector_store import DocumentStore
+# DocumentStore is imported lazily inside get_store() to avoid slow
+# lancedb/fastembed/onnxruntime imports at module load time (Claude Desktop timeout).
 
 # Global State Container
 # Following SOTA materialist pattern: Data constitutes the only objective reality.
@@ -27,10 +31,12 @@ M_ERRORS = Counter("substrate_errors_total", "Total substrate errors", ["type", 
 M_TOKENS = Counter("substrate_tokens_processed_total", "Total tokens processed", ["provider"])
 
 
-def get_store() -> DocumentStore:
+def get_store():
     """Lazy-initialization for DocumentStore. Auto-ingests docs/ if empty."""
     global _store
     if _store is None:
+        from speech_mcp.rag.vector_store import DocumentStore  # lazy: avoids startup timeout
+
         # Always use absolute path relative to package root
         repo_root = Path(__file__).parent.parent.parent  # src/speech_mcp -> repo root
         db_path = repo_root / "data" / "lancedb"

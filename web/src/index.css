@@ -175,25 +175,25 @@
 
 /* Tiny uppercase labels — make them visible and at least 13px */
 .text-\[9px\] {
-  font-size: 13px !important;
-  color: #cbd5e1 !important;
-  opacity: 1 !important;
-  font-weight: 800 !important;
+  font-size: 13px;
+  color: #cbd5e1;
+  opacity: 1;
+  font-weight: 800;
 }
 
 .text-\[10px\] {
-  font-size: 13px !important;
-  color: #cbd5e1 !important;
-  opacity: 1 !important;
-  font-weight: 800 !important;
+  font-size: 13px;
+  color: #cbd5e1;
+  opacity: 1;
+  font-weight: 800;
 }
 
 .text-\[11px\] {
-  font-size: 13px !important;
+  font-size: 13px;
 }
 
 .text-xs {
-  font-size: 13px !important;
+  font-size: 13px;
 }
 
 /* Kill stacked opacity on label text — was making it invisible */
@@ -203,35 +203,35 @@
 .text-text-secondary.opacity-35,
 .text-text-secondary.opacity-30,
 .text-text-secondary.opacity-20 {
-  opacity: 0.8 !important;
-  color: #cbd5e1 !important;
+  opacity: 0.8;
+  color: #cbd5e1;
 }
 
 /* White text with opacity — floor at 65% */
 .text-white.opacity-10,
 .text-white\/10 {
-  color: rgba(255, 255, 255, 0.7) !important;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .text-white.opacity-20,
 .text-white\/20 {
-  color: rgba(255, 255, 255, 0.75) !important;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .text-white.opacity-30,
 .text-white\/30 {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* Secondary text with slash opacity — floor */
 .text-white\/70 {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .text-white\/60 {
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .text-white\/50 {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: rgba(255, 255, 255, 0.8);
 }

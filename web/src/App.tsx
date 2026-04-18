@@ -11,6 +11,7 @@ import InteractionLab from "./components/InteractionLab";
 import SemanticSearch from "./components/SemanticSearch";
 import ServiceLinkage from "./components/ServiceLinkage";
 import SettingsPage from "./components/SettingsPage";
+import { SpeechToText } from "./components/SpeechToText";
 import SystemLogs from "./components/SystemLogs";
 import ToolsPage from "./components/ToolsPage";
 import VoicesPage from "./components/VoicesPage";
@@ -159,6 +160,8 @@ function App() {
           <ToolsPage />
         ) : activePage === "services" ? (
           <ServiceLinkage />
+        ) : activePage === "stt" ? (
+          <SpeechToText />
         ) : activePage === "history" || activePage === "analysis" ? (
           <HistoryPage />
         ) : activePage === "settings" ? (
@@ -195,8 +198,9 @@ const ActionCard = ({
   icon: string;
   onClick?: () => void;
 }) => (
-  <div
-    className="glass-card p-8 group cursor-pointer flex flex-col transition-all active:scale-[0.98]"
+  <button
+    type="button"
+    className="glass-card p-8 group cursor-pointer flex flex-col transition-all active:scale-[0.98] text-left border-none w-full bg-transparent"
     onClick={onClick}
   >
     <div className="text-4xl mb-6 grayscale group-hover:grayscale-0 transition-all duration-500 scale-100 group-hover:scale-110 origin-left">
@@ -208,7 +212,7 @@ const ActionCard = ({
     <p className="text-sm text-text-secondary leading-relaxed flex-1 opacity-80 group-hover:opacity-100">
       {desc}
     </p>
-  </div>
+  </button>
 );
 
 const AuthOverlay = ({ onLogin }: { onLogin: (token: string) => void }) => {
@@ -259,7 +263,11 @@ const AuthOverlay = ({ onLogin }: { onLogin: (token: string) => void }) => {
             title="Password"
             className="w-full bg-white/[0.03] border border-white/5 rounded-xl px-4 py-4 text-white focus:border-accent-purple/50 outline-none font-mono text-sm transition-all"
           />
-          <button onClick={handleAuth} className="w-full btn-primary py-4 mt-4">
+          <button
+            type="button"
+            onClick={handleAuth}
+            className="w-full btn-primary py-4 mt-4"
+          >
             Sign In
           </button>
         </div>

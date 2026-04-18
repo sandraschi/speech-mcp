@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BACKEND } from "../api";
 
 interface LogEntry {
+  id: string;
   time: string;
   level: "INFO" | "DEBUG" | "WARN" | "ERROR" | "SUCCESS";
   context: string;
@@ -18,7 +19,7 @@ const SystemLogs: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const wsUrl = BACKEND.replace(/^http/, "ws") + "/ws/logs";
+    const wsUrl = `${BACKEND.replace(/^http/, "ws")}/ws/logs`;
     const ws = new WebSocket(wsUrl);
     ws.onopen = () => setConnected(true);
     ws.onmessage = (event) => {
@@ -33,7 +34,7 @@ const SystemLogs: React.FC = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, []);
 
   const filteredLogs = logs.filter((log: LogEntry) => {
     if (levelFilter !== "ALL" && log.level !== levelFilter) return false;
@@ -64,11 +65,15 @@ const SystemLogs: React.FC = () => {
             System Logs
           </h1>
           <p className="text-text-secondary text-sm mt-1 uppercase tracking-widest font-bold opacity-60">
-            Real-time substrate telemetry
+            Real-time system monitoring
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="log-search" className="sr-only">
+            Search logs
+          </label>
           <input
+            id="log-search"
             type="text"
             placeholder="Search logs..."
             value={searchText}
@@ -96,12 +101,14 @@ const SystemLogs: React.FC = () => {
             <option value="DEBUG">Debug</option>
           </select>
           <button
+            type="button"
             onClick={exportLogs}
             className="px-3 py-1.5 bg-accent-purple/20 border border-accent-purple/30 text-accent-purple rounded-lg text-xs font-black uppercase tracking-wider hover:bg-accent-purple/30 transition-all"
           >
             Export
           </button>
           <button
+            type="button"
             onClick={() => setLogs([])}
             className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-rose-500/20 transition-all"
           >
@@ -127,9 +134,9 @@ const SystemLogs: React.FC = () => {
               Standby
             </div>
           ) : (
-            filteredLogs.map((log: LogEntry, i: number) => (
+            filteredLogs.map((log: LogEntry) => (
               <div
-                key={i}
+                key={log.id}
                 className="flex gap-4 py-1 px-2 rounded hover:bg-white/[0.03] transition-colors group"
               >
                 <span className="text-text-secondary opacity-30 select-none tabular-nums w-20 shrink-0">

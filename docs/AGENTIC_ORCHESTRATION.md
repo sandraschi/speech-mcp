@@ -25,7 +25,7 @@ We implement the **Sampling Protocol**, allowing tools to "glom on" to the host 
 3. The tool executes based on the sampled intelligence.
 4. The tool returns `requires_sampling: true`, signaling to Antigravity that an iterative cognitive cycle is in progress.
 
-## 🔬 SOTA Dialogic Patterns (ArXiv Research 2026)
+## 🔬 Advanced Dialogic Patterns (ArXiv Research 2026)
 
 Based on recent studies (e.g., *The Role of Prosodic and Lexical Cues in Turn-Taking*), Speech-MCP leverages the following advanced "tricks":
 
@@ -50,7 +50,7 @@ Predicting the end of a turn by analyzing the **micro-latency** and **pitch-bend
 
 ### Webapp Consumption (TypeScript)
 [webapp_consumption.ts](file:///D:/Dev/repos/speech-mcp/examples/webapp_consumption.ts)
-> Illustrates the "Proactive Orchestration" pattern for SOTA web interfaces on port 10761.
+> Illustrates the "Proactive Orchestration" pattern for Advanced web interfaces on port 10761.
 
 ---
 

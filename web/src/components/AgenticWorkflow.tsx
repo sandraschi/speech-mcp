@@ -92,10 +92,14 @@ const AgenticWorkflow: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-50">
+            <label
+              htmlFor="orchestration-goal"
+              className="text-[10px] font-black text-text-secondary uppercase tracking-widest opacity-50"
+            >
               Describe mission objective
             </label>
             <textarea
+              id="orchestration-goal"
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               placeholder="e.g. Synthesize a calming voice response for the current emotional state"
@@ -136,6 +140,7 @@ const AgenticWorkflow: React.FC = () => {
           )}
 
           <button
+            type="button"
             onClick={handleExecute}
             disabled={loading}
             className="w-full btn-primary py-5 mt-4 group flex items-center justify-center gap-3"

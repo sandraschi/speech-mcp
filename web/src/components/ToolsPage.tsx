@@ -1,4 +1,4 @@
-import { Activity, ChevronRight, Cpu, MemoryStick, Zap } from "lucide-react";
+import { Activity, ChevronRight, Cpu, Zap } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 

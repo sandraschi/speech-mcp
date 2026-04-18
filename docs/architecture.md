@@ -86,4 +86,4 @@ Key 3.x APIs used:
 | 10760 | FastAPI backend (REST + WebSocket + MCP SSE) |
 | 10761 | Vite React frontend dashboard |
 
-Ports are in the SOTA fleet range 10700–10800 as per `WEBAPP_PORTS.md`.
+Ports are in the Advanced fleet range 10700–10800 as per `WEBAPP_PORTS.md`.

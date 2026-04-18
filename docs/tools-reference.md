@@ -1,119 +1,198 @@
 # Speech-MCP Tools Reference
 
-## Implemented Tools (v0.2.1)
+## v0.4.0 — April 2026
 
 ---
+
+## Speech
 
 ### `text_to_speech`
 
-Synthesize speech via Hume AI, ElevenLabs, or Windows Local TTS.
+Synthesize speech and **play it immediately on the PC speaker**.
 
-**Parameters:**
-
-| Name | Type | Default | Description |
+| Parameter | Type | Default | Description |
 |---|---|---|---|
-| `text` | str | required | Text to synthesize |
-| `voice_id` | str | `"ito"` | Voice identifier. `"ito"` or `"kora"` for Hume; ElevenLabs voice ID; `"default"` for Windows |
-| `provider` | str | `"hume"` | TTS backend: `"hume"`, `"elevenlabs"`, or `"windows"` |
-| `emotion` | str | None | Emotion hint for expressive synthesis: `"excited"`, `"calm"`, `"sad"` etc. |
+| `text` | str | required | Text to speak. Gemini supports inline audio tags: `[excited]`, `[whispers]`, `[laughs]`, `[sighs]`, `[fast]`, `[slow]` |
+| `provider` | str | `"windows"` | TTS backend — see providers table below |
+| `voice_id` | str | `"default"` | Voice name. Provider-specific — see below |
+| `description` | str | None | **Hume only.** Prose style prompt, e.g. `"warm, slightly melancholic female voice"`. Drives Octave's expressive synthesis |
 
-**Returns:** `stream_url` (WebSocket) for audio consumption, plus provider info and recovery options.
+**Providers:**
 
-**Example:**
+| Provider | Key required | Voice options | Notes |
+|---|---|---|---|
+| `windows` | No | `"default"` only | Windows SAPI5, always available, robotic but instant |
+| `hume` | `HUME_API_KEY` | Named: `ITO`, `KORA`, or omit for dynamic | Hume Octave REST. `description` drives prosody |
+| `gemini` | `GOOGLE_API_KEY` | `Kore`, `Aoede`, `Charon`, `Fenrir`, `Orion`, `Puck`, `Leda`, `Zephyr` + 23 more | Gemini 3.1 Flash TTS (released 2026-04-15). Audio tags in text drive delivery |
+
+**Returns:** `{"success": true, "provider": "...", "bytes_played": N, "status": "played"}`
+
+**Examples:**
 ```
-Use text_to_speech to say "Good evening" in a calm tone using Hume
+Say "Good evening" using the windows provider
+Say "[cheerfully] Welcome! [whispers] This part is quiet." using gemini, voice Kore
+Say "The reductionist universe..." using hume with description "warm, academic, slightly melancholic"
 ```
 
 ---
 
-### `manage_domestic_utility`
+### `manage_voice_clones`
 
-Alexa-style domestic utility gateway: timers, alarms, and weather queries.
+List or manage voice clones across providers.
 
-**Parameters:**
-
-| Name | Type | Default | Description |
+| Parameter | Type | Default | Description |
 |---|---|---|---|
-| `action` | str | required | `"set"`, `"cancel"`, or `"query"` |
-| `type` | str | required | `"timer"`, `"alarm"`, or `"weather"` |
-| `value` | str\|int | None | Duration in seconds for timers, or time string `"07:30"` for alarms |
-| `label` | str | `"Default"` | Human-readable label for the utility |
+| `action` | str | required | `"list"`, `"create"`, `"delete"`, `"info"` |
+| `provider` | str | `"hume"` | `"hume"` or `"elevenlabs"` |
+| `name` | str | None | Name for new clone |
+| `audio_path` | str | None | Local file path for cloning source |
+| `voice_id` | str | None | Target voice ID for info/delete |
 
-**Example:**
-```
-Set a timer for 10 minutes labeled "pasta"
-Cancel the pasta timer
-Query all active timers
-```
+**Note:** `list` is fully implemented for both providers. `create`/`delete` are stubs.
 
 ---
 
-### `trigger_action`
+## Agentic
 
-Elicit physical effects via IoT bridge (Tapo smart lights) or trigger UI notifications.
+### `start_evi_session`
 
-**Parameters:**
+Returns WebSocket connection parameters for a Hume EVI real-time session.
+Requires `HUME_API_KEY`. `HUME_CONFIG_ID` must be set for a configured EVI persona.
 
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `action_type` | str | required | `"light_on"`, `"light_off"`, `"notify"` |
-| `params` | dict | None | e.g. `{"room": "living_room"}` or `{"message": "Timer done!"}` |
+### `detect_wake_word`
 
-**Example:**
-```
-Turn on the living room lights via trigger_action
-```
+Arms Gemini Live VAD telemetry for a session. Returns activation configuration.
+
+### `orchestrate_alexa_pattern`
+
+Alexa 2.0-style mission orchestrator. Uses `ctx.sample()` to generate a
+conversational strategy for a given `user_goal`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `user_goal` | str | High-level objective for the session |
+
+### `agentic_conversation_workflow`
+
+SEP-1577 multi-step orchestrator. Elicits clarification if the goal is vague,
+samples a strategy, and returns a structured mission plan.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `goal` | str | Objective for the conversational mission |
 
 ---
+
+## RAG / Knowledge Base
 
 ### `search_docs`
 
-Semantic search over the speech-mcp knowledge base (LanceDB + FastEmbed).
+Semantic vector search over the speech-mcp documentation corpus.
+Uses LanceDB + FastEmbed (`BAAI/bge-small-en-v1.5`). Model downloads ~25 MB on first run.
 
-**Parameters:**
-
-| Name | Type | Default | Description |
+| Parameter | Type | Default | Description |
 |---|---|---|---|
 | `query` | str | required | Natural language search query |
-| `limit` | int | `5` | Maximum results to return |
+| `limit` | int | `5` | Max results |
 
-**Returns:** List of matching chunks with filename, relevance score, and content.
-
-**Example:**
-```
-Search docs for "expressive voice cloning techniques"
-```
-
----
+**Returns:** List of `{filename, score, content}` chunks.
 
 ### `ask_docs`
 
-Ask complex questions using RAG retrieval + LLM sampling. Requires sampling capability in the MCP client.
+RAG + LLM sampling. Retrieves relevant chunks then uses `ctx.sample()` to generate
+a grounded answer. Requires sampling support in the MCP host (Claude Desktop: yes).
 
-**Parameters:**
+| Parameter | Type | Description |
+|---|---|---|
+| `question` | str | Natural language question |
 
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `question` | str | required | Natural language question |
-
-**Returns:** Grounded answer text plus source filenames used.
-
-**Example:**
-```
-Ask docs: what are the differences between Hume EVI and standard TTS?
-```
+**Returns:** `{answer, sources[]}` — answer grounded in indexed docs.
 
 ---
 
-## Under Construction (v0.3.0 Planned)
+## Safety
 
-These tools are in the Antigravity IDE task backlog. They appear in `glama.json` as `under_construction` and are **not yet functional**.
+### `safety_validate_intent`
 
-| Tool | Description |
-|---|---|
-| `detect_wake_word` | Local wake-word detection ("Hey Edna") |
-| `start_evi_session` | Bidirectional Hume EVI real-time audio session |
-| `agentic_conversation_workflow` | Multi-turn conversation with TTS output per turn |
-| `manage_voice_clones` | ElevenLabs voice clone library management |
+Pattern-matches text against social-engineering triggers (money transfers,
+impersonation, credential phishing, accident-bail scenarios).
 
-Once implemented, speech-mcp becomes a full **Alexa-class** local AI voice assistant: wake word → live conversation → smart home control → expressive TTS response.
+| Parameter | Type | Description |
+|---|---|---|
+| `text` | str | Text to validate before synthesis |
+
+**Returns:** `{safe: bool, risk_level: "LOW"|"HIGH"|"CRITICAL", reason?}`
+
+### `safety_log_audit`
+
+Writes a forensic log entry for high-intensity emotional speech.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `text` | str | Synthesized text |
+| `provider` | str | Provider used |
+| `emotional_intensity` | float | 0.0–1.0 |
+
+### `safety_verify_auth`
+
+Validates a bearer token against `SPEECH_MCP_AUTH_TOKEN` env var.
+
+---
+
+## Monitoring / IoT
+
+### `trigger_action`
+
+Proxy to Tapo smart home or UI notification bus.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `action_type` | str | `"light_on"`, `"light_off"`, `"notify"` |
+| `params` | dict | `{"room": "living_room"}` or `{"message": "..."}` |
+
+---
+
+## Utility
+
+### `manage_domestic_utility`
+
+Alexa-pattern timer, alarm, and weather gateway.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `action` | str | required | `"set"`, `"cancel"`, `"query"` |
+| `type` | str | required | `"timer"`, `"alarm"`, `"weather"` |
+| `value` | str\|int | None | Seconds for timer, `"07:30"` for alarm, unused for weather |
+| `label` | str | `"Default"` | Human-readable label; location name for weather queries |
+
+Weather fetches live from wttr.in. Timers run as asyncio tasks and log on expiry.
+
+---
+
+## UI (Prefab Apps)
+
+These tools render interactive inline UIs in Claude Desktop.
+
+### `prosody_dashboard`
+
+Dashboard showing current emotional vector, engine performance metrics, and
+provider status. Uses `Metric`, `Badge`, `Row`, `Separator` components.
+
+### `speech_activity_chart`
+
+Bar chart of token usage across recent speech sessions. Uses `BarChart` +
+`ChartSeries` from `prefab_ui.components.charts`.
+
+---
+
+## Wake Word
+
+### `configure_local_wake_word`
+
+Configures Picovoice Porcupine for local wake-word detection.
+Requires `PICOVOICE_API_KEY` in `.env`.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `keyword` | str | `"computer"` | Built-in keyword: `"computer"`, `"jarvis"`, `"alexa"`, etc. |
+| `sensitivity` | float | `0.5` | Detection sensitivity 0.0–1.0 |

@@ -2,65 +2,135 @@
 
 ## Environment Variables
 
-Create a `.env` file in the project root (copied from `.env.example`):
+Create or edit `.env` in the project root:
 
 ```env
-# Hume AI — EVI real-time conversation + Octave TTS
+# Hume AI — Octave TTS + EVI real-time conversation
 HUME_API_KEY=your-hume-api-key
-HUME_CONFIG_ID=your-hume-evi-config-id
+HUME_CONFIG_ID=your-hume-evi-config-id   # from evi.hume.ai — needed for EVI chat, not TTS
 
 # ElevenLabs — voice cloning TTS
 ELEVENLABS_API_KEY=your-elevenlabs-api-key
+
+# Google Gemini — Gemini 2.5 Flash TTS
+# Free key at https://aistudio.google.com/apikey
+GOOGLE_API_KEY=your-google-api-key
+
+# Picovoice — local wake-word detection (optional)
+# FREE PLAN is perpetual for personal non-commercial use (1 device, no expiry, no CC).
+# The "Free Trial" on their site is a separate 7-day enterprise eval path — ignore it.
+# Sign up at https://console.picovoice.ai/ and copy the AccessKey from the dashboard.
+PICOVOICE_API_KEY=your-picovoice-key
+
+# Auth token for WebSocket stream endpoint (optional)
+SPEECH_MCP_AUTH_TOKEN=your-secret-token
+
+# OSC for avatar lip-flap (optional)
+OSC_HOST=127.0.0.1
+OSC_PORT=8000
 ```
 
-None of these are required — the server starts and uses Windows TTS if no keys are present.
+None are required — the server starts and defaults to Windows TTS with no keys.
+
+---
 
 ## Provider Availability Matrix
 
-| Provider | API Key Required | Voice Cloning | Emotion Control | Streaming |
+| Provider | Key | Audio quality | Style control | Notes |
 |---|---|---|---|---|
-| Hume AI | Yes (`HUME_API_KEY`) | No | Yes (EVI) | Yes |
-| ElevenLabs | Yes (`ELEVENLABS_API_KEY`) | Yes | Limited | Yes |
-| Windows TTS | No | No | No | No |
+| `windows` | None | Low (SAPI5 robotic) | None | Always works, instant |
+| `hume` | `HUME_API_KEY` | High (Octave) | `description` prose prompt | Dynamic voice generation if no voice named |
+| `gemini` | `GOOGLE_API_KEY` | Very high | Audio tags in text | Model: `gemini-3.1-flash-tts-preview` (released 2026-04-15) |
+| `elevenlabs` | `ELEVENLABS_API_KEY` | High | Limited | Voice cloning supported |
+
+---
+
+## Gemini Voices (prebuilt, `gemini-3.1-flash-tts-preview`)
+
+Aoede, Charon, Fenrir, **Kore** (default), Orion, Puck, Leda, Orus, Zephyr,
+Callirrhoe, Autonoe, Enceladus, Iocaste, Umbriel, Algieba, Despina, Erinome,
+Algenib, Rasalgethi, Laomedeia, Achernar, Alnilam, Schedar, Gacrux, Pulcherrima,
+Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafar
+
+### Gemini Audio Tags
+
+Embed directly in the text string:
+
+```
+[excited]  [whispers]  [laughs]  [sighs]  [fast]  [slow]
+[sadly]  [cheerfully]  [dramatically]  [nervously]
+```
+
+Example: `"[cheerfully] Good morning! [whispers] Don't tell anyone, but..."`.
+
+---
 
 ## RAG Configuration
 
-The knowledge base is stored at `data/lancedb/` and uses:
+Knowledge base at `data/lancedb/`, auto-indexed on first start from `docs/*.md`.
 
-- **Embedding model**: `BAAI/bge-small-en-v1.5` (FastEmbed, downloaded automatically on first run, ~25MB)
-- **Table name**: `speech_docs`
-- **Search type**: vector similarity (cosine)
+| Setting | Value |
+|---|---|
+| Embedding model | `BAAI/bge-small-en-v1.5` (FastEmbed, ~25 MB, auto-downloaded) |
+| DB engine | LanceDB |
+| Table | `speech_docs` |
+| Search type | Vector similarity (cosine) |
 
-To re-index documents, delete `data/lancedb/` and restart the server.
+To re-index from scratch: delete `data/lancedb/` and restart.
+
+---
 
 ## Webapp Ports
 
-| Service | Default port | Config |
+| Service | Default port | Override |
 |---|---|---|
-| Backend | 10918 | `web/start.ps1` (`$BackendPort`); override via `PORT` when running uvicorn. |
-| Frontend | 10917 | `web/start.ps1` (`$WebPort`); Vite `--port`. |
+| Backend (FastAPI) | `10918` | `PORT` env var |
+| Frontend (Vite) | `10917` | `web/vite.config.ts` |
+| CORS origins | `http://localhost:10917` | `CORS_ORIGINS` env var (comma-separated) |
 
-Set `SPEECH_MCP_BACKEND_URL` (e.g. `http://localhost:10918`) when the backend runs on another host/port so tools and the webapp use it. Set `CORS_ORIGINS` (comma-separated) if the frontend origin differs (default includes `http://localhost:10917`).
+Set `SPEECH_MCP_BACKEND_URL` if the backend runs on a different host/port.
 
-## Claude Desktop Config Location
+---
 
+## Claude Desktop Config
+
+`C:\Users\<you>\AppData\Roaming\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "speechops": {
+      "command": "uv",
+      "args": [
+        "--directory", "D:/Dev/repos/speech-mcp",
+        "run", "python", "-m", "speech_mcp.server"
+      ],
+      "env": {
+        "PYTHONPATH": "D:/Dev/repos/speech-mcp/src",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_API_KEY": "your-google-api-key",
+        "HUME_API_KEY": "your-hume-api-key"
+      }
+    }
+  }
+}
 ```
-C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
-```
 
-See `docs/integration-guide.md` for the complete config snippet.
+Keys in the `env` block take priority over `.env` file values.
+
+---
 
 ## Log Location
 
 ```
-C:\Users\<username>\AppData\Roaming\Claude\logs\mcp-server-speech-mcp.log
+C:\Users\<you>\AppData\Roaming\Claude\logs\mcp-server-speechops.log
 ```
+
+---
 
 ## FastMCP Settings
 
-FastMCP 3.x settings are controlled via environment variables:
-
 | Variable | Default | Description |
 |---|---|---|
-| `FASTMCP_SHOW_SERVER_BANNER` | `true` | Show startup banner in logs |
-| `FASTMCP_DECORATOR_MODE` | `function` | Set to `object` for v2 compatibility |
+| `FASTMCP_SHOW_SERVER_BANNER` | `true` | Startup banner in logs |
+| `SPEECH_MCP_BACKEND_URL` | `http://localhost:10918` | Backend base URL for stream proxy |

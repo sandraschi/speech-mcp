@@ -27,13 +27,73 @@ export async function fetchStats(): Promise<StatsData | null> {
   return res.json();
 }
 
+export interface VoiceProvider {
+  name: string;
+  status: string;
+  voices: string[];
+}
+
+export interface HistoryItem {
+  id: string;
+  type: string;
+  content: string;
+  provider: string;
+  timestamp: string;
+}
+
+export async function fetchVoices(): Promise<{ providers: VoiceProvider[] }> {
+  const res = await fetch(`${BACKEND}/api/v1/voices`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) return { providers: [] };
+  return res.json();
+}
+
+export async function fetchHistory(): Promise<HistoryItem[]> {
+  const res = await fetch(`${BACKEND}/api/v1/history`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function runDemo(
+  demo: string,
+): Promise<{ success: boolean; error?: string; output?: string }> {
+  const res = await fetch(`${BACKEND}/api/v1/demos/run`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ demo }),
+  });
+  return res.json();
+}
+
+export async function controlWakeWord(
+  action: string,
+  keyword = "computer",
+  sensitivity = 0.5,
+): Promise<{ success: boolean; error?: string; status?: string }> {
+  const res = await fetch(`${BACKEND}/api/v1/wake_word`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ action, keyword, sensitivity }),
+  });
+  return res.json();
+}
+
 export interface HealthData {
   status: string;
   version: string;
   mcp_server: string;
   rag_sources: string[];
   active_timers: number;
-  providers: { hume: boolean; elevenlabs: boolean; windows: boolean };
+  wake_word_active: boolean;
+  providers: {
+    hume: boolean;
+    elevenlabs: boolean;
+    gemini: boolean;
+    windows: boolean;
+  };
 }
 
 export interface StatsData {

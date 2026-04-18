@@ -38,7 +38,7 @@ const InteractionLab: React.FC = () => {
 
   useEffect(() => {
     traceEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [trace]);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -73,7 +73,7 @@ const InteractionLab: React.FC = () => {
     try {
       if (userText.includes("timer")) {
         const match = userText.match(/(\d+)/);
-        const seconds = match ? parseInt(match[1]) : 60;
+        const seconds = match ? parseInt(match[1], 10) : 60;
         const label = "Timer";
         addTrace("thought", `Classified intent: timer (${seconds}s)`);
         addTrace(

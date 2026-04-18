@@ -4,7 +4,7 @@
 The Speech-MCP RAG system is designed for **low-latency, local-first intelligence** on the RTX 4090 substrate.
 
 ### 1. Vector Engine: LanceDB
-- **Why**: LanceDB is a serverless, persistent vector database that allows for disk-based querying without a heavy background daemon. It integrates natively with Python and is optimized for the SOTA data-scale.
+- **Why**: LanceDB is a serverless, persistent vector database that allows for disk-based querying without a heavy background daemon. It integrates natively with Python and is optimized for the Advanced data-scale.
 - **Persistence**: Data resides in `data/lancedb` in a columnar format.
 
 ### 2. Embedding Model: FastEmbed

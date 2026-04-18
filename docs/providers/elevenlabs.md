@@ -34,7 +34,7 @@ ElevenLabs acts as the "Premium" fallback or primary engine for well-defined age
 ## ⚡ Contrast with Gemini 3.1
 | Feature | ElevenLabs | Gemini 3.1 |
 | :--- | :--- | :--- |
-| **Emotional Control** | Manual (Stability/Similarity) | **SOTA (NL Tags)** |
+| **Emotional Control** | Manual (Stability/Similarity) | **Advanced (NL Tags)** |
 | **Cloning** | Professional (requires 30min audio) | Prebuilt (Adaptive) |
 | **Cost** | Usage-based (Quota) | Integrated (Fleet) |
 
@@ -46,5 +46,5 @@ Requires `ELEVENLABS_API_KEY`.
 ```python
 # To use a specific clone:
 voice_id = "your_pvc_id_here"
-await text_to_speech(text="SOTA fidelity secured.", provider="elevenlabs", voice_id=voice_id)
+await text_to_speech(text="Advanced fidelity secured.", provider="elevenlabs", voice_id=voice_id)
 ```

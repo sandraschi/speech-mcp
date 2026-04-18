@@ -32,6 +32,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     <div className="flex min-h-screen bg-bg-primary font-sans">
       {/* Mobile Toggle */}
       <button
+        type="button"
         className="lg:hidden fixed top-4 left-4 z-50 p-2.5 bg-accent-purple text-white rounded-xl shadow-lg shadow-accent-purple/30 active:scale-95 transition-transform"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
@@ -52,6 +53,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             {!isCollapsed ? "SPEECH-MCP" : "S-M"}
           </div>
           <button
+            type="button"
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             className="p-1.5 bg-white/5 border border-white/10 text-text-secondary rounded-lg hover:text-white transition-colors"
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -110,6 +112,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             active={activePage === "services"}
             onClick={() => {
               onNavigate("services");
+              setMobileOpen(false);
+            }}
+            collapsed={isCollapsed}
+          />
+          <NavItem
+            icon="🎙️"
+            label="STT Control"
+            active={activePage === "stt"}
+            onClick={() => {
+              onNavigate("stt");
               setMobileOpen(false);
             }}
             collapsed={isCollapsed}
@@ -222,13 +234,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           </div>
           <div className="flex items-center gap-4 w-full sm:w-auto">
             <button
+              type="button"
               className="flex-1 sm:flex-none glass-card px-5 py-2.5 flex items-center justify-center gap-2 text-sm font-bold text-white hover:bg-white/10"
               onClick={() => onNavigate("settings")}
             >
               <Settings size={16} />
               <span>Settings</span>
             </button>
-            <button className="flex-1 sm:flex-none btn-primary px-6 py-2.5 text-sm">
+            <button
+              type="button"
+              className="flex-1 sm:flex-none btn-primary px-6 py-2.5 text-sm"
+            >
               New Session
             </button>
           </div>
@@ -255,15 +271,16 @@ const NavItem = ({
   onClick: () => void;
   collapsed?: boolean;
 }) => (
-  <div
+  <button
+    type="button"
     onClick={onClick}
     title={collapsed ? label : ""}
     className={`
-            flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-all duration-300 group
+            w-full flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-all duration-300 group border-none
             ${
               active
                 ? "bg-accent-purple text-white shadow-lg shadow-accent-purple/20"
-                : "text-text-secondary hover:bg-white/5 hover:text-white"
+                : "bg-transparent text-text-secondary hover:bg-white/5 hover:text-white"
             }
             ${collapsed ? "justify-center" : ""}
         `}
@@ -276,7 +293,7 @@ const NavItem = ({
     {!collapsed && (
       <span className="font-bold text-sm tracking-tight">{label}</span>
     )}
-  </div>
+  </button>
 );
 
 export default AppLayout;

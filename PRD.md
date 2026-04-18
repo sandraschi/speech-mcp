@@ -1,17 +1,17 @@
 # PRD - Speech-MCP Multi-Provider Gateway
 
 ## 1. Goal
-Create a unified, industrial-grade orchestration layer for the world's most advanced speech and voice AI APIs (Hume AI and ElevenLabs).
+Create a unified, standard-compliant orchestration layer for the world's most advanced speech and voice AI APIs (Hume AI and ElevenLabs).
 
 ## 2. Requirements
 
 ### 2.1 Backend (MCP Server)
 - **Multi-Provider Support**: Seamlessly switch between Hume and ElevenLabs for TTS and Voice Cloning.
-- **SOTA Compliance**: Use FastMCP 2.14.4+ with proper tool documentation and portmanteau patterns.
+- **technical Compliance**: Use FastMCP 2.14.4+ with proper tool documentation and portmanteau patterns.
 - **Streaming**: Support for streaming audio responses via WebSocket (EVI).
 - **Security**: Robust management of provider API keys via environment variables.
 
-### 2.2 Frontend (SOTA Webapp)
+### 2.2 Frontend (technical Webapp)
 - **Aesthetics**: Premium dark-mode UI ("Midnight Empathy") with 60fps animations.
 - **Dashboard**: Real-time emotional visualization (Hume) and high-fidelity playback.
 - **Voice Management**: Unified UI for cloning identities across providers.
@@ -21,7 +21,7 @@ Create a unified, industrial-grade orchestration layer for the world's most adva
 - Latency < 200ms for TTS dispatch.
 - Zero translation loss in emotional prosody during synthesis.
 - Consistent branding and glassmorphism across all pages.
-- 100% SOTA compliance score.
+- 100% technical compliance score.
 
 ## 4. Roadmap
 - **Phase 1**: Hume AI Baseline (Complete).

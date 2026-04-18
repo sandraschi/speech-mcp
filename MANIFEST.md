@@ -1,32 +1,79 @@
-# Project Wikipedia: Speech-MCP
+# Project Manifest — Speech-MCP
 
-| Attribute | Specification |
+| Attribute | Value |
 | :--- | :--- |
-| **Project Name** | Speech-MCP (Multi-Provider Speech Gateway) |
-| **Status** | ![Status: Beta](https://img.shields.io/badge/Status-Beta-orange) |
-| **Standard** | ![FastMCP: 2.14.5](https://img.shields.io/badge/FastMCP-2.14.5-blue) |
-| **Architecture** | Dual-Substrate (FastAPI + MCP SSE) |
-| **Core AI** | Hume AI (EVI 2), ElevenLabs (PVC) |
-| **Local Fallback** | `pyttsx3` (Windows Native) |
-| **Orchestrator** | Antigravity IDE (Native) |
-
-## 📖 Encyclopedia
-
-### Agentic Cognitive Layer
-A complex orchestration system using **FastMCP 2.14.5**. Unlike traditional TTS/STT bridges, Speech-MCP implements **Iterative Sampling** (SEP-1577) which allows the server to borrow the host LLM's reasoning to refine vocal prosody and conversational strategy.
-
-### Dialogic Design
-Every tool return is "Dialogic"—structured to guide an agent with `next_steps`. This eliminates the "dead-end" problem in tool execution.
-
-### Alexa 2.0 Pattern
-An industrial mission pattern defined in `arazzo.yaml`. It interleaves Voice Activity Projection (VAP) and Emotional Prosody Analysis to simulate near-human turn-taking dynamics.
-
-## 🔗 Documentation Map
-
-- **[Installation Guide](file:///D:/Dev/repos/speech-mcp/README.md)**
-- **[Agentic Technical Specs](file:///D:/Dev/repos/speech-mcp/docs/AGENTIC_ORCHESTRATION.md)**
-- **[DevOps & Release](file:///D:/Dev/repos/speech-mcp/docs/RELEASING.md)**
-- **[ArXiv Research Notes](file:///D:/Dev/repos/speech-mcp/docs/CHINESE_AI_RESEARCH.md)**
+| **Name** | speech-mcp |
+| **Version** | 0.4.0 |
+| **Status** | Beta |
+| **FastMCP** | 3.2.4 |
+| **Python** | 3.13 |
+| **Architecture** | FastMCP MCP server + optional FastAPI webapp |
+| **MCP server name** | `speechops` (in Claude Desktop) |
 
 ---
-*Verified for industrial use by Antigravity Agentic Systems (Februray 2026).*
+
+## What it does
+
+speech-mcp is a multi-provider text-to-speech MCP server. Ask Claude Desktop to
+speak something and audio comes out of your PC speakers. Three providers are
+currently functional:
+
+| Provider | Quality | Key |
+|---|---|---|
+| Windows SAPI5 | Basic | None |
+| Hume AI Octave | Expressive, prose-directed | `HUME_API_KEY` |
+| Gemini 2.5 Flash TTS | High-fidelity, audio-tag directed | `GOOGLE_API_KEY` |
+
+Beyond TTS, the server includes semantic search over its own documentation (RAG),
+Alexa-style timer/weather utilities, a social-engineering safety validator, and
+two inline Prefab UI dashboards rendered directly in the Claude Desktop conversation.
+
+---
+
+## Tool inventory
+
+| Tool | Status | Provider needed |
+|---|---|---|
+| `text_to_speech` | ✅ Working — plays audio | None / Hume / Gemini / ElevenLabs |
+| `text_to_dialogue` | ✅ Working — multi-voice dialogue | ElevenLabs |
+| `manage_voice_clones` | ✅ list + IVC clone + delete | ElevenLabs / Hume |
+| `search_docs` | ✅ Working | None (local) |
+| `ask_docs` | ✅ Working | None (uses ctx.sample) |
+| `manage_domestic_utility` | ✅ Working (timer + weather) | None |
+| `safety_validate_intent` | ✅ Working | None |
+| `safety_log_audit` | ✅ Working | None |
+| `safety_verify_auth` | ✅ Working | `SPEECH_MCP_AUTH_TOKEN` |
+| `trigger_action` | ⚠️ Stub (proxy only) | None |
+| `prosody_dashboard` | ✅ Prefab UI | None |
+| `speech_activity_chart` | ✅ Prefab UI | None |
+| `start_evi_session` | ⚠️ Returns config only | `HUME_API_KEY` |
+| `detect_wake_word` | ⚠️ Arms VAD config only | None |
+| `orchestrate_alexa_pattern` | ✅ Working (sampling) | None |
+| `agentic_conversation_workflow` | ✅ Working (sampling) | None |
+| `configure_local_wake_word` | ✅ Working — real Porcupine listener | `PICOVOICE_API_KEY` |
+
+---
+
+## Documentation map
+
+| Doc | Contents |
+|---|---|
+| `docs/integration-guide.md` | Installation, Claude Desktop config, troubleshooting |
+| `docs/configuration.md` | All env vars, provider matrix, ports |
+| `docs/tools-reference.md` | Every tool — parameters, returns, examples |
+| `docs/prefab_ui_reference.md` | prefab_ui 0.19.x components, charts, actions, Rx |
+| `docs/providers/gemini.md` | Gemini TTS deep-dive |
+| `docs/providers/hume.md` | Hume AI EVI + Octave |
+| `docs/providers/elevenlabs.md` | ElevenLabs voice cloning |
+| `CHANGELOG.md` | Version history |
+
+---
+
+## Repo
+
+[github.com/sandraschi/speech-mcp](https://github.com/sandraschi/speech-mcp)
+[glama.ai/mcp/servers?query=sandraschi](https://glama.ai/mcp/servers?query=sandraschi)
+
+---
+
+*Last updated: 2026-04-17 (v0.4.0)*

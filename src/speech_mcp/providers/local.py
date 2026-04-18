@@ -1,8 +1,10 @@
 import logging
-import requests
+
 import anyio
+import requests
 
 logger = logging.getLogger(__name__)
+
 
 class LocalLLMProvider:
     """
@@ -30,7 +32,7 @@ class LocalLLMProvider:
             resp.raise_for_status()
             data = resp.json()
             return [m["name"] for m in data.get("models", [])]
-        
+
         elif provider == "lmstudio":
             # LM Studio / OpenAI-Compatible API: GET /v1/models
             url = f"{base_url.rstrip('/')}/v1/models"
@@ -38,7 +40,7 @@ class LocalLLMProvider:
             resp.raise_for_status()
             data = resp.json()
             return [m["id"] for m in data.get("data", [])]
-        
+
         return []
 
     async def generate(self, provider: str, base_url: str, model: str, prompt: str, system: str = "") -> str:
@@ -57,16 +59,11 @@ class LocalLLMProvider:
         if provider == "ollama":
             # Ollama API: POST /api/generate
             url = f"{base_url.rstrip('/')}/api/generate"
-            payload = {
-                "model": model,
-                "prompt": prompt,
-                "system": system,
-                "stream": False
-            }
+            payload = {"model": model, "prompt": prompt, "system": system, "stream": False}
             resp = requests.post(url, json=payload, timeout=30.0)
             resp.raise_for_status()
             return resp.json().get("response", "")
-        
+
         elif provider == "lmstudio":
             # LM Studio / OpenAI-Compatible API: POST /v1/chat/completions
             url = f"{base_url.rstrip('/')}/v1/chat/completions"
@@ -74,18 +71,14 @@ class LocalLLMProvider:
             if system:
                 messages.append({"role": "system", "content": system})
             messages.append({"role": "user", "content": prompt})
-            
-            payload = {
-                "model": model,
-                "messages": messages,
-                "temperature": 0.7,
-                "stream": False
-            }
+
+            payload = {"model": model, "messages": messages, "temperature": 0.7, "stream": False}
             resp = requests.post(url, json=payload, timeout=30.0)
             resp.raise_for_status()
             data = resp.json()
             return data["choices"][0]["message"]["content"]
-        
+
         return "Unsupported provider for generation."
+
 
 local_llm_provider = LocalLLMProvider()

@@ -9,9 +9,9 @@ import {
   Zap,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
-import { BACKEND } from "../api";
+import { BACKEND, runDemo } from "../api";
 import { StreamPlayback } from "./StreamPlayback";
 
 const GEMINI_VOICES = ["Aoede", "Charon", "Fenrir", "Kore", "Orion", "Puck"];
@@ -57,12 +57,12 @@ const CreativeLabs: React.FC = () => {
   const [selectedPoem, setSelectedPoem] = useState<Poem | null>(null);
   const [emotion, setEmotion] = useState(50);
   const [translation, setTranslation] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [ttsError, setTtsError] = useState("");
+  const [isLoading, _setIsLoading] = useState(false);
+  const [ttsError, _setTtsError] = useState("");
   const [streamData, setStreamData] = useState<{
     url: string;
     text: string;
-    provider: any;
+    provider: string;
   } | null>(null);
   const [selectedVoice, setSelectedVoice] = useState("Aoede");
   const [playKey, setPlayKey] = useState(0);
@@ -87,9 +87,23 @@ const CreativeLabs: React.FC = () => {
     else setTranslation("");
   };
 
+  const handleRunIndustrialDemo = async (demo: string) => {
+    _setIsLoading(true);
+    _setTtsError("");
+    try {
+      const res = await runDemo(demo);
+      if (!res.success) throw new Error(res.error);
+    } catch (e) {
+      _setTtsError(e instanceof Error ? e.message : String(e));
+    } finally {
+      _setIsLoading(null);
+    }
+  };
+
   return (
-    <div className="h-full space-y-8">
+    <div className="h-full space-y-8 animate-in fade-in duration-700">
       {/* Hidden audio element */}
+      {/* biome-ignore lint/a11y/useMediaCaption: Hidden audio element for logic only */}
       <audio ref={audioRef} style={{ display: "none" }} />
 
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -129,6 +143,66 @@ const CreativeLabs: React.FC = () => {
           </span>
         </div>
       )}
+
+      {/* Industrial Showcase */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-black text-white/40 uppercase tracking-[0.2em] px-1">
+          Industrial Showcase
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              id: "neko",
+              title: "Wagahai wa Neko",
+              desc: "Japanese literary reading via Gemini 3.1 Flash.",
+              icon: "🐈",
+              color: "border-emerald-500/20",
+              btn: "bg-emerald-600",
+            },
+            {
+              id: "shakespeare",
+              title: "The Bard's Soliloquy",
+              desc: "Dramatic Hamlet monologue with Charon voice.",
+              icon: "🎭",
+              color: "border-violet-500/20",
+              btn: "bg-violet-600",
+            },
+            {
+              id: "price",
+              title: "The Price Experience",
+              desc: "Sinister horror narration via Hume Octave.",
+              icon: "🦇",
+              color: "border-rose-500/20",
+              btn: "bg-rose-600",
+            },
+          ].map((d) => (
+            <div
+              key={d.id}
+              className={`glass-card p-6 flex flex-col justify-between border ${d.color} hover:bg-white/[0.04] transition-all group`}
+            >
+              <div>
+                <div className="text-3xl mb-4 group-hover:scale-110 transition-transform origin-left">
+                  {d.icon}
+                </div>
+                <h3 className="text-base font-black text-white uppercase tracking-tighter mb-2">
+                  {d.title}
+                </h3>
+                <p className="text-xs text-white/40 leading-relaxed font-bold uppercase tracking-wide">
+                  {d.desc}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRunIndustrialDemo(d.id)}
+                disabled={isLoading}
+                className={`mt-6 w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-[0.98] ${d.btn} shadow-lg shadow-black/20`}
+              >
+                Trigger Execution
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column */}
@@ -177,7 +251,7 @@ const CreativeLabs: React.FC = () => {
                   min="0"
                   max="100"
                   value={emotion}
-                  onChange={(e) => setEmotion(parseInt(e.target.value))}
+                  onChange={(e) => setEmotion(parseInt(e.target.value, 10))}
                   className="w-28 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-violet-500"
                 />
                 <span className="text-xs font-black text-violet-400 w-8 text-right tabular-nums">
@@ -191,6 +265,7 @@ const CreativeLabs: React.FC = () => {
               {POEMS.map((p) => (
                 <button
                   key={p.title}
+                  type="button"
                   onClick={() => setSelectedPoem(p)}
                   className={`p-4 rounded-xl border transition-all text-left ${
                     selectedPoem?.title === p.title
@@ -216,6 +291,7 @@ const CreativeLabs: React.FC = () => {
             {selectedPoem ? (
               <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-8 relative">
                 <button
+                  type="button"
                   onClick={() => handleRead(selectedPoem.content)}
                   disabled={isLoading}
                   title="Play"
@@ -255,10 +331,14 @@ const CreativeLabs: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">
+                <label
+                  htmlFor="english-input"
+                  className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2"
+                >
                   English Input
                 </label>
                 <textarea
+                  id="english-input"
                   onChange={(e) => handleTranslate(e.target.value)}
                   placeholder="Type something..."
                   className="w-full bg-white/[0.03] border border-white/10 rounded-xl p-4 text-white text-base focus:border-emerald-500/40 outline-none min-h-[120px] resize-none"
@@ -267,11 +347,17 @@ const CreativeLabs: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <Zap size={12} className="text-emerald-400" />
-                  <label className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                  <label
+                    htmlFor="tagalog-output"
+                    className="text-xs font-bold text-emerald-400 uppercase tracking-wider"
+                  >
                     Tagalog Output
                   </label>
                 </div>
-                <div className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 text-emerald-100 text-xl font-black min-h-[120px] flex items-center justify-center">
+                <div
+                  id="tagalog-output"
+                  className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 text-emerald-100 text-xl font-black min-h-[120px] flex items-center justify-center"
+                >
                   {translation || (
                     <span className="text-white/20 text-sm uppercase tracking-widest">
                       Waiting…
@@ -294,9 +380,9 @@ const CreativeLabs: React.FC = () => {
               </h3>
             </div>
             <div className="space-y-3">
-              {TONGUE_TWISTERS.map((tt, i) => (
+              {TONGUE_TWISTERS.map((tt) => (
                 <div
-                  key={i}
+                  key={tt}
                   className="bg-white/[0.03] border border-white/8 rounded-xl p-4 hover:border-violet-500/30 transition-all"
                 >
                   <p className="text-white/85 text-sm leading-relaxed italic mb-3">
@@ -304,6 +390,7 @@ const CreativeLabs: React.FC = () => {
                   </p>
                   <div className="flex justify-end">
                     <button
+                      type="button"
                       onClick={() => handleRead(tt)}
                       title="Play"
                       className="w-8 h-8 bg-white/5 rounded-lg text-white/40 border border-white/10 hover:bg-violet-600 hover:text-white hover:border-violet-500 transition-all flex items-center justify-center"

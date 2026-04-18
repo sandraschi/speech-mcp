@@ -2,9 +2,11 @@
 
 ## Prerequisites
 
-- Python 3.11+
-- `uv` package manager (recommended) or `pip`
-- API keys for at least one TTS provider (optional — Windows TTS works with no keys)
+- Python 3.13
+- `uv` package manager
+- API keys for at least one cloud TTS provider (optional — Windows TTS works with no keys)
+
+---
 
 ## Installation
 
@@ -14,20 +16,32 @@ cd speech-mcp
 uv sync
 ```
 
+Dependencies install automatically into `.venv/`. On first use, FastEmbed downloads
+the `BAAI/bge-small-en-v1.5` embedding model (~25 MB) for the RAG knowledge base.
+
+---
+
 ## Claude Desktop Configuration
 
-Add to `C:\Users\<you>\AppData\Roaming\Claude\claude_desktop_config.json`:
+`C:\Users\<you>\AppData\Roaming\Claude\claude_desktop_config.json`
+
+### Full config (all providers)
 
 ```json
 {
   "mcpServers": {
-    "speech-mcp": {
-      "command": "D:\\Dev\\repos\\speech-mcp\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "speech_mcp.server"],
-      "cwd": "D:\\Dev\\repos\\speech-mcp",
+    "speechops": {
+      "command": "uv",
+      "args": [
+        "--directory", "D:/Dev/repos/speech-mcp",
+        "run", "python", "-m", "speech_mcp.server"
+      ],
       "env": {
+        "PYTHONPATH": "D:/Dev/repos/speech-mcp/src",
+        "PYTHONUNBUFFERED": "1",
+        "GOOGLE_API_KEY": "your-google-api-key",
         "HUME_API_KEY": "your-hume-api-key",
-        "HUME_CONFIG_ID": "your-hume-config-id",
+        "HUME_CONFIG_ID": "your-hume-evi-config-id",
         "ELEVENLABS_API_KEY": "your-elevenlabs-api-key"
       }
     }
@@ -35,64 +49,106 @@ Add to `C:\Users\<you>\AppData\Roaming\Claude\claude_desktop_config.json`:
 }
 ```
 
-**Minimum working config (Windows TTS only, no API keys needed):**
+### Minimum config (Windows TTS only, no API keys)
 
 ```json
 {
   "mcpServers": {
-    "speech-mcp": {
-      "command": "D:\\Dev\\repos\\speech-mcp\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "speech_mcp.server"],
-      "cwd": "D:\\Dev\\repos\\speech-mcp"
+    "speechops": {
+      "command": "uv",
+      "args": [
+        "--directory", "D:/Dev/repos/speech-mcp",
+        "run", "python", "-m", "speech_mcp.server"
+      ],
+      "env": {
+        "PYTHONPATH": "D:/Dev/repos/speech-mcp/src",
+        "PYTHONUNBUFFERED": "1"
+      }
     }
   }
 }
 ```
 
+---
+
 ## Environment Variables
 
-| Variable | Required | Description |
+| Variable | Required | Where to get |
 |---|---|---|
-| `HUME_API_KEY` | No | Hume AI API key for EVI and Octave TTS |
-| `HUME_CONFIG_ID` | No | Hume EVI config ID for session management |
-| `ELEVENLABS_API_KEY` | No | ElevenLabs API key for voice cloning TTS |
+| `GOOGLE_API_KEY` | No | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — free |
+| `HUME_API_KEY` | No | [platform.hume.ai](https://platform.hume.ai) |
+| `HUME_CONFIG_ID` | No | [evi.hume.ai](https://evi.hume.ai) — EVI chat only, not needed for TTS |
+| `ELEVENLABS_API_KEY` | No | [elevenlabs.io](https://elevenlabs.io) |
+| `PICOVOICE_API_KEY` | No | [picovoice.ai](https://picovoice.ai) — wake word only |
 
-If no API keys are provided, the server falls back to Windows local TTS automatically.
+Variables can be placed in `.env` in the project root **or** in the Claude Desktop
+config `env` block. The config block takes priority.
 
-## Starting the Webapp Dashboard
+---
 
-The webapp runs separately from the Claude Desktop MCP server. Two processes are needed:
+## Verifying the Server Works
+
+After restarting Claude Desktop, check the server appears in Settings → Extensions,
+then test in chat:
+
+```
+Use text_to_speech to say "Hello from speech-mcp" using the windows provider
+```
+
+You should hear audio through your PC speakers immediately.
+
+Test Gemini with audio tags (requires `GOOGLE_API_KEY`):
+
+```
+Use text_to_speech with provider gemini, voice Kore:
+"[cheerfully] Hello! [whispers] The reductionist universe has room for wonder."
+```
+
+Test the RAG knowledge base:
+
+```
+Use search_docs to find information about Hume Octave expressive synthesis
+```
+
+---
+
+## Troubleshooting
+
+**Server doesn't appear in Claude Desktop:**
+Check `C:\Users\<you>\AppData\Roaming\Claude\logs\mcp-server-speechops.log`.
+Common causes: missing `uv` on PATH, wrong `--directory` path, import error on startup.
+
+**Audio doesn't play:**
+Confirm Windows default audio device is working. The `windows` provider uses
+`winsound.PlaySound` (SAPI5 WAV). The `hume` and `gemini` providers also use
+`winsound` after synthesising to a temp WAV file.
+
+**Gemini TTS fails with "Gemini TTS not available":**
+`GOOGLE_API_KEY` is not set or the value is blank. Add it to `.env` or the
+Claude Desktop config `env` block and restart.
+
+**Hume TTS fails with "HUME_API_KEY not configured":**
+Same as above for `HUME_API_KEY`.
+
+**RAG slow on first call:**
+FastEmbed downloads `BAAI/bge-small-en-v1.5` (~25 MB) on first use and caches it.
+Subsequent calls are fast.
+
+**`ImportError: No module named 'fastmcp.ui'`:**
+Stale `.pyc` cache. Delete `src/speech_mcp/__pycache__/` and restart.
+
+---
+
+## Webapp Dashboard (optional)
+
+The webapp runs separately from the MCP server:
 
 ```powershell
 # From D:\Dev\repos\speech-mcp\
 .\start.ps1
 ```
 
-This starts:
-- **Backend** on `http://localhost:10760` (FastAPI + MCP SSE)
-- **Frontend** on `http://localhost:10761` (Vite React dashboard)
+- Backend: `http://localhost:10918`
+- Frontend: `http://localhost:10917`
 
-Open `http://localhost:10761` in your browser for the dashboard.
-
-## Verifying the MCP Server Works
-
-After restarting Claude Desktop, test in chat:
-
-```
-Use the text_to_speech tool to say "Hello from speech-mcp" using Windows TTS
-```
-
-Or test the RAG knowledge base:
-
-```
-Use search_docs to find information about expressive speech synthesis
-```
-
-## Troubleshooting
-
-**Claude Desktop shows no speech-mcp tools**: Check logs at  
-`C:\Users\<you>\AppData\Roaming\Claude\logs\mcp-server-speech-mcp.log`
-
-**TTS returns stream_url but audio doesn't play**: The webapp backend must be running on port 10760 to serve the WebSocket stream. Run `.\start.ps1`.
-
-**ImportError on startup**: Run `uv sync` in the project root to ensure all dependencies are installed.
+The MCP tools work without the webapp running.

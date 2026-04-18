@@ -17,7 +17,6 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
   streamUrl,
   provider,
   text,
-  playKey,
   onDone,
 }) => {
   const socketRef = useRef<WebSocket | null>(null);
@@ -56,7 +55,10 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
     isPlayingRef.current = true;
 
     const AudioContextClass =
-      (window as any).AudioContext || (window as any).webkitAudioContext;
+      (window as unknown as { AudioContext: typeof AudioContext })
+        .AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
     const audioCtx = new AudioContextClass();
     audioContextRef.current = audioCtx;
 
@@ -85,7 +87,7 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
             setStatus("idle");
             return;
           }
-        } catch (e) {}
+        } catch (_e) {}
         return;
       }
 
@@ -137,7 +139,7 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
       socketRef.current?.close();
       audioContextRef.current?.close().catch(() => {});
     };
-  }, [streamUrl, provider, text, playKey]);
+  }, [streamUrl, text, onDone, status]);
 
   if (status === "idle") return null;
 
@@ -177,6 +179,7 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
             </span>
           )}
           <button
+            type="button"
             onClick={interrupt}
             className="p-3 bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/30 text-white/40 hover:text-rose-500 rounded-xl transition-all active:scale-95"
             title="Interrupt / Stop"

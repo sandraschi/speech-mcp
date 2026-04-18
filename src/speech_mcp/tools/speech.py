@@ -1,177 +1,437 @@
+import logging
 import os
+import subprocess
+import tempfile
 from typing import Any
 
+import anyio
+import pyttsx3
 from elevenlabs.client import ElevenLabs
 from fastmcp import Context, FastMCP
 from hume import HumeClient
 
-
-def _stream_base_url() -> str:
-    base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10918")
-    return base.replace("https://", "wss://").replace("http://", "ws://")
+logger = logging.getLogger(__name__)
 
 
-# We use a registration function patterns to keep dependencies local to the module
+async def _play_wav_file(path: str) -> None:
+    """Play a WAV file via winsound (stdlib, zero dependencies)."""
+    import winsound
+    await anyio.to_thread.run_sync(
+        lambda: winsound.PlaySound(path, winsound.SND_FILENAME)
+    )
+
+
+async def _play_mp3_bytes(data: bytes) -> None:
+    """Write MP3 bytes to temp file and play via Windows Media Player."""
+    tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+    tmp.write(data)
+    tmp.close()
+    try:
+        await anyio.to_thread.run_sync(
+            lambda: subprocess.run(
+                ["wmplayer.exe", "/play", "/close", tmp.name],
+                check=False, capture_output=True,
+            )
+        )
+    finally:
+        try:
+            os.remove(tmp.name)
+        except OSError:
+            pass
+
+
 def register_speech_tools(
-    mcp: FastMCP, hume_client: HumeClient | None, eleven_client: ElevenLabs | None, gemini_client: Any | None = None
+    mcp: FastMCP,
+    hume_client: HumeClient | None,
+    eleven_client: ElevenLabs | None,
+    gemini_client: Any | None = None,
 ):
 
     @mcp.tool()
     async def text_to_speech(
         text: str,
-        voice_id: str = "Aoede",
-        provider: str = "gemini",
-        emotion: str | None = None,
+        provider: str = "windows",
+        voice_id: str = "default",
+        description: str | None = None,
         ctx: Context = None,
     ) -> dict:
         """
-        Synthesize speech via Gemini 3.1 Flash, Hume AI, ElevenLabs, or Windows Local.
+        Synthesize speech and play it on the PC speaker.
 
-        PORTMANTEAU PATTERN RATIONALE:
-        Consolidates four TTS providers into a single interface. Prevents tool
-        explosion while exposing a unified stream-ready URL for all provider
-        backends. Follows FastMCP 3.x SOTA standards.
+        Providers:
+          - 'windows'     Windows SAPI5, no API key, always works
+          - 'hume'        Hume AI Octave REST (HUME_API_KEY). Use `description`
+                          for prose style: "warm, scholarly, melancholic"
+          - 'gemini'      Gemini 3.1 Flash TTS (GOOGLE_API_KEY). Embed audio
+                          tags in text: [excited], [whispers], [laughs], etc.
+                          Open vocabulary — any emotion in English works.
+          - 'elevenlabs'  ElevenLabs (ELEVENLABS_API_KEY). voice_id must be a
+                          valid voice ID from your account. Use
+                          manage_voice_clones to list available voices.
 
         Args:
-            text (str, required): Text to synthesize.
-            voice_id (str): Voice identifier. Defaults to 'ito' (Hume). Use 'default'
-                for Windows TTS, or an ElevenLabs voice ID for that provider.
-            provider (str): TTS backend. One of: 'hume', 'elevenlabs', 'windows'.
-            emotion (str | None): Optional emotion hint for expressive synthesis
-                (Hume/ElevenLabs only). E.g. 'excited', 'calm', 'sad'.
-            ctx (Context): FastMCP context for logging and correlation.
+            text:        Text to speak.
+            provider:    See above. Default: 'windows'.
+            voice_id:    Provider-specific voice identifier:
+                         - hume: named voice or 'default' (dynamic generation)
+                         - gemini: prebuilt voice name e.g. Kore, Aoede, Charon
+                         - elevenlabs: voice ID string from your EL account
+                         - windows: ignored
+            description: Hume only — prose style prompt driving Octave prosody.
+            ctx:         FastMCP context for logging.
         """
         if ctx:
-            await ctx.info(f"TTS [{provider}/{voice_id}]: {text[:40]}...")
+            await ctx.info(f"TTS [{provider}/{voice_id}]: {text[:60]}")
 
-        # Base stream URL (handled by the webapp binary proxy)
-        stream_url = f"{_stream_base_url()}/ws/stream?provider={provider}&voice={voice_id}"
+        # ── Windows SAPI5 ──────────────────────────────────────────────────────
+        if provider == "windows":
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                    tmp_path = tmp.name
 
-        # Provider-specific logic and metadata
-        if provider == "hume":
+                def _synth():
+                    engine = pyttsx3.init()
+                    engine.save_to_file(text, tmp_path)
+                    engine.runAndWait()
+
+                await anyio.to_thread.run_sync(_synth)
+
+                if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+                    return {"success": False, "error": "pyttsx3 produced empty file"}
+
+                size = os.path.getsize(tmp_path)
+                await _play_wav_file(tmp_path)
+                return {"success": True, "provider": "Windows SAPI5", "bytes_played": size, "status": "played"}
+            except Exception as e:
+                logger.exception("Windows TTS failed")
+                return {"success": False, "error": str(e)}
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+
+        # ── Hume AI Octave ─────────────────────────────────────────────────────
+        elif provider == "hume":
             if not hume_client:
+                return {"success": False, "error": "HUME_API_KEY not configured"}
+
+            from hume.tts import FormatWav, PostedUtterance, PostedUtteranceVoiceWithName
+
+            utt_kwargs: dict = {"text": text}
+            if description:
+                utt_kwargs["description"] = description
+            if voice_id and voice_id.lower() != "default":
+                utt_kwargs["voice"] = PostedUtteranceVoiceWithName(name=voice_id, provider="HUME_AI")
+
+            utterance = PostedUtterance(**utt_kwargs)
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                    tmp_path = tmp.name
+
+                def _synth_hume():
+                    audio = bytearray()
+                    for chunk in hume_client.tts.synthesize_file(
+                        utterances=[utterance], format=FormatWav(), strip_headers=False
+                    ):
+                        audio.extend(chunk)
+                    with open(tmp_path, "wb") as f:
+                        f.write(audio)
+
+                await anyio.to_thread.run_sync(_synth_hume)
+
+                if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+                    return {"success": False, "error": "Hume returned empty audio"}
+
+                size = os.path.getsize(tmp_path)
+                await _play_wav_file(tmp_path)
                 return {
-                    "success": False,
-                    "error": "Hume API key missing",
-                    "recovery_options": ["Check .env", "Use windows provider"],
+                    "success": True, "provider": "Hume AI Octave",
+                    "voice": voice_id, "description_used": description,
+                    "bytes_played": size, "status": "played",
                 }
-            return {
-                "success": True,
-                "provider": "Hume AI (Octave)",
-                "voice": voice_id,
-                "stream_url": stream_url,
-                "status": "ready_for_dispatch",
-                "next_steps": ["Connect to stream_url", "Begin audio playback"],
-                "quality_metrics": {"latency_target": "low", "empathy_enabled": True},
-            }
+            except Exception as e:
+                logger.exception("Hume TTS failed")
+                return {"success": False, "error": str(e)}
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
 
-        elif provider == "elevenlabs":
-            if not eleven_client:
-                return {
-                    "success": False,
-                    "error": "ElevenLabs API key missing",
-                    "recovery_options": ["Check .env"],
-                }
-            return {
-                "success": True,
-                "provider": "ElevenLabs",
-                "voice": voice_id,
-                "stream_url": stream_url,
-                "status": "stream_ready",
-                "recommendations": ["Use eleven_turbo_v2_5 for best latency"],
-            }
-
-        elif provider == "windows":
-            return {
-                "success": True,
-                "provider": "Windows Local (SAPI5)",
-                "voice": "Default",
-                "stream_url": stream_url,
-                "status": "local_fallback_ready",
-            }
-
+        # ── Gemini 3.1 Flash TTS ───────────────────────────────────────────────
         elif provider == "gemini":
             if not gemini_client:
                 return {
                     "success": False,
-                    "error": "Gemini API key missing",
-                    "recovery_options": ["Check GOOGLE_API_KEY in .env"],
+                    "error": "Gemini TTS not available — GOOGLE_API_KEY not set.",
+                    "recovery": "Add GOOGLE_API_KEY to .env (free at aistudio.google.com/apikey) and restart.",
                 }
+            effective_voice = voice_id if voice_id and voice_id.lower() != "default" else "Kore"
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                    tmp_path = tmp.name
 
-            # For Gemini, we automatically wrap the text in emotion tags if provided
-            if emotion:
-                text = f"[{emotion}] {text}"
+                def _synth_gemini():
+                    wav = gemini_client.synthesize_wav(text, voice_name=effective_voice)
+                    with open(tmp_path, "wb") as f:
+                        f.write(wav)
 
+                await anyio.to_thread.run_sync(_synth_gemini)
+
+                if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+                    return {"success": False, "error": "Gemini returned empty audio"}
+
+                size = os.path.getsize(tmp_path)
+                await _play_wav_file(tmp_path)
+                return {
+                    "success": True, "provider": "Gemini 3.1 Flash TTS",
+                    "model": "gemini-3.1-flash-tts-preview",
+                    "voice": effective_voice, "bytes_played": size, "status": "played",
+                }
+            except Exception as e:
+                logger.exception("Gemini TTS failed")
+                return {"success": False, "error": str(e)}
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+
+        # ── ElevenLabs ─────────────────────────────────────────────────────────
+        elif provider == "elevenlabs":
+            if not eleven_client:
+                return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
+            if not voice_id or voice_id == "default":
+                return {
+                    "success": False,
+                    "error": "voice_id required for ElevenLabs — use manage_voice_clones action='list' to see available voices",
+                }
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+                    tmp_path = tmp.name
+
+                def _synth_el():
+                    audio = bytearray()
+                    for chunk in eleven_client.text_to_speech.convert(
+                        voice_id=voice_id,
+                        text=text,
+                        output_format="mp3_44100_128",
+                    ):
+                        audio.extend(chunk)
+                    with open(tmp_path, "wb") as f:
+                        f.write(audio)
+
+                await anyio.to_thread.run_sync(_synth_el)
+
+                if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+                    return {"success": False, "error": "ElevenLabs returned empty audio"}
+
+                size = os.path.getsize(tmp_path)
+                await _play_mp3_bytes(open(tmp_path, "rb").read())
+                return {
+                    "success": True, "provider": "ElevenLabs",
+                    "voice_id": voice_id, "bytes_played": size, "status": "played",
+                }
+            except Exception as e:
+                logger.exception("ElevenLabs TTS failed")
+                return {"success": False, "error": str(e)}
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+
+        else:
             return {
-                "success": True,
-                "provider": "Gemini 3.1 Flash (SOTA)",
-                "voice": voice_id,
-                "stream_url": stream_url,
-                "tags_applied": emotion if emotion else "none",
-                "status": "ready_for_dispatch",
-                "next_steps": ["Connect to stream_url", "Begin audio playback"],
-                "quality_metrics": {"interruptible": True, "barge_in_ready": True},
+                "success": False,
+                "error": f"Unknown provider '{provider}'. Use 'windows', 'hume', 'gemini', or 'elevenlabs'.",
             }
 
-        return {"success": False, "error": f"Unsupported provider: {provider}"}
+    @mcp.tool()
+    async def text_to_dialogue(
+        lines: list[dict],
+        ctx: Context = None,
+    ) -> dict:
+        """
+        Multi-voice dialogue synthesis via ElevenLabs — plays on the PC speaker.
+
+        Each line is assigned a different voice ID, producing natural conversational
+        audio with consistent pacing in a single API call (up to 10 voices).
+
+        Requires ELEVENLABS_API_KEY and valid voice IDs. Use manage_voice_clones
+        action='list' provider='elevenlabs' to see your available voices.
+
+        Args:
+            lines: List of {text, voice_id} dicts. Example:
+                   [
+                     {"text": "Good morning, Benny.", "voice_id": "abc123"},
+                     {"text": "Woof.", "voice_id": "def456"}
+                   ]
+
+        Example use:
+            Ask two different cloned voices to have a short philosophical exchange.
+        """
+        if not eleven_client:
+            return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
+
+        if not lines:
+            return {"success": False, "error": "lines list is empty"}
+
+        from elevenlabs import DialogueInput
+
+        inputs = [DialogueInput(text=line["text"], voice_id=line["voice_id"]) for line in lines]
+
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+                tmp_path = tmp.name
+
+            def _synth_dialogue():
+                audio = bytearray()
+                for chunk in eleven_client.text_to_dialogue.convert(
+                    inputs=inputs,
+                    output_format="mp3_44100_128",
+                ):
+                    audio.extend(chunk)
+                with open(tmp_path, "wb") as f:
+                    f.write(audio)
+
+            await anyio.to_thread.run_sync(_synth_dialogue)
+
+            if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+                return {"success": False, "error": "ElevenLabs dialogue returned empty audio"}
+
+            size = os.path.getsize(tmp_path)
+            await _play_mp3_bytes(open(tmp_path, "rb").read())
+            return {
+                "success": True,
+                "provider": "ElevenLabs text_to_dialogue",
+                "lines": len(lines),
+                "voices_used": len({line["voice_id"] for line in lines}),
+                "bytes_played": size,
+                "status": "played",
+            }
+        except Exception as e:
+            logger.exception("ElevenLabs dialogue failed")
+            return {"success": False, "error": str(e)}
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
 
     @mcp.tool()
     async def manage_voice_clones(
         action: str,
-        provider: str = "hume",
+        provider: str = "elevenlabs",
         name: str | None = None,
         audio_path: str | None = None,
         voice_id: str | None = None,
+        language: str = "en",
         ctx: Context = None,
     ) -> dict:
         """
-        Manage voice clones across providers (Hume/ElevenLabs).
+        Manage voice clones across providers.
+
+        Actions:
+          list    — list all voices in your account
+          clone   — create an Instant Voice Clone from a local audio file
+                    (requires name + audio_path)
+          delete  — delete a voice by voice_id
 
         Args:
-            action (str): "list", "create", "delete", "info".
-            provider (str): 'hume' or 'elevenlabs'.
-            name (str | None): Custom name for new clones.
-            audio_path (str | None): Local file path for cloning.
-            voice_id (str | None): Target voice ID for info/delete.
-            ctx (Context): FastMCP context.
+            action:     'list', 'clone', or 'delete'
+            provider:   'elevenlabs' or 'hume'
+            name:       Display name for a new clone
+            audio_path: Absolute path to audio file for cloning (WAV/MP3/M4A)
+            voice_id:   Target voice ID for delete
+            language:   Language code for IVC, e.g. 'en', 'de', 'ja'
         """
         if ctx:
             await ctx.info(f"Voice management: {action} via {provider}")
 
-        if provider == "hume":
-            if not hume_client:
-                return {"success": False, "error": "Hume API key missing"}
-            if action == "list":
-                return {
-                    "success": True,
-                    "provider": "Hume AI",
-                    "voices": [{"id": "ito", "name": "Ito", "type": "base"}],
-                    "pagination": {"total": 1},
-                }
-            # Current Beta Limitation: Non-list actions are simulated
-            return {
-                "success": True,
-                "action": action,
-                "status": "simulated_placeholder",
-                "message": (
-                    f"Action '{action}' is documented as a placeholder for the Hume-Beta path. "
-                    "Actual synthesis impact is simulated in this version."
-                ),
-                "is_active_beta": True,
-            }
-
-        elif provider == "elevenlabs":
+        if provider == "elevenlabs":
             if not eleven_client:
-                return {"success": False, "error": "ElevenLabs API key missing"}
-            try:
-                if action == "list":
-                    voices = eleven_client.voices.get_all()
+                return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
+
+            if action == "list":
+                try:
+                    voices = await anyio.to_thread.run_sync(
+                        lambda: eleven_client.voices.get_all()
+                    )
                     return {
                         "success": True,
                         "provider": "ElevenLabs",
-                        "voices": [{"id": v.voice_id, "name": v.name} for v in voices.voices],
+                        "voices": [
+                            {"id": v.voice_id, "name": v.name, "category": getattr(v, "category", "unknown")}
+                            for v in voices.voices
+                        ],
+                        "count": len(voices.voices),
                     }
-            except Exception as e:
-                return {"success": False, "error": str(e)}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
 
-        return {"success": False, "error": "Unsupported provider/action"}
+            elif action == "clone":
+                if not name or not audio_path:
+                    return {"success": False, "error": "name and audio_path required for clone"}
+                if not os.path.exists(audio_path):
+                    return {"success": False, "error": f"File not found: {audio_path}"}
+                try:
+                    def _clone():
+                        with open(audio_path, "rb") as f:
+                            return eleven_client.voices.ivc.create(
+                                name=name,
+                                files=[f],
+                                description=f"IVC clone from {os.path.basename(audio_path)}",
+                            )
+                    result = await anyio.to_thread.run_sync(_clone)
+                    return {
+                        "success": True,
+                        "voice_id": result.voice_id,
+                        "name": name,
+                        "status": "cloned",
+                        "note": "Use this voice_id with text_to_speech provider='elevenlabs'",
+                    }
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+
+            elif action == "delete":
+                if not voice_id:
+                    return {"success": False, "error": "voice_id required for delete"}
+                try:
+                    await anyio.to_thread.run_sync(
+                        lambda: eleven_client.voices.delete(voice_id)
+                    )
+                    return {"success": True, "deleted": voice_id}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+
+            return {"success": False, "error": f"Unknown action '{action}' for elevenlabs"}
+
+        elif provider == "hume":
+            if not hume_client:
+                return {"success": False, "error": "HUME_API_KEY not configured"}
+            if action == "list":
+                try:
+                    voices = await anyio.to_thread.run_sync(
+                        lambda: list(hume_client.tts.voices.list())
+                    )
+                    return {
+                        "success": True, "provider": "Hume AI",
+                        "voices": [{"id": v.id, "name": v.name} for v in voices],
+                    }
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+            return {"success": False, "error": f"Action '{action}' not implemented for Hume"}
+
+        return {"success": False, "error": f"Unknown provider '{provider}'"}

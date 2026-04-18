@@ -7,7 +7,6 @@ import {
   LayoutGrid,
   Search,
   Shield,
-  Zap,
 } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
@@ -136,8 +135,12 @@ const ServiceLinkage: React.FC = () => {
         </div>
 
         <div className="relative w-full md:w-96">
+          <label htmlFor="service-search" className="sr-only">
+            Search services
+          </label>
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
           <input
+            id="service-search"
             type="text"
             placeholder="Search services or tags..."
             value={searchQuery}

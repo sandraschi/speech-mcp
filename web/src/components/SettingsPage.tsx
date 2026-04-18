@@ -9,7 +9,7 @@ import {
   Terminal,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const BACKEND = "http://localhost:10918";
 
@@ -42,12 +42,7 @@ const SettingsPage: React.FC = () => {
     localStorage.getItem("ELEVENLABS_API_KEY") || "",
   );
 
-  // Proactive Detection
-  useEffect(() => {
-    handleSyncModels();
-  }, [localProvider]); // Re-sync when provider changes
-
-  const handleSyncModels = async () => {
+  const handleSyncModels = useCallback(async () => {
     setIsSyncing(true);
     const url = localProvider === "ollama" ? ollamaUrl : lmstudioUrl;
     try {
@@ -70,7 +65,12 @@ const SettingsPage: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, [localProvider, ollamaUrl, lmstudioUrl, localModel]);
+
+  // Proactive Detection
+  useEffect(() => {
+    handleSyncModels();
+  }, [handleSyncModels]); // Re-sync when provider changes
 
   const handleSave = () => {
     localStorage.setItem("LOCAL_PROVIDER", localProvider);
@@ -96,6 +96,7 @@ const SettingsPage: React.FC = () => {
           </p>
         </div>
         <button
+          type="button"
           onClick={handleSave}
           className="btn-primary py-4 px-8 group shadow-[0_0_30px_rgba(59,130,246,0.2)]"
         >
@@ -126,10 +127,14 @@ const SettingsPage: React.FC = () => {
 
           <div className="space-y-6 flex-1">
             <div className="space-y-2">
-              <label className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1">
+              <label
+                htmlFor="provider-engine"
+                className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1"
+              >
                 Provider Engine
               </label>
               <select
+                id="provider-engine"
                 value={localProvider}
                 onChange={(e) => setLocalProvider(e.target.value)}
                 title="Local LLM Provider"
@@ -141,13 +146,21 @@ const SettingsPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1">
+              <label
+                htmlFor="endpoint-url"
+                className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1"
+              >
                 Endpoint URL
               </label>
               <input
+                id="endpoint-url"
                 type="text"
                 value={localProvider === "ollama" ? ollamaUrl : lmstudioUrl}
-                onChange={(e) => localProvider === "ollama" ? setOllamaUrl(e.target.value) : setLmstudioUrl(e.target.value)}
+                onChange={(e) =>
+                  localProvider === "ollama"
+                    ? setOllamaUrl(e.target.value)
+                    : setLmstudioUrl(e.target.value)
+                }
                 placeholder="http://localhost:..."
                 title="Provider Endpoint"
                 className="w-full bg-white/[0.02] border border-white/5 rounded-xl p-4 text-white focus:border-accent-purple/50 outline-none font-mono text-xs transition-all"
@@ -155,11 +168,15 @@ const SettingsPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1">
+              <label
+                htmlFor="available-models"
+                className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1"
+              >
                 Available Models
               </label>
               <div className="flex gap-3">
                 <select
+                  id="available-models"
                   value={localModel}
                   onChange={(e) => setLocalModel(e.target.value)}
                   title="Available LLM Models"
@@ -176,6 +193,7 @@ const SettingsPage: React.FC = () => {
                   )}
                 </select>
                 <button
+                  type="button"
                   title="Sync Repository"
                   onClick={handleSyncModels}
                   disabled={isSyncing}
@@ -216,7 +234,10 @@ const SettingsPage: React.FC = () => {
 
           <div className="space-y-5">
             <div className="space-y-2">
-              <label htmlFor="openai_key" className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1">
+              <label
+                htmlFor="openai_key"
+                className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1"
+              >
                 OpenAI Integration
               </label>
               <div className="relative group">
@@ -238,10 +259,14 @@ const SettingsPage: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1">
+                <label
+                  htmlFor="hume-api-key"
+                  className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1"
+                >
                   Hume API
                 </label>
                 <input
+                  id="hume-api-key"
                   type="password"
                   value={humeKey}
                   title="Hume API Key"
@@ -251,10 +276,14 @@ const SettingsPage: React.FC = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1">
+                <label
+                  htmlFor="hume-secret-key"
+                  className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1"
+                >
                   Hume Secret
                 </label>
                 <input
+                  id="hume-secret-key"
                   type="password"
                   value={humeSecret}
                   title="Hume Secret Key"
@@ -266,10 +295,14 @@ const SettingsPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1">
+              <label
+                htmlFor="eleven-key"
+                className="text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-50 ml-1"
+              >
                 ElevenLabs Synthesis
               </label>
               <input
+                id="eleven-key"
                 type="password"
                 value={elevenKey}
                 title="ElevenLabs API Key"

@@ -1,50 +1,193 @@
+"""
+Wake word detection using openWakeWord + PyAudio.
+
+The listener runs as a daemon thread so it doesn't block the MCP event loop.
+One listener can be active at a time (singleton pattern). On detection the
+callback fires a log entry and optionally calls a user-supplied coroutine.
+
+Built-in models available (auto-downloaded on first use):
+  alexa, hey_jarvis, hey_mycroft, hey_rhasspy, timers, weather
+
+Requires:
+  - openwakeword installed (uv add openwakeword)
+  - onnxruntime installed (uv add onnxruntime)
+  - pyaudio installed (uv add pyaudio)
+"""
+
+import asyncio
 import logging
 import os
+import threading
+import struct
+from collections.abc import Callable
 
+import openwakeword
+from openwakeword.model import Model
 from fastmcp import Context, FastMCP
 
 logger = logging.getLogger(__name__)
 
+# ── Singleton listener state ───────────────────────────────────────────────────
 
-def register_wake_word_tools(mcp: FastMCP):
+_listener_thread: threading.Thread | None = None
+_stop_event: threading.Event = threading.Event()
+_listener_lock = threading.Lock()
+
+
+def _run_listener(
+    keyword: str,
+    sensitivity: float,
+    on_detection: Callable[[str], None],
+) -> None:
     """
-    Registers tools for local wake-word monitoring (Porcupine).
+    Blocking mic capture + openWakeWord processing loop.
+    Runs in a daemon thread. Stops when _stop_event is set.
     """
+    import pyaudio
+
+    oww_model = None
+    pa = None
+    stream = None
+
+    try:
+        # Pre-download models if missing
+        openwakeword.utils.download_models(models=[keyword])
+
+        # Initialize openWakeWord Model
+        # vad_threshold=0.5 helps filter out non-speech noise
+        oww_model = Model(
+            wakeword_models=[keyword],
+            vad_threshold=0.5,
+            inference_framework="onnx"
+        )
+
+        CHUNK = 1280  # 80ms at 16kHz
+        pa = pyaudio.PyAudio()
+        stream = pa.open(
+            rate=16000,
+            channels=1,
+            format=pyaudio.paInt16,
+            input=True,
+            frames_per_buffer=CHUNK,
+        )
+
+        logger.info(
+            "Wake word listener started (openWakeWord): keyword='%s' sensitivity=%.2f",
+            keyword, sensitivity,
+        )
+
+        while not _stop_event.is_set():
+            pcm_bytes = stream.read(CHUNK, exception_on_overflow=False)
+            # Unpack bytes to list of 16-bit integers
+            pcm = list(struct.unpack(f"{CHUNK}h", pcm_bytes))
+            
+            # Get predictions
+            scores = oww_model.predict(pcm)
+            
+            # Check if any model score exceeds the sensitivity (threshold)
+            for name, score in scores.items():
+                if score >= sensitivity:
+                    logger.info("Wake word detected: '%s' (score: %.4f)", name, score)
+                    on_detection(name)
+                    oww_model.reset()  # Reset buffer to prevent immediate double-trigger
+
+    except Exception as e:
+        logger.error("Wake word listener error: %s", e)
+    finally:
+        if stream is not None:
+            stream.stop_stream()
+            stream.close()
+        if pa is not None:
+            pa.terminate()
+        logger.info("Wake word listener stopped.")
+
+
+def register_wake_word_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def configure_local_wake_word(
         ctx: Context,
-        keyword: str = "computer",
+        keyword: str = "hey_jarvis",
         sensitivity: float = 0.5,
+        action: str = "start",
     ) -> dict:
         """
-        Configures a local wake-word listener as a trigger for the SOTA Gemini stream.
-        This provides a 'Hey Computer' physical fallback to always-on VAD.
+        Start or stop a local wake-word listener using openWakeWord (Offline).
+
+        When a wake word is detected, a log entry is written and a notification
+        is sent via ctx.info. The listener runs as a background daemon thread.
+
+        Built-in keyword options: 'alexa', 'hey_jarvis', 'hey_mycroft', 'hey_rhasspy', 'timers', 'weather'.
 
         Args:
-            keyword: The built-in keyword to listen for (e.g., 'computer', 'jarvis', 'alexa').
-            sensitivity: Detection sensitivity (0.0 to 1.0).
+            keyword:     Wake word model name. Default: 'hey_jarvis'.
+            sensitivity: Detection threshold 0.0–1.0. Default: 0.5.
+            action:      'start' to begin listening, 'stop' to halt,
+                         'status' to query. Default: 'start'.
         """
-        api_key = os.getenv("PICOVOICE_API_KEY")
+        global _listener_thread, _stop_event
 
-        if not api_key:
+        # ── status ──────────────────────────────────────────────────────────
+        if action == "status":
+            running = _listener_thread is not None and _listener_thread.is_alive()
             return {
-                "success": False,
-                "error": "PICOVOICE_API_KEY missing in .env",
-                "recovery": "Add your Picovoice AccessKey to enable Porcupine local monitoring.",
+                "success": True,
+                "listening": running,
+                "engine": "openWakeWord",
+                "status": "active" if running else "stopped",
             }
 
-        await ctx.info(f"Configuring local wake-word: '{keyword}' at {sensitivity} sensitivity.")
+        # ── stop ─────────────────────────────────────────────────────────────
+        if action == "stop":
+            with _listener_lock:
+                if _listener_thread and _listener_thread.is_alive():
+                    _stop_event.set()
+                    _listener_thread.join(timeout=3.0)
+                    _listener_thread = None
+                    await ctx.info("Wake word listener stopped.")
+                    return {"success": True, "status": "stopped"}
+                else:
+                    return {"success": True, "status": "was_not_running"}
 
-        # In a fleet deployment, this config is returned to the client/worker
-        # which runs the actual pvporcupine listener loop.
+        # ── start ─────────────────────────────────────────────────────────────
+        if action != "start":
+            return {"success": False, "error": f"Unknown action '{action}'. Use start/stop/status."}
+
+        with _listener_lock:
+            # Stop existing listener if any
+            if _listener_thread and _listener_thread.is_alive():
+                _stop_event.set()
+                _listener_thread.join(timeout=3.0)
+
+            _stop_event = threading.Event()
+
+            # Detection callback — fires in the listener thread
+            def _on_detection(kw: str) -> None:
+                logger.info("[WAKE WORD] '%s' detected", kw)
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.call_soon_threadsafe(
+                        lambda: asyncio.ensure_future(
+                            ctx.info(f"Wake word '{kw}' detected")
+                        )
+                    )
+
+            _listener_thread = threading.Thread(
+                target=_run_listener,
+                args=(keyword, sensitivity, _on_detection),
+                daemon=True,
+                name=f"oww-{keyword}",
+            )
+            _listener_thread.start()
+
+        await ctx.info(f"Wake word listener started: '{keyword}' (threshold {sensitivity})")
+
         return {
             "success": True,
-            "status": "ready",
-            "provider": "Picovoice Porcupine 3.0",
+            "status": "listening",
+            "engine": "openWakeWord",
             "keyword": keyword,
-            "sensitivity": sensitivity,
-            "access_key": f"{api_key[:4]}...{api_key[-4:]}",
-            "architecture": "Local Microphone -> PvPorcupine -> Gateway (ws/stream)",
-            "next_steps": ["Worker loop started", "Listening for activation..."],
+            "threshold": sensitivity,
+            "note": "Offline detection active. No API key required.",
+            "stop_with": "configure_local_wake_word action='stop'",
         }

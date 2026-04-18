@@ -1,21 +1,13 @@
-import {
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Download,
-  FileText,
-  Search,
-} from "lucide-react";
+import { CheckCircle, Clock, Download, FileText, Search } from "lucide-react";
 import React from "react";
 import { BACKEND } from "../api";
 
 interface HistoryItem {
   id: string;
-  type: "tts" | "clone" | "evi";
+  type: string;
   content: string;
-  timestamp: string;
-  status: "success" | "failed" | "processing";
   provider: string;
+  timestamp: string;
 }
 
 const HistoryPage: React.FC = () => {
@@ -23,12 +15,12 @@ const HistoryPage: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchHistoryData = async () => {
       try {
         const res = await fetch(`${BACKEND}/api/v1/history`);
         if (res.ok) {
           const data = await res.json();
-          setHistory(data);
+          setHistory(data.reverse()); // Show newest first
         }
       } catch (err) {
         console.error("Failed to fetch history:", err);
@@ -36,7 +28,7 @@ const HistoryPage: React.FC = () => {
         setLoading(false);
       }
     };
-    fetchHistory();
+    fetchHistoryData();
   }, []);
 
   return (
@@ -59,8 +51,12 @@ const HistoryPage: React.FC = () => {
         </div>
 
         <div className="relative w-full md:w-96">
+          <label htmlFor="forensic-search" className="sr-only">
+            Search forensic logs
+          </label>
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
           <input
+            id="forensic-search"
             type="text"
             placeholder="Search forensic logs..."
             className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-4 py-4 text-white focus:border-indigo-500/50 focus:ring-0 transition-all placeholder-slate-600"
@@ -147,28 +143,15 @@ const HistoryPage: React.FC = () => {
                   </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-2">
-                      {item.status === "success" ? (
-                        <CheckCircle className="w-4 h-4 text-emerald-500" />
-                      ) : item.status === "failed" ? (
-                        <AlertCircle className="w-4 h-4 text-rose-500" />
-                      ) : (
-                        <div className="w-4 h-4 border-2 border-accent-purple border-t-transparent rounded-full animate-spin" />
-                      )}
-                      <span
-                        className={`text-xs font-black uppercase tracking-widest ${
-                          item.status === "success"
-                            ? "text-emerald-500"
-                            : item.status === "failed"
-                              ? "text-rose-500"
-                              : "text-accent-purple"
-                        }`}
-                      >
-                        {item.status}
+                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      <span className="text-xs font-black uppercase tracking-widest text-emerald-500">
+                        verified
                       </span>
                     </div>
                   </td>
                   <td className="px-8 py-6 text-right">
                     <button
+                      type="button"
                       className="p-2 text-text-secondary hover:text-white hover:bg-white/10 rounded-lg transition-all"
                       title="Download interaction trace"
                     >

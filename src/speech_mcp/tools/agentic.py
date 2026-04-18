@@ -68,9 +68,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
         Uses FastMCP 3.x sampling for strategy.
         """
         if ctx:
-            await ctx.info(
-                f"Orchestrating industrial conversational pattern for goal: {user_goal}"
-            )
+            await ctx.info(f"Orchestrating industrial conversational pattern for goal: {user_goal}")
 
         # SEP-1577 Sampling for strategy
         strategy_prompt = (
@@ -123,8 +121,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
         if len(goal.split()) < 3:
             await ctx.info("Goal appears ambiguous. Requesting clarification.")
             prompt_text = (
-                f"Your goal '{goal}' is a bit brief. "
-                "Could you provide more detail on what you'd like to achieve?"
+                f"Your goal '{goal}' is a bit brief. Could you provide more detail on what you'd like to achieve?"
             )
             goal = await ctx.elicit(
                 prompt=prompt_text,
