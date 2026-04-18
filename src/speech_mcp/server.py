@@ -105,7 +105,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Speech MCP Stream Gateway", lifespan=lifespan)
 
-# Industrial CORS for local fleet dev
+# Modern CORS for local fleet dev
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

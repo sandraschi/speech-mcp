@@ -4,7 +4,7 @@ First off, thank you for considering contributing to Speech-MCP! It's people lik
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the SOTA Industrial Standards. By participating, you are expected to uphold this code.
+This project and everyone participating in it is governed by the SOTA Modern Standards. By participating, you are expected to uphold this code.
 
 ## How Can I Contribute?
 

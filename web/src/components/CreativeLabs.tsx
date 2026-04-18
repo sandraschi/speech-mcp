@@ -87,7 +87,7 @@ const CreativeLabs: React.FC = () => {
     else setTranslation("");
   };
 
-  const handleRunIndustrialDemo = async (demo: string) => {
+  const handleRunModernDemo = async (demo: string) => {
     _setIsLoading(true);
     _setTtsError("");
     try {
@@ -144,10 +144,10 @@ const CreativeLabs: React.FC = () => {
         </div>
       )}
 
-      {/* Industrial Showcase */}
+      {/* Modern Showcase */}
       <section className="space-y-4">
         <h2 className="text-sm font-black text-white/40 uppercase tracking-[0.2em] px-1">
-          Industrial Showcase
+          Modern Showcase
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
