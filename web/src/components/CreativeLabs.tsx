@@ -120,10 +120,10 @@ const CreativeLabs: React.FC = () => {
         </div>
         <div className="flex flex-wrap gap-3">
           <span className="px-3 py-1 bg-violet-500/10 border border-violet-500/20 rounded-full text-xs font-black uppercase tracking-widest text-violet-400">
-            SOTA Emotion
+            Expressive Emotion
           </span>
           <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-black uppercase tracking-widest text-text-secondary opacity-60">
-            Polyglot v2
+            Global Polyglot (Multi-Language Support)
           </span>
         </div>
       </header>
@@ -193,7 +193,7 @@ const CreativeLabs: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => handleRunIndustrialDemo(d.id)}
+                onClick={() => handleRunModernDemo(d.id)}
                 disabled={isLoading}
                 className={`mt-6 w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-[0.98] ${d.btn} shadow-lg shadow-black/20`}
               >

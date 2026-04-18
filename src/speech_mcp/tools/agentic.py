@@ -34,7 +34,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
     @mcp.tool()
     async def detect_wake_word(ctx: Context, session_id: str | None = None) -> dict:
         """
-        Integrates SOTA Gemini Multimodal Live VAD for activation.
+        Integrates powerful Gemini Multimodal Live VAD for activation.
 
         The Gemini 3.1 Live API performs server-side Voice Activity Detection.
         This tool arms the system to listen for 'speech_started' events from the
@@ -79,7 +79,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
         strategy = await ctx.sample(
             messages=strategy_prompt,
-            system_prompt=("You are a SOTA conversational architect. Suggest precise tool sequences."),
+            system_prompt=("You are a powerful conversational architect. Suggest precise tool sequences."),
             max_tokens=200,
         )
 
@@ -108,7 +108,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
         SEP-1577 COMPLIANT MISSION ORCHESTRATOR.
 
         Performs autonomous conversation management, cognitive refinement, and
-        integrates SOTA barge-in telemetry.
+        integrates powerful barge-in telemetry.
 
         Args:
             goal: The high-level objective for the conversational mission.
