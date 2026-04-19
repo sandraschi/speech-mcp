@@ -202,6 +202,20 @@ demo-rag:
 demo-safety:
     @uv run python scripts/demos/demo_safety.py
 
+# ── Demo — Gemini Live ────────────────────────────────────────────────────────
+
+# Gemini Live 3.1 — CLI-based interaction test
+demo-live:
+    @uv run python scripts/demos/demo_gemini_live.py
+
+# Gemini Live 3.1 — Instructions for high-fidelity UI demo
+demo-live-ui:
+    @Write-Host 'To run the Gemini Live UI Demo:' -ForegroundColor Cyan
+    @Write-Host '1. Run `just start` to launch backend and frontend' -ForegroundColor White
+    @Write-Host '2. Navigate to http://localhost:10917/voice-chat' -ForegroundColor White
+    @Write-Host '3. Select a voice (e.g., Kore) and click "Start Session"' -ForegroundColor White
+    @Write-Host '4. Speak into your mic or inject text for low-latency barge-in.' -ForegroundColor White
+
 # ── Quality ────────────────────────────────────────────────────────────────────
 
 # Lint everything (Python + Justfile)
@@ -257,6 +271,9 @@ versions:
 # Clean build artefacts and backup files
 clean:
     Set-Location '{{justfile_directory()}}'
-    Get-ChildItem -Recurse -Filter '*.bak' | Remove-Item -Force
-    Get-ChildItem -Recurse -Filter '__pycache__' -Directory | Remove-Item -Recurse -Force
-    Get-ChildItem -Recurse -Filter '*.pyc' | Remove-Item -Force
+    Get-ChildItem -Recurse -Filter '*.bak' | Remove-Item -Force -ErrorAction SilentlyContinue
+    Get-ChildItem -Recurse -Filter '__pycache__' -Directory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Get-ChildItem -Recurse -Filter '*.pyc' | Remove-Item -Force -ErrorAction SilentlyContinue
+    Get-ChildItem -Recurse -Filter '*.tmp' | Remove-Item -Force -ErrorAction SilentlyContinue
+    Get-ChildItem -Recurse -Filter 'venv' -Directory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host 'Workspace purged of ephemeral artifacts.' -ForegroundColor Green

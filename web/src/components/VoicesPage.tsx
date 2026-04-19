@@ -99,7 +99,8 @@ const VoicesPage: React.FC = () => {
         body: formData,
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Clone failed");
+      if (!res.ok || !data.success)
+        throw new Error(data.detail || data.error || "Clone failed");
       setCloneSuccess(`Cloned OK — voice_id: ${data.voice_id}`);
       setTtsError("");
       setCloneName("");
@@ -109,7 +110,13 @@ const VoicesPage: React.FC = () => {
       const all: Voice[] = [];
       fresh.providers?.forEach((p: { voices: string[]; name: string }) => {
         p.voices.forEach((v: string) => {
-          all.push({ id: v, name: v, provider: p.name, type: "base", isFavorite: false });
+          all.push({
+            id: v,
+            name: v,
+            provider: p.name,
+            type: "base",
+            isFavorite: false,
+          });
         });
       });
       setVoices(all);
@@ -258,12 +265,10 @@ const VoicesPage: React.FC = () => {
             </div>
           </div>
 
-          <div
-            className="flex-1 border-2 border-dashed border-white/5 rounded-2xl p-8 text-center hover:border-violet-500/20 transition-all cursor-pointer bg-white/[0.01]"
+          <button
+            type="button"
+            className="flex-1 w-full border-2 border-dashed border-white/5 rounded-2xl p-8 text-center hover:border-violet-500/20 transition-all bg-white/[0.01]"
             onClick={() => fileInputRef.current?.click()}
-            onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-            role="button"
-            tabIndex={0}
           >
             <input
               ref={fileInputRef}
@@ -277,9 +282,11 @@ const VoicesPage: React.FC = () => {
               {cloneFile ? cloneFile.name : "Snippet Ingestion"}
             </p>
             <p className="text-[10px] text-white/20 mt-2 uppercase tracking-widest font-bold">
-              {cloneFile ? `${(cloneFile.size / 1024).toFixed(0)} KB — click to change` : "MP3, WAV, M4A — 5s minimum"}
+              {cloneFile
+                ? `${(cloneFile.size / 1024).toFixed(0)} KB — click to change`
+                : "MP3, WAV, M4A — 5s minimum"}
             </p>
-          </div>
+          </button>
 
           <div>
             <label

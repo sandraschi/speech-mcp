@@ -162,8 +162,8 @@ const HelpPage: React.FC = () => {
 
       <Section title="Prosody and emotion">
         <p className="text-slate-400 text-sm">
-          Gemini leads the fleet with Natural Language Tags and excellent 
-          emotional mastery. Hume supports configuration-based emotional hints. 
+          Gemini leads the fleet with Natural Language Tags and excellent
+          emotional mastery. Hume supports configuration-based emotional hints.
           ElevenLabs uses stability/similarity sliders.
         </p>
       </Section>

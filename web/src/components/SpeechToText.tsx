@@ -52,7 +52,7 @@ export const SpeechToText: React.FC = () => {
       } else {
         addLog(`Error: ${res.error}`, "error");
       }
-    } catch (err) {
+    } catch (_err) {
       addLog("Failed to communicate with backend.", "error");
     } finally {
       setIsPending(false);

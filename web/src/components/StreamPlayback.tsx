@@ -42,6 +42,7 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
     if (onDone) onDone();
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: playKey and status must trigger re-evaluation
   useEffect(() => {
     if (!streamUrl) return;
 
@@ -145,7 +146,7 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
       socketRef.current?.close();
       audioContextRef.current?.close().catch(() => {});
     };
-  }, [streamUrl, text, playKey, onDone]);
+  }, [streamUrl, text, onDone, status, playKey]);
 
   if (status === "idle") return null;
 
@@ -170,10 +171,19 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
           </div>
           <div>
             <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5">
-              {provider} • {status === "connecting" ? "Warming up neurons..." : status === "streaming" ? "Handshaking..." : status === "playing" ? "Neural stream active" : status}
+              {provider} •{" "}
+              {status === "connecting"
+                ? "Warming up neurons..."
+                : status === "streaming"
+                  ? "Handshaking..."
+                  : status === "playing"
+                    ? "Neural stream active"
+                    : status}
             </div>
             <div className="text-sm font-bold text-white/90 truncate max-w-[200px]">
-              {status === "connecting" ? "Preparing synthetic voice..." : (text || "Aggregating flux...")}
+              {status === "connecting"
+                ? "Preparing synthetic voice..."
+                : text || "Aggregating flux..."}
             </div>
           </div>
         </div>

@@ -26,11 +26,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BACKEND } from "../api";
 
 const GEMINI_LIVE_VOICES = [
-  "Aoede", "Charon", "Fenrir", "Kore", "Orion", "Puck",
-  "Leda", "Orus", "Zephyr",
+  "Aoede",
+  "Charon",
+  "Fenrir",
+  "Kore",
+  "Orion",
+  "Puck",
+  "Leda",
+  "Orus",
+  "Zephyr",
 ];
 
-const DEFAULT_SYSTEM = "You are a helpful, conversational AI assistant. Be concise and natural.";
+const DEFAULT_SYSTEM =
+  "You are a helpful, conversational AI assistant. Be concise and natural.";
 
 interface TranscriptLine {
   id: string;
@@ -63,33 +71,46 @@ const VoiceChat: React.FC = () => {
   // Auto-scroll transcript
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [transcript]);
+  }, []);
 
   const addLine = useCallback((role: TranscriptLine["role"], text: string) => {
-    setTranscript(prev => [...prev.slice(-200), {
-      id: `${Date.now()}-${Math.random()}`,
-      role,
-      text,
-      ts: new Date().toLocaleTimeString(),
-    }]);
+    setTranscript((prev) => [
+      ...prev.slice(-200),
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        role,
+        text,
+        ts: new Date().toLocaleTimeString(),
+      },
+    ]);
   }, []);
 
   // ── Resample float32 → 16kHz int16 PCM ──────────────────────────────────
-  const resampleAndEncode = useCallback((
-    inputBuffer: Float32Array,
-    inputRate: number,
-  ): Int16Array => {
-    const outputRate = 16000;
-    const ratio = inputRate / outputRate;
-    const outputLength = Math.ceil(inputBuffer.length / ratio);
-    const output = new Int16Array(outputLength);
-    for (let i = 0; i < outputLength; i++) {
-      const srcIdx = Math.min(Math.floor(i * ratio), inputBuffer.length - 1);
-      // Clamp and convert float32 → int16
-      const s = Math.max(-1, Math.min(1, inputBuffer[srcIdx]));
-      output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-    }
-    return output;
+  const resampleAndEncode = useCallback(
+    (inputBuffer: Float32Array, inputRate: number): Int16Array => {
+      const outputRate = 16000;
+      const ratio = inputRate / outputRate;
+      const outputLength = Math.ceil(inputBuffer.length / ratio);
+      const output = new Int16Array(outputLength);
+      for (let i = 0; i < outputLength; i++) {
+        const srcIdx = Math.min(Math.floor(i * ratio), inputBuffer.length - 1);
+        // Clamp and convert float32 → int16
+        const s = Math.max(-1, Math.min(1, inputBuffer[srcIdx]));
+        output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+      return output;
+    },
+    [],
+  );
+
+  // ── Mic utility ──────────────────────────────────────────────────────────
+  const cleanupMic = useCallback(() => {
+    scriptNodeRef.current?.disconnect();
+    scriptNodeRef.current = null;
+    micStreamRef.current?.getTracks().forEach((t) => {
+      t.stop();
+    });
+    micStreamRef.current = null;
   }, []);
 
   // ── Schedule WAV chunk for playback ────────────────────────────────────
@@ -129,7 +150,7 @@ const VoiceChat: React.FC = () => {
       system: systemPrompt,
       ...(token ? { token } : {}),
     });
-    const wsUrl = BACKEND.replace(/^http/, "ws") + `/ws/stream?${params}`;
+    const wsUrl = `${BACKEND.replace(/^http/, "ws")}/ws/stream?${params}`;
 
     const ctx = new AudioContext({ sampleRate: 48000 });
     audioCtxRef.current = ctx;
@@ -188,7 +209,7 @@ const VoiceChat: React.FC = () => {
       setErrorMsg("WebSocket connection failed");
       setSessionState("error");
     };
-  }, [voice, systemPrompt, addLine, scheduleWav]);
+  }, [voice, systemPrompt, addLine, scheduleWav, cleanupMic]);
 
   // ── Stop session ─────────────────────────────────────────────────────────
   const stopSession = useCallback(() => {
@@ -201,15 +222,9 @@ const VoiceChat: React.FC = () => {
     setSessionState("idle");
     setIsMicActive(false);
     setModelSpeaking(false);
-  }, []);
+  }, [cleanupMic]);
 
   // ── Mic on/off ────────────────────────────────────────────────────────────
-  const cleanupMic = () => {
-    scriptNodeRef.current?.disconnect();
-    scriptNodeRef.current = null;
-    micStreamRef.current?.getTracks().forEach(t => t.stop());
-    micStreamRef.current = null;
-  };
 
   const startMic = useCallback(async () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
@@ -219,7 +234,11 @@ const VoiceChat: React.FC = () => {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
       });
       micStreamRef.current = stream;
 
@@ -231,7 +250,8 @@ const VoiceChat: React.FC = () => {
       scriptNodeRef.current = processor;
 
       processor.onaudioprocess = (ev) => {
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)
+          return;
         const input = ev.inputBuffer.getChannelData(0);
         const pcm16 = resampleAndEncode(input, ctx.sampleRate);
         wsRef.current.send(pcm16.buffer);
@@ -241,7 +261,9 @@ const VoiceChat: React.FC = () => {
       processor.connect(ctx.destination); // needed to keep processor running
       setIsMicActive(true);
     } catch (e) {
-      setErrorMsg(`Mic access failed: ${e instanceof Error ? e.message : String(e)}`);
+      setErrorMsg(
+        `Mic access failed: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   }, [resampleAndEncode]);
 
@@ -250,7 +272,7 @@ const VoiceChat: React.FC = () => {
     setIsMicActive(false);
     // Signal end of user audio turn
     wsRef.current?.send(JSON.stringify({ type: "end_turn" }));
-  }, []);
+  }, [cleanupMic]);
 
   const toggleMic = useCallback(() => {
     if (isMicActive) {
@@ -262,15 +284,24 @@ const VoiceChat: React.FC = () => {
 
   // ── Send text ─────────────────────────────────────────────────────────────
   const sendText = useCallback(() => {
-    if (!textInput.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-    wsRef.current.send(JSON.stringify({ type: "text", text: textInput.trim() }));
+    if (
+      !textInput.trim() ||
+      !wsRef.current ||
+      wsRef.current.readyState !== WebSocket.OPEN
+    )
+      return;
+    wsRef.current.send(
+      JSON.stringify({ type: "text", text: textInput.trim() }),
+    );
     addLine("user", textInput.trim());
     setTextInput("");
   }, [textInput, addLine]);
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => { stopSession(); };
+    return () => {
+      stopSession();
+    };
   }, [stopSession]);
 
   const isConnected = sessionState === "ready";
@@ -280,25 +311,43 @@ const VoiceChat: React.FC = () => {
     <div className="h-full space-y-6 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Voice Chat</h1>
+          <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
+            Voice Chat
+          </h1>
           <p className="text-sm font-bold uppercase tracking-widest text-slate-400">
             Gemini Live · Full-Duplex · Real-Time
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${
-            isConnected ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-            : isConnecting ? "bg-amber-500/10 border-amber-500/30 text-amber-400 animate-pulse"
-            : sessionState === "error" ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
-            : "bg-white/5 border-white/10 text-white/40"
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              isConnected ? "bg-emerald-400"
-              : isConnecting ? "bg-amber-400 animate-pulse"
-              : sessionState === "error" ? "bg-rose-400"
-              : "bg-white/20"
-            }`} />
-            {isConnected ? "Live" : isConnecting ? "Connecting" : sessionState === "error" ? "Error" : "Idle"}
+          <span
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${
+              isConnected
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                : isConnecting
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-400 animate-pulse"
+                  : sessionState === "error"
+                    ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                    : "bg-white/5 border-white/10 text-white/40"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isConnected
+                  ? "bg-emerald-400"
+                  : isConnecting
+                    ? "bg-amber-400 animate-pulse"
+                    : sessionState === "error"
+                      ? "bg-rose-400"
+                      : "bg-white/20"
+              }`}
+            />
+            {isConnected
+              ? "Live"
+              : isConnecting
+                ? "Connecting"
+                : sessionState === "error"
+                  ? "Error"
+                  : "Idle"}
           </span>
           <button
             type="button"
@@ -315,25 +364,37 @@ const VoiceChat: React.FC = () => {
         <div className="glass-card p-6 space-y-4 border-white/10 animate-in fade-in duration-300">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="voice-select" className="block text-xs font-black text-white/40 uppercase tracking-widest mb-2">Voice</label>
+              <label
+                htmlFor="voice-select"
+                className="block text-xs font-black text-white/40 uppercase tracking-widest mb-2"
+              >
+                Voice
+              </label>
               <select
                 id="voice-select"
                 value={voice}
-                onChange={e => setVoice(e.target.value)}
+                onChange={(e) => setVoice(e.target.value)}
                 disabled={isConnected || isConnecting}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-bold outline-none focus:border-violet-500/40 disabled:opacity-40"
               >
-                {GEMINI_LIVE_VOICES.map(v => (
-                  <option key={v} value={v} className="bg-slate-900">{v}</option>
+                {GEMINI_LIVE_VOICES.map((v) => (
+                  <option key={v} value={v} className="bg-slate-900">
+                    {v}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label htmlFor="system-prompt" className="block text-xs font-black text-white/40 uppercase tracking-widest mb-2">System Prompt / Persona</label>
+              <label
+                htmlFor="system-prompt"
+                className="block text-xs font-black text-white/40 uppercase tracking-widest mb-2"
+              >
+                System Prompt / Persona
+              </label>
               <textarea
                 id="system-prompt"
                 value={systemPrompt}
-                onChange={e => setSystemPrompt(e.target.value)}
+                onChange={(e) => setSystemPrompt(e.target.value)}
                 disabled={isConnected || isConnecting}
                 rows={2}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-violet-500/40 resize-none disabled:opacity-40"
@@ -352,7 +413,10 @@ const VoiceChat: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Transcript */}
-        <div className="lg:col-span-2 glass-card flex flex-col" style={{ height: 480 }}>
+        <div
+          className="lg:col-span-2 glass-card flex flex-col"
+          style={{ height: 480 }}
+        >
           <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-black text-white/40 uppercase tracking-widest">
               <Activity size={13} className="text-violet-400" />
@@ -372,19 +436,38 @@ const VoiceChat: React.FC = () => {
                 Start a session to begin
               </div>
             ) : (
-              transcript.map(line => (
-                <div key={line.id} className="flex gap-3 animate-in fade-in duration-200">
-                  <span className="text-white/20 text-xs w-14 shrink-0 pt-0.5">{line.ts.slice(0, 5)}</span>
-                  <span className={`text-xs font-black uppercase tracking-wider shrink-0 w-12 pt-0.5 ${
-                    line.role === "user" ? "text-violet-400"
-                    : line.role === "model" ? "text-emerald-400"
-                    : "text-white/20"
-                  }`}>
-                    {line.role === "user" ? "YOU" : line.role === "model" ? "AI" : "SYS"}
+              transcript.map((line) => (
+                <div
+                  key={line.id}
+                  className="flex gap-3 animate-in fade-in duration-200"
+                >
+                  <span className="text-white/20 text-xs w-14 shrink-0 pt-0.5">
+                    {line.ts.slice(0, 5)}
                   </span>
-                  <span className={`flex-1 leading-relaxed ${
-                    line.role === "system" ? "text-white/30 italic" : "text-white/85"
-                  }`}>{line.text}</span>
+                  <span
+                    className={`text-xs font-black uppercase tracking-wider shrink-0 w-12 pt-0.5 ${
+                      line.role === "user"
+                        ? "text-violet-400"
+                        : line.role === "model"
+                          ? "text-emerald-400"
+                          : "text-white/20"
+                    }`}
+                  >
+                    {line.role === "user"
+                      ? "YOU"
+                      : line.role === "model"
+                        ? "AI"
+                        : "SYS"}
+                  </span>
+                  <span
+                    className={`flex-1 leading-relaxed ${
+                      line.role === "system"
+                        ? "text-white/30 italic"
+                        : "text-white/85"
+                    }`}
+                  >
+                    {line.text}
+                  </span>
                 </div>
               ))
             )}
@@ -397,9 +480,11 @@ const VoiceChat: React.FC = () => {
               <input
                 type="text"
                 value={textInput}
-                onChange={e => setTextInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && sendText()}
-                placeholder={isConnected ? "Type a message…" : "Start session first"}
+                onChange={(e) => setTextInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendText()}
+                placeholder={
+                  isConnected ? "Type a message…" : "Start session first"
+                }
                 disabled={!isConnected}
                 className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-violet-500/40 disabled:opacity-30 transition-all"
               />
@@ -430,18 +515,25 @@ const VoiceChat: React.FC = () => {
                     : "bg-violet-600 hover:bg-violet-500 shadow-[0_0_20px_rgba(167,139,250,0.2)]"
                 }`}
               >
-                {isMicActive ? <MicOff size={40} className="text-white" /> : <Mic size={40} className="text-white" />}
+                {isMicActive ? (
+                  <MicOff size={40} className="text-white" />
+                ) : (
+                  <Mic size={40} className="text-white" />
+                )}
               </button>
               {isMicActive && (
                 <div className="absolute inset-0 rounded-full border-2 border-rose-400/40 animate-ping" />
               )}
               {modelSpeaking && (
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                  {[0, 1, 2, 3].map(i => (
+                  {[0, 1, 2, 3].map((i) => (
                     <div
                       key={i}
                       className="w-1 bg-emerald-400 rounded-full animate-bounce"
-                      style={{ height: 8 + i * 4, animationDelay: `${i * 0.1}s` }}
+                      style={{
+                        height: 8 + i * 4,
+                        animationDelay: `${i * 0.1}s`,
+                      }}
                     />
                   ))}
                 </div>
@@ -449,10 +541,18 @@ const VoiceChat: React.FC = () => {
             </div>
             <div className="text-center">
               <p className="text-sm font-black text-white uppercase tracking-widest">
-                {isMicActive ? "Mic Active" : isConnected ? "Mic Off" : "Not Connected"}
+                {isMicActive
+                  ? "Mic Active"
+                  : isConnected
+                    ? "Mic Off"
+                    : "Not Connected"}
               </p>
               <p className="text-xs text-white/30 mt-1 uppercase tracking-wider">
-                {modelSpeaking ? "Model speaking…" : isMicActive ? "Listening…" : "Click to toggle"}
+                {modelSpeaking
+                  ? "Model speaking…"
+                  : isMicActive
+                    ? "Listening…"
+                    : "Click to toggle"}
               </p>
             </div>
           </div>
@@ -484,9 +584,11 @@ const VoiceChat: React.FC = () => {
                 { label: "Voice", value: voice },
                 { label: "In", value: "16kHz PCM" },
                 { label: "Out", value: "24kHz WAV" },
-              ].map(r => (
+              ].map((r) => (
                 <div key={r.label} className="flex justify-between text-xs">
-                  <span className="text-white/30 uppercase tracking-wider font-bold">{r.label}</span>
+                  <span className="text-white/30 uppercase tracking-wider font-bold">
+                    {r.label}
+                  </span>
                   <span className="text-white/70 font-mono">{r.value}</span>
                 </div>
               ))}
@@ -495,9 +597,13 @@ const VoiceChat: React.FC = () => {
 
           {/* Robot note */}
           <div className="glass-card p-5 border-violet-500/20 bg-violet-500/5">
-            <p className="text-xs font-black text-violet-400 uppercase tracking-widest mb-2">🤖 Yahboom / Robot Bridge</p>
+            <p className="text-xs font-black text-violet-400 uppercase tracking-widest mb-2">
+              🤖 Yahboom / Robot Bridge
+            </p>
             <p className="text-xs text-white/40 leading-relaxed">
-              Connect via the yahboom-mcp bridge: route robot STT → this session as text injection, and forward model audio back to the robot speaker.
+              Connect via the yahboom-mcp bridge: route robot STT → this session
+              as text injection, and forward model audio back to the robot
+              speaker.
             </p>
           </div>
         </div>

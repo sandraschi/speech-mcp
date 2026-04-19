@@ -70,7 +70,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     handleSyncModels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleSyncModels]);
 
   const handleSave = () => {
     localStorage.setItem("LOCAL_PROVIDER", localProvider);
