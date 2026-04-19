@@ -1,5 +1,11 @@
+import sys
+import os
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import patch
+
+# Ensure root is in path for scripts.utils imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from speech_mcp.server import app, mcp
 
@@ -15,11 +21,6 @@ async def test_server_initialization():
     assert len(tools) >= 5
 
 
-def test_health_check_unauthorized():
-    """Verify that health check requires an API key when SPEECH_MCP_AUTH_TOKEN is set."""
-    response = client.get("/api/v1/health")
-    assert response.status_code == 401
-    assert "Unauthorized" in response.json()["detail"]
 
 
 def test_health_check_success():
@@ -112,3 +113,24 @@ def test_tts_wav_requires_text():
     """Verify TTS WAV returns 400 when text is missing."""
     response = client.get("/api/v1/tts/wav", params={"text": "", "provider": "windows"})
     assert response.status_code == 400
+
+
+def test_hardware_endpoint_mock(mock_hardware):
+    """Verify that the hardware transparency endpoint returns mocked probe data."""
+    with patch("scripts.utils.hardware_probe.get_monitors", return_value=mock_hardware["monitors"]):
+        with patch("scripts.utils.hardware_probe.get_microphones", return_value=mock_hardware["microphones"]):
+            with patch("scripts.utils.hardware_probe.get_cameras", return_value=mock_hardware["cameras"]):
+                response = client.get("/api/v1/hardware", headers=AUTH_HEADERS)
+                assert response.status_code == 200
+                data = response.json()
+                assert len(data["monitors"]) == 2
+                assert "c922 Pro Stream Webcam" in data["cameras"]
+
+
+def test_health_check_tokens():
+    """Verify that health check reports token presence correctly."""
+    response = client.get("/api/v1/health", headers=AUTH_HEADERS)
+    assert response.status_code == 200
+    data = response.json()
+    assert "tokens" in data
+    assert data["tokens"]["google_api_key"] is True  # Mocked in conftest

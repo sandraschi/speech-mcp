@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 import anyio
 from dotenv import load_dotenv
 
@@ -18,7 +19,7 @@ async def run_demo():
 
     print("Initializing Gemini 3.1 Live Session...")
     client = genai.Client(api_key=api_key)
-    
+
     # Minimal config for a quick turn
     model = "gemini-3.1-flash-live-preview"
     config = types.LiveConnectConfig(
@@ -30,33 +31,33 @@ async def run_demo():
     try:
         async with client.aio.live.connect(model=model, config=config) as session:
             print(f"Connected to {model}")
-            
+
             # Send a text message to trigger an audio response
             message = "Hello! Say 'Gemini Live is operational' clearly."
             print(f"Sending: {message}")
-            
+
             await session.send_realtime_input(text=message)
-            
+
             print("Waiting for response audio...")
             audio_count = 0
             async for response in session.receive():
                 if response.server_content:
                     sc = response.server_content
-                    
+
                     # Check for transcripts
                     if sc.output_transcription:
                         print(f"Model Transcript: {sc.output_transcription.text}")
-                    
+
                     # Check for audio parts
                     if sc.model_turn:
                         for part in sc.model_turn.parts:
                             if part.inline_data:
                                 audio_count += 1
-                    
+
                     if sc.turn_complete:
                         print(f"Turn complete. Received {audio_count} audio chunks.")
                         break
-                        
+
     except Exception as e:
         print(f"Session Error: {e}")
 

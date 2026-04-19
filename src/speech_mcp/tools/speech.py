@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 async def _play_wav_file(path: str) -> None:
     """Play a WAV file via winsound (stdlib, zero dependencies)."""
     import winsound
+
     import anyio
 
     if not os.path.exists(path):

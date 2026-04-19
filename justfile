@@ -190,9 +190,14 @@ demo-wake-word keyword="computer":
     t = threading.Thread(target=run, daemon=True); t.start(); t.join(31); \
     print('Done.' if detected.is_set() else 'Timeout — no detection.')"
 
-# Live weather for Vienna via wttr.in
-demo-weather:
-    @uv run python scripts/demos/demo_weather.py
+# Run the interactive weather demo with Gemini voice (Optional city parameter)
+# Usage: just demo-weather city="London"
+demo-weather city="Vienna":
+    @uv run python scripts/demos/demo_weather.py "{{city}}"
+
+# Interactive weather demo that asks for a city first
+demo-weather-ask:
+    @pwsh -Command "$city = Read-Host 'Which city do you want to check?'; just demo-weather $city"
 
 # Semantic search over the RAG knowledge base
 demo-rag:
@@ -250,6 +255,17 @@ test:
 verify-speech:
     Set-Location '{{justfile_directory()}}'
     uv run pytest tests/live/ -s -v --live
+
+# ── Orchestration ─────────────────────────────────────────────────────────────
+
+# Run the hardware probe to detect monitors, microphones, and cameras
+probe:
+    @uv run python scripts/utils/hardware_probe.py
+
+# Optimized launch for multi-screen workflows (app defaults to blender)
+# Usage: just dual-launch app="blender" monitor=1
+dual-launch app="blender" monitor="1":
+    @uv run python scripts/utils/orchestrator.py --app "{{app}}" --monitor {{monitor}}
 
 # ── Maintenance ────────────────────────────────────────────────────────────────
 

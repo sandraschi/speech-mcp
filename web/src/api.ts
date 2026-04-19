@@ -88,12 +88,27 @@ export interface HealthData {
   rag_sources: string[];
   active_timers: number;
   wake_word_active: boolean;
+  tokens: {
+    google_api_key: boolean;
+    hume_api_key: boolean;
+    hume_config_id: boolean;
+    elevenlabs_api_key: boolean;
+  };
   providers: {
     hume: boolean;
     elevenlabs: boolean;
     gemini: boolean;
     windows: boolean;
   };
+}
+
+export async function request(path: string, options: RequestInit = {}): Promise<any> {
+  const res = await fetch(`${BACKEND}${path}`, {
+    ...options,
+    headers: { ...authHeaders(), ...(options.headers || {}) },
+  });
+  if (!res.ok) throw new Error(`Request failed: ${res.statusText}`);
+  return res.json();
 }
 
 export interface StatsData {

@@ -1,5 +1,6 @@
 import wave
 
+
 def inspect_wav(filename):
     try:
         with wave.open(filename, "rb") as wf:

@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import {
   fetchHealth,
   fetchStats,
+  request,
   type HealthData,
   type StatsData,
 } from "./api";
@@ -13,11 +14,15 @@ export type BackendContextValue = {
   health: HealthData | null;
   stats: StatsData | null;
   error: boolean;
+  request: (path: string, options?: RequestInit) => Promise<any>;
+  emergencyStop: () => Promise<void>;
 };
 const BackendContext = createContext<BackendContextValue>({
   health: null,
   stats: null,
   error: true,
+  request: async () => {},
+  emergencyStop: async () => {},
 });
 
 export function useBackend() {
@@ -41,8 +46,16 @@ export function BackendProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(id);
   }, []);
 
+  const emergencyStop = async () => {
+    try {
+      await request("/api/v1/stop", { method: "POST" });
+    } catch (err) {
+      console.error("Emergency stop failed:", err);
+    }
+  };
+
   return (
-    <BackendContext.Provider value={{ health, stats, error }}>
+    <BackendContext.Provider value={{ health, stats, error, request, emergencyStop }}>
       {children}
     </BackendContext.Provider>
   );

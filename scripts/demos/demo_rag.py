@@ -3,11 +3,12 @@ import sys
 sys.path.insert(0, 'src')
 from speech_mcp.state import get_store
 
+
 def run():
     print("Performing semantic search over RAG store...")
     query = 'expressive speech synthesis Hume Octave'
     results = get_store().search(query, limit=3)
-    
+
     print(f"\nResults for: '{query}'")
     print("-" * 60)
     for r in results:

@@ -1,17 +1,20 @@
 import sys
+
 from dotenv import load_dotenv
+
 load_dotenv()
-import winsound
-import tempfile
 import os
+import tempfile
+import winsound
 
 sys.path.insert(0, 'src')
 from speech_mcp.providers.gemini import GeminiProvider
 
+
 def run():
     print("Synthesizing Shakespeare Monologue with Gemini 3.1...")
     p = GeminiProvider()
-    
+
     # Hamlet - To be, or not to be
     # Using triple pause for audio driver sync
     text = """
@@ -27,17 +30,17 @@ def run():
     Devoutly to be wish'd. To die, to sleep;
     To sleep, perchance to dream—ay, there's the rub.
     """
-    
+
     # 'Charon' is excellent for deep, dramatic readings
     wav = p.synthesize_wav(text, voice_name='Charon')
-    
+
     tmp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
     tmp.write(wav)
     tmp.close()
-    
+
     print(f"Shakespeare demo: {len(wav)} bytes, playing...")
     winsound.PlaySound(tmp.name, winsound.SND_FILENAME)
-    
+
     os.remove(tmp.name)
     print("OK")
 

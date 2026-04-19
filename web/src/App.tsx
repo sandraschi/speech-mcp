@@ -12,10 +12,11 @@ import SemanticSearch from "./components/SemanticSearch";
 import ServiceLinkage from "./components/ServiceLinkage";
 import SettingsPage from "./components/SettingsPage";
 import { SpeechToText } from "./components/SpeechToText";
-import SystemLogs from "./components/SystemLogs";
 import ToolsPage from "./components/ToolsPage";
 import VoiceChat from "./components/VoiceChat";
 import VoicesPage from "./components/VoicesPage";
+import DeviceSettings from "./components/DeviceSettings";
+import HealthPage from "./components/HealthPage";
 
 const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
   onNavigate,
@@ -156,7 +157,9 @@ function App() {
         ) : activePage === "history" || activePage === "analysis" ? (
           <HistoryPage />
         ) : activePage === "settings" ? (
-          <SettingsPage />
+          <DeviceSettings />
+        ) : activePage === "health" ? (
+          <HealthPage />
         ) : activePage === "agentic" ? (
           <AgenticWorkflow />
         ) : activePage === "logger" ? (

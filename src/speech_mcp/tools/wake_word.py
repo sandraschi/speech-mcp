@@ -16,14 +16,13 @@ Requires:
 
 import asyncio
 import logging
-import os
-import threading
 import struct
+import threading
 from collections.abc import Callable
 
 import openwakeword
-from openwakeword.model import Model
 from fastmcp import Context, FastMCP
+from openwakeword.model import Model
 
 logger = logging.getLogger(__name__)
 
@@ -80,10 +79,10 @@ def _run_listener(
             pcm_bytes = stream.read(CHUNK, exception_on_overflow=False)
             # Unpack bytes to list of 16-bit integers
             pcm = list(struct.unpack(f"{CHUNK}h", pcm_bytes))
-            
+
             # Get predictions
             scores = oww_model.predict(pcm)
-            
+
             # Check if any model score exceeds the sensitivity (threshold)
             for name, score in scores.items():
                 if score >= sensitivity:

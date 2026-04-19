@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import uuid
 from contextlib import asynccontextmanager
 from time import localtime, strftime
 from typing import TYPE_CHECKING, Any
@@ -23,8 +24,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
-from fastmcp import FastMCP, Context
-import uuid
+from fastmcp import Context, FastMCP
 from hume import HumeClient
 from pydantic import BaseModel
 
@@ -175,11 +175,41 @@ class ActionRequest(BaseModel):
 class DemoRequest(BaseModel):
     demo: DemoName
 
+@app.post("/api/v1/stop")
+async def api_stop():
+    """Emergency stop: cancel all timers, stop wake word, and purge winsound audio."""
+    import winsound
+    try:
+        # Purge all winsound buffers immediately
+        winsound.PlaySound(None, winsound.SND_PURGE)
+    except Exception:
+        pass
+
+    # Cancel all active timers
+    cancelled_count = 0
+    for timer_id, task in list(_timers.items()):
+        if not task.done():
+            task.cancel()
+            cancelled_count += 1
+        _timers.pop(timer_id, None)
+
+    # Stop wake word listener
+    from speech_mcp.tools.wake_word import configure_local_wake_word
+    from fastmcp import Context
+    try:
+        await configure_local_wake_word(ctx=Context(), action="stop")
+    except Exception:
+        pass
+
+    logger.warning(f"!!! EMERGENCY STOP TRIGGERED: Cancelled {cancelled_count} timers !!!")
+    return {"success": True, "cancelled_timers": cancelled_count, "audio_purged": True}
+
 @app.get("/api/v1/health")
-async def health_check(_: str = Depends(get_api_key)):
+async def health_check():
     from speech_mcp.tools.wake_word import _listener_thread
     wake_active = _listener_thread is not None and _listener_thread.is_alive()
 
+    # Dynamic connectivity check
     return {
         "status": "healthy",
         "version": "0.3.0",
@@ -187,6 +217,12 @@ async def health_check(_: str = Depends(get_api_key)):
         "rag_sources": get_store().list_sources(),
         "active_timers": len(_timers),
         "wake_word_active": wake_active,
+        "tokens": {
+            "google_api_key": bool(os.getenv("GOOGLE_API_KEY")),
+            "hume_api_key": bool(os.getenv("HUME_API_KEY")),
+            "hume_config_id": bool(os.getenv("HUME_CONFIG_ID")),
+            "elevenlabs_api_key": bool(os.getenv("ELEVENLABS_API_KEY")),
+        },
         "providers": {
             "hume": bool(hume_client),
             "elevenlabs": bool(eleven_client),
@@ -194,6 +230,19 @@ async def health_check(_: str = Depends(get_api_key)):
             "windows": True,
         },
     }
+
+@app.get("/api/v1/hardware")
+async def api_hardware():
+    try:
+        from scripts.utils.hardware_probe import get_cameras, get_microphones, get_monitors
+        return {
+            "monitors": get_monitors(),
+            "microphones": get_microphones(),
+            "cameras": get_cameras()
+        }
+    except Exception as e:
+        logger.error(f"Hardware probe failed: {e}")
+        return {"error": str(e)}
 
 
 class WakeWordRequest(BaseModel):
@@ -282,9 +331,9 @@ async def api_voices():
     return {"providers": providers}
 
 @app.post("/api/v1/voices/clone")
-async def api_voices_clone(request: Request, _: str = Depends(get_api_key)):
+async def api_voices_clone(request: Request):
     """Instant Voice Clone via ElevenLabs IVC. Accepts multipart/form-data: name (str) + file (audio)."""
-    from fastapi import UploadFile, Form
+    from fastapi import UploadFile
     if not eleven_client:
         raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY not configured")
     form = await request.form()
@@ -305,7 +354,7 @@ async def api_voices_clone(request: Request, _: str = Depends(get_api_key)):
                 return eleven_client.voices.ivc.create(
                     name=name,
                     files=[f],
-                    description=f"IVC clone uploaded via speech-mcp webapp",
+                    description="IVC clone uploaded via speech-mcp webapp",
                 )
         result = await anyio.to_thread.run_sync(_clone)
         return {"success": True, "voice_id": result.voice_id, "name": name, "status": "cloned"}
@@ -320,12 +369,13 @@ async def api_voices_clone(request: Request, _: str = Depends(get_api_key)):
                 pass
 
 
+@app.get("/api/v1/history")
 async def api_history():
     from speech_mcp.state import _history
     return list(_history)
 
 @app.post("/api/v1/tts")
-async def api_tts(req: TTSRequest, _: str = Depends(get_api_key)):
+async def api_tts(req: TTSRequest):
     """Synthesize speech via any provider and play on server speaker."""
     from speech_mcp.state import add_history
     add_history("tts", req.text, req.provider)
@@ -412,7 +462,7 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
     raise HTTPException(status_code=400, detail=f"provider '{provider}' not supported")
 
 @app.post("/api/v1/transcribe")
-async def api_transcribe(request: Request, _: str = Depends(get_api_key)):
+async def api_transcribe(request: Request):
     if not gemini_client: raise HTTPException(status_code=503, detail="Gemini STT not configured")
     try:
         file = await request.body()

@@ -1,12 +1,12 @@
-import winsound
-import time
 import os
+import winsound
+
 
 def test_playback(filename):
     if not os.path.exists(filename):
         print(f"File not found: {filename}")
         return
-    
+
     print(f"Testing playback of {filename} via winsound...")
     try:
         # SND_FILENAME = 131072

@@ -1,15 +1,18 @@
 import os
 import sys
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
 sys.path.insert(0, 'src')
 from elevenlabs.client import ElevenLabs
 from hume import HumeClient
 
+
 def run():
     print("--- Professional Voice Management Demo ---")
-    
+
     # Check ElevenLabs
     el_key = os.environ.get('ELEVENLABS_API_KEY')
     if el_key and "your_elevenlabs_api_key_here" not in el_key:

@@ -5,6 +5,7 @@ import {
   History,
   Menu,
   Settings,
+  Square,
   Target,
   X,
 } from "lucide-react";
@@ -25,7 +26,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { health, error } = useBackend();
+  const { health, error, emergencyStop } = useBackend();
   const backendOnline = !error && health?.status === "healthy";
 
   const sidebarWidth = isCollapsed ? "80px" : "280px";
@@ -255,16 +256,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               setMobileOpen(false);
             }}
           />
-          <NavItem
-            icon={<Activity size={18} />}
-            label="System Logs"
-            active={activePage === "logger"}
-            collapsed={isCollapsed}
-            onClick={() => {
-              onNavigate("logger");
-              setMobileOpen(false);
-            }}
-          />
           <div
             style={{
               marginTop: "auto",
@@ -274,11 +265,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           >
             <NavItem
               icon={<Settings size={18} />}
-              label="Settings"
+              label="Device Settings"
               active={activePage === "settings"}
               collapsed={isCollapsed}
               onClick={() => {
                 onNavigate("settings");
+                setMobileOpen(false);
+              }}
+            />
+            <NavItem
+              icon={<Activity size={18} />}
+              label="System Health"
+              active={activePage === "health"}
+              collapsed={isCollapsed}
+              onClick={() => {
+                onNavigate("health");
                 setMobileOpen(false);
               }}
             />
@@ -509,16 +510,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               setMobileOpen(false);
             }}
           />
-          <NavItem
-            icon={<Activity size={18} />}
-            label="System Logs"
-            active={activePage === "logger"}
-            collapsed={false}
-            onClick={() => {
-              onNavigate("logger");
-              setMobileOpen(false);
-            }}
-          />
           <div
             style={{
               marginTop: "auto",
@@ -528,11 +519,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           >
             <NavItem
               icon={<Settings size={18} />}
-              label="Settings"
+              label="Device Settings"
               active={activePage === "settings"}
               collapsed={false}
               onClick={() => {
                 onNavigate("settings");
+                setMobileOpen(false);
+              }}
+            />
+            <NavItem
+              icon={<Activity size={18} />}
+              label="System Health"
+              active={activePage === "health"}
+              collapsed={false}
+              onClick={() => {
+                onNavigate("health");
                 setMobileOpen(false);
               }}
             />
@@ -618,25 +619,51 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigate("settings")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 16px",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 10,
-              color: "white",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            <Settings size={15} /> Settings
-          </button>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              type="button"
+              onClick={() => emergencyStop()}
+              title="EMERGENCY STOP (Cancel All Audio & Timers)"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 20px",
+                background: "#ef4444",
+                border: "none",
+                borderRadius: 10,
+                color: "white",
+                fontSize: 14,
+                fontWeight: 900,
+                cursor: "pointer",
+                boxShadow: "0 0 15px rgba(239, 68, 68, 0.4)",
+                transition: "transform 0.1s active",
+              }}
+              onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")}
+              onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            >
+              <Square size={16} fill="white" /> STOP
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate("settings")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 16px",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 10,
+                color: "white",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <Settings size={15} /> Settings
+            </button>
+          </div>
         </header>
 
         <div style={{ flex: 1, padding: "32px", overflowY: "auto" }}>

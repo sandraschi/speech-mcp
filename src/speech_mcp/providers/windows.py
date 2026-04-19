@@ -1,7 +1,8 @@
+import logging
 import os
 import tempfile
+
 import pyttsx3
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ class WindowsProvider:
     """
 
     def __init__(self):
-        # We don't persist the 'engine' because pyttsx3 is sensitive 
+        # We don't persist the 'engine' because pyttsx3 is sensitive
         # to threading and loop context if not handled carefully.
         pass
 
@@ -28,12 +29,12 @@ class WindowsProvider:
         """
         tmp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
         tmp.close()
-        
+
         try:
             engine = pyttsx3.init()
             engine.save_to_file(text, tmp.name)
             engine.runAndWait()
-            
+
             # Allow engine to finalize File I/O
             with open(tmp.name, "rb") as f:
                 data = f.read()

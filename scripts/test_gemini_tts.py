@@ -1,5 +1,7 @@
 import os
+
 from dotenv import load_dotenv
+
 from speech_mcp.providers.gemini import GeminiProvider
 
 load_dotenv()
@@ -17,12 +19,12 @@ def test_gemini_tts():
         print(f"Synthesizing: {text}")
         wav_bytes = provider.synthesize_wav(text)
         print(f"Generated {len(wav_bytes)} bytes of WAV data.")
-        
+
         # Save to file for manual check if needed
         with open("test_gemini.wav", "wb") as f:
             f.write(wav_bytes)
         print("Saved to test_gemini.wav")
-        
+
     except Exception as e:
         print(f"Failure: {e}")
         import traceback
