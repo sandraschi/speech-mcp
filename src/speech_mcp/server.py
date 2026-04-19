@@ -255,22 +255,122 @@ async def api_ask(req: AskRequest):
 @app.get("/api/v1/voices")
 async def api_voices():
     providers = []
-    if hume_client: providers.append({"name": "hume", "status": "available", "voices": ["ito", "kora"]})
-    if eleven_client: providers.append({"name": "elevenlabs", "status": "available", "voices": []})
-    if gemini_client: providers.append({"name": "gemini", "status": "available", "voices": gemini_client.voices})
-    providers.append({"name": "windows", "status": "available", "voices": ["default"]})
+    if hume_client:
+        providers.append({"name": "hume", "status": "available", "voices": ["ito", "kora"]})
+    if eleven_client:
+        try:
+            resp = await anyio.to_thread.run_sync(lambda: eleven_client.voices.get_all())
+            el_voices = [v.voice_id for v in resp.voices]
+        except Exception as e:
+            logger.warning(f"ElevenLabs voices fetch failed: {e}")
+            el_voices = []
+        providers.append({"name": "elevenlabs", "status": "available", "voices": el_voices})
+    if gemini_client:
+        providers.append({"name": "gemini", "status": "available", "voices": gemini_client.voices})
+    # Windows SAPI5 — enumerate installed voices
+    try:
+        import pyttsx3
+        def _get_win_voices():
+            engine = pyttsx3.init()
+            vs = engine.getProperty("voices")
+            engine.stop()
+            return [v.name for v in vs] if vs else ["default"]
+        win_voices = await anyio.to_thread.run_sync(_get_win_voices)
+    except Exception:
+        win_voices = ["default"]
+    providers.append({"name": "windows", "status": "available", "voices": win_voices})
     return {"providers": providers}
 
-@app.get("/api/v1/history")
+@app.post("/api/v1/voices/clone")
+async def api_voices_clone(request: Request, _: str = Depends(get_api_key)):
+    """Instant Voice Clone via ElevenLabs IVC. Accepts multipart/form-data: name (str) + file (audio)."""
+    from fastapi import UploadFile, Form
+    if not eleven_client:
+        raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY not configured")
+    form = await request.form()
+    name = form.get("name", "")
+    file: UploadFile | None = form.get("file")
+    if not name:
+        raise HTTPException(status_code=400, detail="name field required")
+    if not file:
+        raise HTTPException(status_code=400, detail="file field required")
+    suffix = os.path.splitext(file.filename or "audio.mp3")[1] or ".mp3"
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp_path = tmp.name
+            tmp.write(await file.read())
+        def _clone():
+            with open(tmp_path, "rb") as f:
+                return eleven_client.voices.ivc.create(
+                    name=name,
+                    files=[f],
+                    description=f"IVC clone uploaded via speech-mcp webapp",
+                )
+        result = await anyio.to_thread.run_sync(_clone)
+        return {"success": True, "voice_id": result.voice_id, "name": name, "status": "cloned"}
+    except Exception as e:
+        logger.exception("Voice clone failed")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+
 async def api_history():
     from speech_mcp.state import _history
     return list(_history)
 
+@app.post("/api/v1/tts")
+async def api_tts(req: TTSRequest, _: str = Depends(get_api_key)):
+    """Synthesize speech via any provider and play on server speaker."""
+    from speech_mcp.state import add_history
+    add_history("tts", req.text, req.provider)
+    try:
+        if req.provider == "gemini":
+            if not gemini_client:
+                raise HTTPException(status_code=503, detail="Gemini not configured")
+            await anyio.to_thread.run_sync(
+                lambda: gemini_client.synthesize_and_play(req.text, voice=req.voice_id)
+            )
+            return {"success": True, "provider": "gemini", "voice": req.voice_id}
+        if req.provider == "hume":
+            if not hume_client:
+                raise HTTPException(status_code=503, detail="Hume not configured")
+            from speech_mcp.tools.speech import _hume_speak
+            await _hume_speak(hume_client, req.text, description=req.emotion)
+            return {"success": True, "provider": "hume"}
+        if req.provider == "elevenlabs":
+            if not eleven_client:
+                raise HTTPException(status_code=503, detail="ElevenLabs not configured")
+            from speech_mcp.tools.speech import _elevenlabs_speak
+            await anyio.to_thread.run_sync(
+                lambda: _elevenlabs_speak(eleven_client, req.text, voice_id=req.voice_id)
+            )
+            return {"success": True, "provider": "elevenlabs", "voice": req.voice_id}
+        # fallback: windows
+        import pyttsx3
+        def _win():
+            engine = pyttsx3.init()
+            engine.say(req.text)
+            engine.runAndWait()
+        await anyio.to_thread.run_sync(_win)
+        return {"success": True, "provider": "windows"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("TTS endpoint failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/v1/tts/wav")
-async def api_tts_wav(text: str, provider: str = "windows"):
+async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "default"):
     from speech_mcp.state import add_history
     add_history("tts", text, provider)
-    if not text: raise HTTPException(status_code=400, detail="text param required")
+    if not text:
+        raise HTTPException(status_code=400, detail="text param required")
     if provider == "windows":
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
@@ -280,8 +380,34 @@ async def api_tts_wav(text: str, provider: str = "windows"):
             engine.save_to_file(text, tmp_path)
             engine.runAndWait()
         await anyio.to_thread.run_sync(_synth)
-        with open(tmp_path, "rb") as f: wav_bytes = f.read()
+        with open(tmp_path, "rb") as f:
+            wav_bytes = f.read()
         os.remove(tmp_path)
+        return Response(content=wav_bytes, media_type="audio/wav")
+    if provider == "elevenlabs":
+        if not eleven_client:
+            raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY not configured")
+        effective_voice = voice_id if voice_id and voice_id != "default" else None
+        if not effective_voice:
+            raise HTTPException(status_code=400, detail="voice_id required for ElevenLabs preview")
+        def _synth_el():
+            audio = bytearray()
+            for chunk in eleven_client.text_to_speech.convert(
+                voice_id=effective_voice,
+                text=text,
+                output_format="mp3_44100_128",
+            ):
+                audio.extend(chunk)
+            return bytes(audio)
+        mp3_bytes = await anyio.to_thread.run_sync(_synth_el)
+        return Response(content=mp3_bytes, media_type="audio/mpeg")
+    if provider == "gemini":
+        if not gemini_client:
+            raise HTTPException(status_code=503, detail="Gemini not configured")
+        effective_voice = voice_id if voice_id and voice_id != "default" else "Kore"
+        def _synth_gemini():
+            return gemini_client.synthesize_wav(text, voice_name=effective_voice)
+        wav_bytes = await anyio.to_thread.run_sync(_synth_gemini)
         return Response(content=wav_bytes, media_type="audio/wav")
     raise HTTPException(status_code=400, detail=f"provider '{provider}' not supported")
 

@@ -1,12 +1,13 @@
 import base64
+import io
 import json
 import logging
 import os
 import tempfile
+import wave
 from typing import Any
 
 import anyio
-import websockets
 from elevenlabs.client import ElevenLabs
 from fastapi import WebSocket, WebSocketDisconnect
 from pythonosc import udp_client
@@ -66,6 +67,14 @@ async def handle_websocket_stream(
                 await websocket.close(code=1008, reason="GOOGLE key not configured")
                 return
             await _handle_gemini(websocket, api_key, voice_id)
+        elif provider == "gemini_live":
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                await websocket.close(code=1008, reason="GOOGLE key not configured")
+                return
+            voice_id = websocket.query_params.get("voice", "Kore")
+            system = websocket.query_params.get("system", "")
+            await _handle_gemini_live(websocket, api_key, voice_id, system)
         elif provider == "stt":
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
@@ -121,40 +130,201 @@ async def _handle_hume(websocket: WebSocket, api_key: str):
     pass
 
 async def _handle_gemini(websocket: WebSocket, api_key: str, voice_id: str):
-    gemini_url = f"wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService/MultimodalLive?key={api_key}"
-    async with websockets.connect(gemini_url) as gemini_ws:
-        setup_frame = {
-            "setup": {
-                "model": "models/gemini-2.0-flash-exp",
-                "generation_config": {
-                    "response_modalities": ["AUDIO"],
-                    "speech_config": {"voice_config": {"prebuilt_voice_config": {"voice_name": voice_id}}},
-                },
-            }
-        }
-        await gemini_ws.send(json.dumps(setup_frame))
-        async def g2c():
-            async for m in gemini_ws:
-                data = json.loads(m)
-                if "serverContent" in data:
-                    content = data["serverContent"]
-                    if "modelTurn" in content:
-                        for p in content["modelTurn"]["parts"]:
-                            if "inlineData" in p:
-                                await websocket.send_bytes(base64.b64decode(p["inlineData"]["data"]))
-                elif "setupComplete" in data:
-                    pass
-        async def c2g():
-            while True:
-                msg = await websocket.receive_json()
-                if msg.get("type") == "tts":
-                    f = {"clientContent": {"turns": [{"parts": [{"text": msg["text"]}]}], "turnComplete": True}}
-                    await gemini_ws.send(json.dumps(f))
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(g2c)
-            tg.start_soon(c2g)
+    """Synthesize via GeminiProvider and send as a single WAV chunk."""
+    from speech_mcp.providers.gemini import GeminiProvider
+    try:
+        provider = GeminiProvider()
+    except Exception as e:
+        await websocket.send_json({"type": "error", "message": f"Gemini init failed: {e}"})
+        await websocket.close()
+        return
 
-async def _handle_stt_stream(websocket: WebSocket, api_key: str):
+    while True:
+        try:
+            msg = await websocket.receive_json()
+        except Exception:
+            break
+        if msg.get("type") == "interrupt":
+            break
+        if msg.get("type") == "tts":
+            text = msg.get("text", "")
+            if not text:
+                continue
+            effective_voice = voice_id if voice_id and voice_id.lower() != "default" else "Kore"
+            try:
+                wav_bytes = await anyio.to_thread.run_sync(
+                    lambda: provider.synthesize_wav(text, voice_name=effective_voice)
+                )
+                await websocket.send_bytes(wav_bytes)
+            except Exception as e:
+                logger.exception("Gemini WS TTS failed")
+                await websocket.send_json({"type": "error", "message": str(e)})
+
+def _pcm_to_wav_bytes(pcm_bytes: bytes, sample_rate: int = 24000) -> bytes:
+    """Wrap raw 16-bit mono PCM in a WAV container."""
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)  # 16-bit
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_bytes)
+    return buf.getvalue()
+
+
+async def _handle_gemini_live(
+    websocket: WebSocket,
+    api_key: str,
+    voice_id: str = "Kore",
+    system_instruction: str = "",
+):
+    """
+    Full-duplex Gemini Live voice chat proxy.
+
+    Browser  <──PCM 16kHz──>  this WS  <──PCM 16kHz──>  Gemini Live API
+                              (wraps output PCM in WAV for browser AudioContext)
+
+    Browser sends:
+      - binary frames: raw 16-bit PCM at 16kHz (mic audio)
+      - JSON text frames: { type: "text", text: "..." }  (text injection)
+      - JSON text frames: { type: "interrupt" }           (barge-in)
+      - JSON text frames: { type: "end_turn" }            (signal turn complete)
+
+    Browser receives:
+      - binary frames: WAV-wrapped 24kHz PCM chunks (model audio)
+      - JSON text frames: { type: "transcript", role: "user"|"model", text: "..." }
+      - JSON text frames: { type: "turn_complete" }
+      - JSON text frames: { type: "interrupted" }
+      - JSON text frames: { type: "error", message: "..." }
+    """
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=api_key)
+
+    model = "gemini-3.1-flash-live-preview"
+    config = types.LiveConnectConfig(
+        response_modalities=["AUDIO"],
+        speech_config=types.SpeechConfig(
+            voice_config=types.VoiceConfig(
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice_id)
+            )
+        ),
+        output_audio_transcription=types.AudioTranscriptionConfig(),
+        input_audio_transcription=types.AudioTranscriptionConfig(),
+        system_instruction=system_instruction or None,
+        thinking_config=types.ThinkingConfig(thinking_level="minimal"),
+    )
+
+    try:
+        async with client.aio.live.connect(model=model, config=config) as session:
+            logger.info("Gemini Live session opened (voice=%s)", voice_id)
+
+            # Notify browser that session is ready
+            await websocket.send_text(json.dumps({"type": "session_ready", "voice": voice_id, "model": model}))
+
+            async def browser_to_gemini():
+                """Read from browser WebSocket, forward to Gemini."""
+                while True:
+                    try:
+                        # Try to receive — could be binary (PCM) or text (JSON control)
+                        msg = await websocket.receive()
+                        if msg["type"] == "websocket.disconnect":
+                            break
+
+                        if msg.get("bytes") is not None:
+                            # Raw PCM from browser mic (16kHz, 16-bit, mono)
+                            await session.send_realtime_input(
+                                audio=types.Blob(
+                                    data=msg["bytes"],
+                                    mime_type="audio/pcm;rate=16000",
+                                )
+                            )
+                        elif msg.get("text") is not None:
+                            try:
+                                ctrl = json.loads(msg["text"])
+                                if ctrl.get("type") == "text":
+                                    # Inject text as user message
+                                    await session.send_realtime_input(
+                                        text=ctrl.get("text", "")
+                                    )
+                                elif ctrl.get("type") == "end_turn":
+                                    await session.send_realtime_input(audio_stream_end=True)
+                                elif ctrl.get("type") == "interrupt":
+                                    # Browser-initiated barge-in — just stop sending audio
+                                    # Gemini VAD handles server-side interruption
+                                    pass
+                            except json.JSONDecodeError:
+                                pass
+                    except WebSocketDisconnect:
+                        break
+                    except Exception as e:
+                        logger.debug("browser_to_gemini error: %s", e)
+                        break
+
+            async def gemini_to_browser():
+                """Read from Gemini Live session, forward to browser."""
+                async for response in session.receive():
+                    try:
+                        sc = response.server_content
+                        if sc is None:
+                            continue
+
+                        # Barge-in / interruption from server
+                        if sc.interrupted:
+                            await websocket.send_text(json.dumps({"type": "interrupted"}))
+                            continue
+
+                        # Audio chunks
+                        if sc.model_turn:
+                            for part in sc.model_turn.parts:
+                                if part.inline_data and part.inline_data.data:
+                                    wav = _pcm_to_wav_bytes(part.inline_data.data)
+                                    await websocket.send_bytes(wav)
+
+                        # Output transcription (model speech → text)
+                        if hasattr(sc, "output_transcription") and sc.output_transcription:
+                            t = sc.output_transcription
+                            if hasattr(t, "text") and t.text:
+                                await websocket.send_text(json.dumps({
+                                    "type": "transcript",
+                                    "role": "model",
+                                    "text": t.text,
+                                }))
+
+                        # Input transcription (user speech → text)
+                        if hasattr(sc, "input_transcription") and sc.input_transcription:
+                            t = sc.input_transcription
+                            if hasattr(t, "text") and t.text:
+                                await websocket.send_text(json.dumps({
+                                    "type": "transcript",
+                                    "role": "user",
+                                    "text": t.text,
+                                }))
+
+                        # Turn complete
+                        if sc.turn_complete:
+                            await websocket.send_text(json.dumps({"type": "turn_complete"}))
+
+                    except WebSocketDisconnect:
+                        break
+                    except Exception as e:
+                        logger.debug("gemini_to_browser error: %s", e)
+                        try:
+                            await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
+                        except Exception:
+                            pass
+                        break
+
+            async with anyio.create_task_group() as tg:
+                tg.start_soon(browser_to_gemini)
+                tg.start_soon(gemini_to_browser)
+
+    except Exception as e:
+        logger.exception("Gemini Live session error: %s", e)
+        try:
+            await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
+        except Exception:
+            pass
     gemini_url = f"wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService/MultimodalLive?key={api_key}"
     async with websockets.connect(gemini_url) as gemini_ws:
         setup = {

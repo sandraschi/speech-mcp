@@ -36,12 +36,29 @@ None are required — the server starts and defaults to Windows TTS with no keys
 
 ## Provider Availability Matrix
 
-| Provider | Key | Audio quality | Style control | Notes |
+| Provider | Key | Mode | Audio quality | Notes |
 |---|---|---|---|---|
-| `windows` | None | Low (SAPI5 robotic) | None | Always works, instant |
-| `hume` | `HUME_API_KEY` | High (Octave) | `description` prose prompt | Dynamic voice generation if no voice named |
-| `gemini` | `GOOGLE_API_KEY` | Very high | Audio tags in text | Model: `gemini-3.1-flash-tts-preview` (released 2026-04-15) |
-| `elevenlabs` | `ELEVENLABS_API_KEY` | High | Limited | Voice cloning supported |
+| `windows` | None | Batch | Low (SAPI5 robotic) | Always works, instant, no API key |
+| `hume` | `HUME_API_KEY` | Batch | High (Octave) | `description` prose style prompt |
+| `gemini` | `GOOGLE_API_KEY` | Batch | Highest | Model: `gemini-3.1-flash-tts-preview` |
+| `elevenlabs` | `ELEVENLABS_API_KEY` | Batch | High | Voice cloning supported |
+| `gemini_live` | `GOOGLE_API_KEY` | Real-time | Very good | Full-duplex conversation, sub-second latency |
+
+---
+
+## Gemini Live (Real-Time Voice Chat)
+
+Uses the same `GOOGLE_API_KEY` as batch TTS. No additional key needed.
+
+Model: `gemini-3.1-flash-live-preview`
+
+Audio format: input 16kHz int16 PCM, output 24kHz int16 PCM (wrapped in WAV per chunk by the backend proxy).
+
+Session limit: 10 minutes. Reconnect to continue; context is not automatically carried over.
+
+Available voices in VoiceChat UI: Aoede, Charon, Fenrir, Kore (default), Orion, Puck, Leda, Orus, Zephyr.
+
+See [docs/gemini_live.md](gemini_live.md) for full protocol documentation.
 
 ---
 

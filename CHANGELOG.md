@@ -2,7 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0] - 2026-04-17
+## [0.5.0] - 2026-04-19
+
+### Added — Gemini Live real-time voice chat
+
+- New `VoiceChat` webapp page — full-duplex voice conversation with `gemini-3.1-flash-live-preview`
+  - Mic capture via `ScriptProcessor` → downsample 48kHz float32 → 16kHz int16 PCM → binary WS frames
+  - Gapless audio playback via `AudioContext` with sequential chunk scheduling
+  - Barge-in support: browser sends `{ type: "interrupt" }`, server sends `{ type: "interrupted" }` to flush buffer
+  - Input and output transcript overlay in real time
+  - Voice selector (9 prebuilt voices) and system prompt/persona config before session start
+  - Text injection mid-session (for robot bridge use case)
+  - Session state machine: idle → connecting → ready → idle
+- New `_handle_gemini_live()` in `streaming.py`
+  - Secure proxy: `browser ↔ speech-mcp backend ↔ Gemini Live API` (API key stays server-side)
+  - Uses `google-genai` SDK `client.aio.live.connect()` with `LiveConnectConfig`
+  - Model: `gemini-3.1-flash-live-preview` with `thinkingLevel="minimal"` for lowest latency
+  - Output PCM chunks wrapped in WAV headers per-chunk before forwarding (browser `decodeAudioData` compatibility)
+  - Concurrent coroutines: `browser_to_gemini` (audio + control) and `gemini_to_browser` (audio + transcripts)
+  - Handles `server_content.interrupted`, `turn_complete`, `output_transcription`, `input_transcription`
+  - System prompt and voice passed as WebSocket URL params
+- `docs/gemini_live.md` — full documentation: architecture diagram, audio pipeline, message protocol, browser/backend message tables, voice comparison table, robot integration pattern, known limitations
+
+### Added — ElevenLabs voice cloning (VoicesPage now functional)
+
+- `/api/v1/voices` now calls `eleven_client.voices.get_all()` — returns real voice list instead of empty array
+- `/api/v1/voices/clone` — new POST endpoint accepting multipart `name` + audio `file`, calls `eleven_client.voices.ivc.create()`
+- `/api/v1/tts/wav` extended to support `elevenlabs` provider (returns MP3) and `gemini` provider; accepts `voice_id` param
+- Windows SAPI5 voices now enumerated via `pyttsx3.getProperty("voices")` instead of hardcoded `["default"]`
+- `VoicesPage.tsx` — clone panel now has real `<input type="file">` wired to `FormData` POST; voice list refreshes after successful clone; preview URL passes `voice_id`; success/error shown in separate styled banners
+
+### Fixed — Gemini streaming (CreativeLabs / Prosody Lab buttons)
+
+- `_handle_gemini` in `streaming.py` replaced: was attempting to use Gemini Multimodal Live WS API which returns raw PCM incompatible with browser `decodeAudioData`; now uses `GeminiProvider.synthesize_wav()` — full WAV sent as single binary frame
+- `StreamPlayback.tsx`: added `playKey` to `useEffect` dependency array — re-clicking same text now re-triggers synthesis
+
+### Fixed — Webapp sidebar not showing on startup
+
+- `AppLayout.tsx` fully rewritten using inline styles instead of Tailwind utility classes for layout skeleton
+- Root cause: Tailwind v4 Vite plugin was not reliably generating `lg:relative`, `-translate-x-full`, `lg:translate-x-0` classes from dynamic string interpolations; sidebar rendered as `fixed` overlay with zero visible area
+- Sidebar is now always in the flex document flow on desktop (not `fixed`); separate `position: fixed` overlay for mobile with CSS media query
+- `index.css`: added `html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0 }` — flex layout had nothing to stretch into
+- `App.css`: cleared leftover Vite scaffold (`max-width: 1280px; margin: 0 auto; padding: 2rem`) which was constraining `#root`
+- Sidebar collapsed state no longer persists across page loads (was silently collapsing sidebar to icon-strip)
+
+### Added — Sidebar nav items
+
+- **Voice Chat** nav item (🗣️) — routes to new `VoiceChat` page
+- **Creative Labs** nav item (🧪) — was missing despite page existing
+
+
 
 ### Fixed — Server startup (breaking bugs)
 - `tools/ui.py` imported `fastmcp.ui` which does not exist — replaced with correct

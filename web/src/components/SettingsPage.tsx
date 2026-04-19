@@ -52,10 +52,9 @@ const SettingsPage: React.FC = () => {
       const data = await response.json();
       if (data.success && data.models.length > 0) {
         setAvailableModels(data.models);
-        // If current model isn't in retrieved list, pick first
-        if (!data.models.includes(localModel)) {
-          setLocalModel(data.models[0]);
-        }
+        setLocalModel((prev) =>
+          data.models.includes(prev) ? prev : data.models[0],
+        );
       } else {
         setAvailableModels([]);
       }
@@ -65,12 +64,13 @@ const SettingsPage: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [localProvider, ollamaUrl, lmstudioUrl, localModel]);
+  }, [localProvider, ollamaUrl, lmstudioUrl]);
 
-  // Proactive Detection
+  // Sync once on mount only
   useEffect(() => {
     handleSyncModels();
-  }, [handleSyncModels]); // Re-sync when provider changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSave = () => {
     localStorage.setItem("LOCAL_PROVIDER", localProvider);

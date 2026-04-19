@@ -17,6 +17,7 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
   streamUrl,
   provider,
   text,
+  playKey = 0,
   onDone,
 }) => {
   const socketRef = useRef<WebSocket | null>(null);
@@ -144,7 +145,7 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
       socketRef.current?.close();
       audioContextRef.current?.close().catch(() => {});
     };
-  }, [streamUrl, text, onDone]);
+  }, [streamUrl, text, playKey, onDone]);
 
   if (status === "idle") return null;
 

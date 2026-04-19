@@ -22,6 +22,7 @@ const VoicesPage: React.FC = () => {
   const [isFetching, setIsFetching] = useState(true);
   const [isCloning, setIsCloning] = useState(false);
   const [ttsError, setTtsError] = useState("");
+  const [cloneSuccess, setCloneSuccess] = useState("");
   const [cloneName, setCloneName] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -64,7 +65,7 @@ const VoicesPage: React.FC = () => {
       "This is a neural synthesis preview from the Speech MCP Gateway.";
     try {
       const res = await fetch(
-        `${BACKEND}/api/v1/tts/wav?text=${encodeURIComponent(text)}&provider=${voice.provider}&voice_id=${voice.id}`,
+        `${BACKEND}/api/v1/tts/wav?text=${encodeURIComponent(text)}&provider=${voice.provider}&voice_id=${encodeURIComponent(voice.id)}`,
       );
       if (!res.ok) throw new Error(`Backend ${res.status}`);
       const blob = await res.blob();
@@ -80,17 +81,43 @@ const VoicesPage: React.FC = () => {
     }
   };
 
+  const [cloneFile, setCloneFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const handleClone = async () => {
-    if (!cloneName) return;
+    if (!cloneName || !cloneFile) return;
     setIsCloning(true);
-    // Simulation since we can't upload file via this specific REST endpoint yet
-    // But we'll show the intent
-    setTimeout(() => {
+    setTtsError("");
+    try {
+      const token = localStorage.getItem("SPEECH_MCP_AUTH_TOKEN") || "";
+      const formData = new FormData();
+      formData.append("name", cloneName);
+      formData.append("file", cloneFile);
+      const res = await fetch(`${BACKEND}/api/v1/voices/clone`, {
+        method: "POST",
+        headers: token ? { "X-Speech-MCP-Auth": token } : {},
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.detail || data.error || "Clone failed");
+      setCloneSuccess(`Cloned OK — voice_id: ${data.voice_id}`);
+      setTtsError("");
+      setCloneName("");
+      setCloneFile(null);
+      // Refresh voice list
+      const fresh = await fetchVoices();
+      const all: Voice[] = [];
+      fresh.providers?.forEach((p: { voices: string[]; name: string }) => {
+        p.voices.forEach((v: string) => {
+          all.push({ id: v, name: v, provider: p.name, type: "base", isFavorite: false });
+        });
+      });
+      setVoices(all);
+    } catch (e) {
+      setTtsError(e instanceof Error ? e.message : String(e));
+    } finally {
       setIsCloning(false);
-      setTtsError(
-        "Snippet cloning requires ELEVENLABS_API_KEY. Feature active in backend.",
-      );
-    }, 1500);
+    }
   };
 
   const filtered = voices.filter((v) => v.provider === provider);
@@ -118,6 +145,12 @@ const VoicesPage: React.FC = () => {
         <div className="glass-card p-4 border border-rose-500/30 text-rose-400 text-sm font-bold uppercase tracking-wider flex items-center gap-3">
           <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
           {ttsError}
+        </div>
+      )}
+      {cloneSuccess && (
+        <div className="glass-card p-4 border border-emerald-500/30 text-emerald-400 text-sm font-bold uppercase tracking-wider flex items-center gap-3">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          {cloneSuccess}
         </div>
       )}
 
@@ -225,13 +258,26 @@ const VoicesPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-1 border-2 border-dashed border-white/5 rounded-2xl p-8 text-center hover:border-violet-500/20 transition-all cursor-pointer bg-white/[0.01]">
+          <div
+            className="flex-1 border-2 border-dashed border-white/5 rounded-2xl p-8 text-center hover:border-violet-500/20 transition-all cursor-pointer bg-white/[0.01]"
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg"
+              className="hidden"
+              onChange={(e) => setCloneFile(e.target.files?.[0] ?? null)}
+            />
             <div className="text-4xl mb-4 opacity-40">🧬</div>
             <p className="text-sm font-black text-white uppercase tracking-tighter">
-              Snippet Ingestion
+              {cloneFile ? cloneFile.name : "Snippet Ingestion"}
             </p>
             <p className="text-[10px] text-white/20 mt-2 uppercase tracking-widest font-bold">
-              MP3, WAV, M4A — 5s minimum
+              {cloneFile ? `${(cloneFile.size / 1024).toFixed(0)} KB — click to change` : "MP3, WAV, M4A — 5s minimum"}
             </p>
           </div>
 
@@ -255,7 +301,7 @@ const VoicesPage: React.FC = () => {
           <button
             type="button"
             onClick={handleClone}
-            disabled={isCloning || !cloneName}
+            disabled={isCloning || !cloneName || !cloneFile}
             className="w-full btn-primary py-4 uppercase font-black tracking-widest text-xs flex items-center justify-center gap-2"
           >
             {isCloning && <Loader2 size={14} className="animate-spin" />}

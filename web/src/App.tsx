@@ -14,6 +14,7 @@ import SettingsPage from "./components/SettingsPage";
 import { SpeechToText } from "./components/SpeechToText";
 import SystemLogs from "./components/SystemLogs";
 import ToolsPage from "./components/ToolsPage";
+import VoiceChat from "./components/VoiceChat";
 import VoicesPage from "./components/VoicesPage";
 
 const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
@@ -136,6 +137,8 @@ function App() {
       <AppLayout onNavigate={setActivePage} activePage={activePage}>
         {activePage === "dashboard" ? (
           <Dashboard onNavigate={setActivePage} />
+        ) : activePage === "voicechat" ? (
+          <VoiceChat />
         ) : activePage === "voices" ? (
           <VoicesPage />
         ) : activePage === "semantic" ? (

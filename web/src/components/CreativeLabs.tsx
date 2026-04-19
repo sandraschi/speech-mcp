@@ -1,6 +1,5 @@
 import {
   Activity,
-  ChevronDown,
   Globe,
   Languages,
   Music,
