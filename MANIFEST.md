@@ -3,7 +3,7 @@
 | Attribute | Value |
 | :--- | :--- |
 | **Name** | speech-mcp |
-| **Version** | 0.4.0 |
+| **Version** | 0.5.1 |
 | **Status** | Beta |
 | **FastMCP** | 3.2.4 |
 | **Python** | 3.13 |

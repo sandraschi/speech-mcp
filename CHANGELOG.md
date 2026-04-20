@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2026-04-20
+
+### Fixed — Infrastructure Hardening
+- Added `src/speech_mcp/__init__.py` to ensure the directory is recognized as a valid Python package in all environments.
+- Hardened startup configuration: disabled FastMCP banners and update checks to avoid handshake timeouts in restricted fleet environments.
+- Explicitly defined `stdio` transport as the default for MCP communication.
+- Synchronized repository dependencies via `uv sync`.
+
 ## [0.5.0] - 2026-04-19
 
 ### Added — Gemini Live real-time voice chat
