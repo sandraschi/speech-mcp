@@ -53,6 +53,7 @@ def register_speech_tools(
     hume_client: HumeClient | None,
     eleven_client: ElevenLabs | None,
     gemini_client: Any | None = None,
+    gemma_client: Any | None = None,
 ):
 
     @mcp.tool()
@@ -105,6 +106,8 @@ def register_speech_tools(
           - 'gemini'      Gemini 3.1 Flash TTS (GOOGLE_API_KEY). Embed audio
                           tags in text: [excited], [whispers], [laughs], etc.
                           Open vocabulary — any emotion in English works.
+          - 'gemma'       Gemma 4 Native Local (No API Key). SOTA 2026 local
+                          multimodal engine for low-latency agentic workflows.
           - 'elevenlabs'  ElevenLabs (ELEVENLABS_API_KEY). voice_id must be a
                           valid voice ID from your account. Use
                           manage_voice_clones to list available voices.
@@ -243,6 +246,21 @@ def register_speech_tools(
                         os.remove(tmp_path)
                     except OSError:
                         pass
+
+        # ── Gemma 4 Native Local ──────────────────────────────────────────────
+        elif provider == "gemma":
+            if not gemma_client:
+                return {"success": False, "error": "Gemma provider not initialized"}
+            try:
+                await gemma_client.synthesize_and_play(text, voice=voice_id)
+                return {
+                    "success": True, "provider": "Gemma 4 Native Local",
+                    "voice": voice_id, "status": "played",
+                    "note": "Native audio encoder pipeline used."
+                }
+            except Exception as e:
+                logger.exception("Gemma TTS failed")
+                return {"success": False, "error": str(e)}
 
         # ── ElevenLabs ─────────────────────────────────────────────────────────
         elif provider == "elevenlabs":

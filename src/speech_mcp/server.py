@@ -29,6 +29,7 @@ from hume import HumeClient
 from pydantic import BaseModel
 
 from speech_mcp.providers.gemini import GeminiProvider
+from speech_mcp.providers.gemma import gemma_provider
 from speech_mcp.state import _timers, get_store
 from speech_mcp.streaming import handle_websocket_stream
 from speech_mcp.tools.agentic import register_agentic_tools
@@ -45,6 +46,17 @@ if TYPE_CHECKING:
     pass
 
 load_dotenv()
+
+# --- SOTA 2026 Startup Hardening ---
+# Suppress FastMCP noise for industrial stdio stability
+os.environ["FASTMCP_BANNER"] = "0"
+os.environ["FASTMCP_UPDATE_CHECK"] = "0"
+
+# Resolve google-genai stdout collision warning (prevents handshake corruption)
+# Antigravity/Claude often sets GEMINI_API_KEY globally; we prioritize GOOGLE_API_KEY.
+if os.getenv("GOOGLE_API_KEY") and os.getenv("GEMINI_API_KEY"):
+    os.environ.pop("GEMINI_API_KEY", None)
+
 HUME_API_KEY = os.getenv("HUME_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
@@ -127,7 +139,9 @@ except Exception as e:
     logger.warning(f"Gemini client initialization skipped: {e}")
     gemini_client = None
 
-register_speech_tools(mcp, hume_client, eleven_client, gemini_client)
+gemma_client = gemma_provider
+
+register_speech_tools(mcp, hume_client, eleven_client, gemini_client, gemma_client)
 register_agentic_tools(mcp, hume_client)
 register_utility_tools(mcp)
 register_monitoring_tools(mcp)
@@ -227,6 +241,7 @@ async def health_check():
             "hume": bool(hume_client),
             "elevenlabs": bool(eleven_client),
             "gemini": bool(gemini_client),
+            "gemma": True, # Local engine always assumed available
             "windows": True,
         },
     }
@@ -316,6 +331,8 @@ async def api_voices():
         providers.append({"name": "elevenlabs", "status": "available", "voices": el_voices})
     if gemini_client:
         providers.append({"name": "gemini", "status": "available", "voices": gemini_client.voices})
+    if gemma_client:
+        providers.append({"name": "gemma", "status": "available", "voices": gemma_client.voices})
     # Windows SAPI5 — enumerate installed voices
     try:
         import pyttsx3
@@ -380,6 +397,11 @@ async def api_tts(req: TTSRequest):
     from speech_mcp.state import add_history
     add_history("tts", req.text, req.provider)
     try:
+        if req.provider == "gemma":
+            if not gemma_client:
+                raise HTTPException(status_code=503, detail="Gemma not initialized")
+            await gemma_client.synthesize_and_play(req.text, voice=req.voice_id)
+            return {"success": True, "provider": "gemma", "voice": req.voice_id}
         if req.provider == "gemini":
             if not gemini_client:
                 raise HTTPException(status_code=503, detail="Gemini not configured")
@@ -463,10 +485,15 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
 
 @app.post("/api/v1/transcribe")
 async def api_transcribe(request: Request):
-    if not gemini_client: raise HTTPException(status_code=503, detail="Gemini STT not configured")
+    if not gemini_client and not gemma_client:
+        raise HTTPException(status_code=503, detail="No STT providers (Gemini/Gemma) configured")
     try:
         file = await request.body()
-        transcript = await anyio.to_thread.run_sync(lambda: gemini_client.transcribe(file, mime_type="audio/wav"))
+        if gemma_client:
+            # Prefer local SOTA 2026 engine
+            transcript = await gemma_client.transcribe(file, mime_type="audio/wav")
+        else:
+            transcript = await anyio.to_thread.run_sync(lambda: gemini_client.transcribe(file, mime_type="audio/wav"))
         return {"success": True, "transcript": transcript}
     except Exception as e:
         logger.exception("API transcription failed")

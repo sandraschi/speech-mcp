@@ -18,6 +18,7 @@ A modern multi-provider speech gateway featuring **Gemini Live real-time voice c
 |---|---|---|---|
 | `gemini_live` | Real-time conversation | Very good | `GOOGLE_API_KEY` |
 | `gemini` | Batch TTS | Highest | `GOOGLE_API_KEY` |
+| `gemma` | Batch TTS/STT | SOTA Local | None |
 | `hume` | Batch TTS (Octave) | High | `HUME_API_KEY` |
 | `elevenlabs` | Batch TTS + voice cloning | High | `ELEVENLABS_API_KEY` |
 | `windows` | Batch TTS (SAPI5) | Low | None |
@@ -26,9 +27,9 @@ A modern multi-provider speech gateway featuring **Gemini Live real-time voice c
 
 ## Key Features
 
-**Gemini Live Real-Time Voice Chat** — Full-duplex WebSocket session with `gemini-3.1-flash-live-preview`. Sub-second latency, barge-in interruption, affective dialog, input/output transcripts. Designed for robot control (Yahboom) and conversational agents.
+**Gemma 4 Native Multimodal** — SOTA 2026 local engine integration. Features native audio/vision encoders for low-latency conversational reasoning. Supports prosody-aware interaction and local-first Zero-STT fallback. Optimized for A4B throughput (100+ t/s).
 
-**Gemini 3.1 Flash TTS** — Highest-quality batch synthesis (`gemini-3.1-flash-tts-preview`, released 2026-04-15). 31 prebuilt voices, 100+ languages, expressive audio tags (`[whispers]`, `[excited]`, `[dramatically]`, etc.).
+**Gemini 3.1 Flash TTS** — Highest-quality cloud synthesis (`gemini-3.1-flash-tts-preview`). 31 prebuilt voices, 100+ languages, expressive audio tags (`[whispers]`, `[excited]`, etc.).
 
 **Creative Labs** — Polyglot synthesis demo with 19 languages (European, Slavic, Classical, Experimental, Global), literary samples, voice selection, prosody slider, and tongue-twister panel.
 

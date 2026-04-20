@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-04-20
+
+### Added — Gemma 4 Native Multimodal Industrialization
+
+- Integrated `GemmaProvider` for SOTA 2026 local-first interaction.
+- Native STT/TTS pipelines leveraging Gemma 4's audio encoders.
+- Hybrid transcription fallback: prefers local Gemma engine, falls back to Cloud Gemini on failure.
+- Prosody-aware local synthesis (Phase 1 prototype).
+- Updated health checks and voice discovery to prioritize local engines.
+
 ## [0.5.1] - 2026-04-20
 
 ### Fixed — Infrastructure Hardening
