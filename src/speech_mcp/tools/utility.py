@@ -1,8 +1,10 @@
 import asyncio
 import logging
 from datetime import datetime
+from typing import Annotated
 
 from fastmcp import Context, FastMCP
+from pydantic import Field
 
 from speech_mcp.state import _timers, run_timer
 
@@ -13,26 +15,28 @@ def register_utility_tools(mcp: FastMCP):
 
     @mcp.tool()
     async def manage_domestic_utility(
-        action: str,
-        type: str,
-        value: str | int | None = None,
-        label: str = "Default",
+        action: Annotated[str, Field(description="Operation: set, cancel, query")],
+        type: Annotated[str, Field(description="Utility type: timer, alarm, weather")],
+        value: Annotated[str | int | None, Field(
+            description="Duration in seconds for timers, time string for alarms."
+        )] = None,
+        label: Annotated[str, Field(description="Human-readable label.")] = "Default",
         ctx: Context = None,
     ) -> dict:
         """
-        Manages timers, alarms, and domestic utility queries (Alexa pattern).
+        Manage timers, alarms, and domestic utility queries (Alexa pattern).
 
-        PORTMANTEAU PATTERN RATIONALE:
+        [RATIONALE]
         Consolidates timer management, alarm scheduling, and weather queries into a
-        single domestic utility interface. Prevents tool proliferation.
+        single domestic utility interface to prevent tool proliferation.
 
-        Args:
-            action (str): Operation to perform. One of: 'set', 'cancel', 'query'.
-            type (str): Utility type. One of: 'timer', 'alarm', 'weather'.
-            value (str | int | None): Duration in seconds for timers, or time string
-                for alarms (e.g. '07:30').
-            label (str): Human-readable label for the utility.
-            ctx (Context): FastMCP context.
+        ## Return Format
+        {"success": bool, "timer_id"?: str, "expires_in"?: int, "status": str, "cancelled"?: list}
+
+        ## Examples
+        await manage_domestic_utility("set", "timer", value=120, label="Pasta")
+        await manage_domestic_utility("cancel", "timer", label="Pasta")
+        await manage_domestic_utility("query", "timer")
         """
         if ctx:
             await ctx.info(f"Domestic Utility: {action} {type} ({label})")

@@ -2,13 +2,14 @@ import logging
 import os
 import subprocess
 import tempfile
-from typing import Any
+from typing import Annotated, Any
 
 import anyio
 import pyttsx3
 from elevenlabs.client import ElevenLabs
 from fastmcp import Context, FastMCP
 from hume import HumeClient
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +58,16 @@ def register_speech_tools(
 ):
 
     @mcp.tool()
-    async def play_audio_file(path: str, ctx: Context = None) -> dict:
+    async def play_audio_file(
+        path: Annotated[str, Field(description="Absolute path to the audio file.")],
+        ctx: Context = None,
+    ) -> dict:
         """
         DIAGNOSTIC TOOL: Play an arbitrary audio file on the system speaker.
         Supports .wav and .mp3.
 
-        Args:
-            path: Absolute path to the audio file.
+        ## Return Format
+        {"success": bool, "path"?: str, "error"?: str}
         """
         if not os.path.exists(path):
             return {"success": False, "error": f"File not found: {path}"}
@@ -90,10 +94,16 @@ def register_speech_tools(
 
     @mcp.tool()
     async def text_to_speech(
-        text: str,
-        provider: str = "windows",
-        voice_id: str = "default",
-        description: str | None = None,
+        text: Annotated[str, Field(description="Text to synthesize and play.")],
+        provider: Annotated[str, Field(
+            description="TTS provider: windows, hume, gemini, gemma, elevenlabs."
+        )] = "windows",
+        voice_id: Annotated[str, Field(
+            description="Provider-specific voice identifier."
+        )] = "default",
+        description: Annotated[str | None, Field(
+            description="Hume-only: prose style prompt driving Octave prosody."
+        )] = None,
         ctx: Context = None,
     ) -> dict:
         """
@@ -102,26 +112,19 @@ def register_speech_tools(
         Providers:
           - 'windows'     Windows SAPI5, no API key, always works
           - 'hume'        Hume AI Octave REST (HUME_API_KEY). Use `description`
-                          for prose style: "warm, scholarly, melancholic"
+                          for prose style.
           - 'gemini'      Gemini 3.1 Flash TTS (GOOGLE_API_KEY). Embed audio
                           tags in text: [excited], [whispers], [laughs], etc.
-                          Open vocabulary — any emotion in English works.
-          - 'gemma'       Gemma 4 Native Local (No API Key). SOTA 2026 local
-                          multimodal engine for low-latency agentic workflows.
+          - 'gemma'       Gemma 4 Native Local (No API Key).
           - 'elevenlabs'  ElevenLabs (ELEVENLABS_API_KEY). voice_id must be a
-                          valid voice ID from your account. Use
-                          manage_voice_clones to list available voices.
+                          valid voice ID from your account.
 
-        Args:
-            text:        Text to speak.
-            provider:    See above. Default: 'windows'.
-            voice_id:    Provider-specific voice identifier:
-                         - hume: named voice or 'default' (dynamic generation)
-                         - gemini: prebuilt voice name e.g. Kore, Aoede, Charon
-                         - elevenlabs: voice ID string from your EL account
-                         - windows: ignored
-            description: Hume only — prose style prompt driving Octave prosody.
-            ctx:         FastMCP context for logging.
+        ## Return Format
+        {"success": bool, "provider": str, "voice_id": str}
+
+        ## Examples
+        await text_to_speech("Hello world", provider="windows")
+        await text_to_speech("[excited] Great job!", provider="gemini", voice_id="Kore")
         """
         if ctx:
             await ctx.info(f"TTS [{provider}/{voice_id}]: {text[:60]}")

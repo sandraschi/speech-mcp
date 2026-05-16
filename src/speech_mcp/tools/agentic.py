@@ -1,11 +1,13 @@
 import os
+from typing import Annotated
 
 from fastmcp import Context, FastMCP
 from hume import HumeClient
+from pydantic import Field
 
 
 def _local_proxy_url() -> str:
-    base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10918")
+    base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10909")
     return base.replace("https://", "wss://").replace("http://", "ws://") + "/ws/stream"
 
 
@@ -15,7 +17,11 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
     async def start_evi_session(ctx: Context = None) -> dict:
         """
         Initializes a real-time Empathic Voice Interface session.
+
         Connects Hume EVI via the side-channel stream.
+
+        ## Return Format
+        {"success": bool, "websocket_url": str, "status": str, "next_steps": list}
         """
         if ctx:
             await ctx.info("Initializing Hume EVI session via standard relay.")
@@ -32,13 +38,19 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
         }
 
     @mcp.tool()
-    async def detect_wake_word(ctx: Context, session_id: str | None = None) -> dict:
+    async def detect_wake_word(
+        ctx: Context,
+        session_id: Annotated[str | None, Field(description="Optional session ID for VAD scoping.")] = None,
+    ) -> dict:
         """
-        Integrates powerful Gemini Multimodal Live VAD for activation.
+        Arm Gemini Multimodal Live VAD for voice activity detection.
 
         The Gemini 3.1 Live API performs server-side Voice Activity Detection.
-        This tool arms the system to listen for 'speech_started' events from the
-        active WebSocket stream.
+        Arms the system to listen for 'speech_started' events from the active
+        WebSocket stream.
+
+        ## Return Format
+        {"success": bool, "status": str, "provider": str, "trigger_mode": str}
         """
         if ctx:
             await ctx.info(f"Arming Gemini Live VAD telemetry for session: {session_id or 'default'}")
@@ -60,12 +72,16 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
     @mcp.tool()
     async def orchestrate_alexa_pattern(
         ctx: Context,
-        user_goal: str,
+        user_goal: Annotated[str, Field(description="The user's high-level goal for the interaction.")],
     ) -> dict:
         """
-        'Alexa 2.0' Style Modern Mission Orchestrator.
+        Run an Alexa 2.0-style proactive mission orchestration.
+
         Interleaves listening, emotional prosody analysis, and adaptive responding.
-        Uses FastMCP 3.x sampling for strategy.
+        Uses FastMCP ctx.sample() for strategy generation.
+
+        ## Return Format
+        {"success": bool, "status": str, "mission_strategy": str, "next_steps": list}
         """
         if ctx:
             await ctx.info(f"Orchestrating modern conversational pattern for goal: {user_goal}")
@@ -101,18 +117,18 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
     @mcp.tool()
     async def agentic_conversation_workflow(
-        goal: str,
+        goal: Annotated[str, Field(description="High-level objective for the conversational mission.")],
         ctx: Context = None,
     ) -> dict:
         """
-        SEP-1577 COMPLIANT MISSION ORCHESTRATOR.
+        Run a SEP-1577 compliant autonomous conversation mission.
 
         Performs autonomous conversation management, cognitive refinement, and
-        integrates powerful barge-in telemetry.
+        integrates barge-in telemetry. Uses ctx.sample() and ctx.elicit() for
+        iterative reasoning.
 
-        Args:
-            goal: The high-level objective for the conversational mission.
-            ctx: FastMCP Context for sampling and elicitation.
+        ## Return Format
+        {"success": bool, "goal": str, "strategy_adopted": str, "status": str, "next_steps": list}
         """
         if not ctx:
             return {"success": False, "error": "Context required for agentic workflow"}

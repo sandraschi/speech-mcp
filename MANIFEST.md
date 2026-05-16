@@ -56,7 +56,7 @@ Beyond TTS, the server includes semantic search over its own documentation (RAG)
 | `start_evi_session` | ⚠️ Stub | Hume EVI WS |
 | `detect_wake_word` | ⚠️ Armed | Tier 1 VAD |
 | `orchestrate_alexa_pattern`| ✅ Working | Skill orchestration |
-| `configure_local_wake_word`| ✅ Working | Porcupine listener |
+| `configure_local_wake_word`| ✅ Working | openWakeWord listener |
 
 ---
 

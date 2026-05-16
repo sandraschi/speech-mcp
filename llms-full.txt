@@ -1,13 +1,13 @@
 # Speech-MCP (Multi-Provider Speech Gateway)
 
 ![Status: Beta](https://img.shields.io/badge/Status-Beta-orange?style=for-the-badge)
-![FastMCP: 2.14.5](https://img.shields.io/badge/FastMCP-2.14.5-blue?style=for-the-badge)
+![FastMCP: 3.2.4](https://img.shields.io/badge/FastMCP-3.2.4-blue?style=for-the-badge)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 SOTA-grade MCP server and web application for industrial voice orchestration, supporting Hume AI (EVI/Octave) and ElevenLabs.
 
 > [!IMPORTANT]
-> **Status: Beta (v0.1.0)**. This project is in active development. Features are stable but subject to optimization in upcoming 0.x releases.
+> **Status: Beta (v0.6.0)**. Multi-provider speech gateway with Gemini 3.1, Hume AI, ElevenLabs TTS and voice cloning.
 
 ## 🚀 Overview
 
@@ -18,7 +18,7 @@ Speech-MCP is a federated gateway for advanced voice AI. It provides a unified M
 - **Hume AI Integration**:
     - **EVI 2/3**: Real-time empathic voice interface with prosody-driven responses.
     - **Octave TTS**: Emotionally aware text-to-speech.
-- **ElevenLabs Integration** (Roadmap/Alpha):
+- **ElevenLabs Integration** (Stable):
     - **Professional Voice Cloning (PVC)**: State-of-the-art neural cloning.
     - **Multilingual TTS**: Support for 32+ languages with emotional nuances.
 - **SOTA Webapp**: A premium dark-mode interface with glassmorphism, emotion visualizers, and neural dynamic tracking.
@@ -26,8 +26,8 @@ Speech-MCP is a federated gateway for advanced voice AI. It provides a unified M
 ## 📦 Deployment & Setup
 
 ### Ports
-- **Backend (MCP)**: `10760`
-- **Frontend (Web)**: `10761`
+- **Backend (MCP)**: `10909`
+- **Frontend (Web)**: `10908`
 
 ### Environment Variables
 Create a `.env` file in the root:
@@ -64,19 +64,20 @@ As a **Beta** release, we have identified several orchestration frontiers and te
 - **Frontend State Persistence**: Audio stream settings do not currently persist across hard refreshes.
 - **Agentic Loop Latency**: Iterative sampling (SEP-1577) adds a cognitive overhead of ~2-3 seconds per mission phase.
 
-### Completion Estimates
-- [ ] **v0.2.0 (March 2026)**: ElevenLabs real-time emotion mapping.
-- [ ] **v0.3.0 (April 2026)**: Local-first persistence layer (SQLite/LanceDB).
+### Completed Milestones
+- [x] **v0.2.0**: ElevenLabs integration and emotion mapping.
+- [x] **v0.3.0**: Local-first persistence layer (LanceDB RAG).
+- [x] **v0.5.0**: Gemini 3.1 Flash TTS, voice cloning, webapp dashboard.
 - [ ] **v1.0.0 (H2 2026)**: Production-ready industrial stability.
 
 ---
 
 ## ⚖️ Standards & Compliance
 
-- **FastMCP 2.14.5**: Full adherence to modern agentic standards.
+- **FastMCP 3.2.4**: Full adherence to modern agentic standards.
 - **Dialogic Response Patterns**: All tools return structured metadata (`next_steps`, `recovery_options`, `quality_metrics`) for high-fidelity AI dialogue.
 - **Portmanteau Pattern**: Consolidated tool schema to prevent tool explosion.
-- **Networking**: Dual-server substrate on port **10760** (FastAPI + MCP SSE).
+- **Networking**: Dual-server substrate on port **10909** (FastAPI + MCP SSE).
 
 ## 🧠 Agentic Features
 
@@ -117,7 +118,7 @@ For professional deployments, use the `release.ps1` script:
 
 ### CI/CD Pipeline
 - **Continuous Integration**: GitHub Actions runs `ruff` and `uv` sync checks on every push.
-- **Automated Releases**: Pushing tags (e.g., `v0.1.0`) triggers a GitHub Release with automated binary builds and release notes.
+- **Automated Releases**: Pushing tags (e.g., `v0.6.0`) triggers a GitHub Release with automated binary builds and release notes.
 
 ### Installation & Environment
 This project is **UV-compatible**.
@@ -129,9 +130,9 @@ uv lock
 # Launch
 .\start.bat
 ```
-# Agentic Orchestration Guide (FastMCP 2.14.5)
+# Agentic Orchestration Guide (FastMCP 3.2.4)
 
-This document details the advanced cognitive orchestration layer of Speech-MCP, leveraging the **FastMCP 2.14.5** standards.
+This document details the advanced cognitive orchestration layer of Speech-MCP, leveraging the **FastMCP 3.2.4** standards.
 
 > [!IMPORTANT]
 > **Antigravity Native**: Currently, the **Antigravity IDE** is the only orchestration environment capable of fully understanding and iteratively closing the cognitive loops defined in this specification.
@@ -181,7 +182,7 @@ Predicting the end of a turn by analyzing the **micro-latency** and **pitch-bend
 
 ### Webapp Consumption (TypeScript)
 [webapp_consumption.ts](file:///D:/Dev/repos/speech-mcp/examples/webapp_consumption.ts)
-> Illustrates the "Proactive Orchestration" pattern for SOTA web interfaces on port 10761.
+> Illustrates the "Proactive Orchestration" pattern for SOTA web interfaces on port 10908.
 
 ---
 

@@ -19,10 +19,12 @@ import logging
 import struct
 import threading
 from collections.abc import Callable
+from typing import Annotated
 
 import openwakeword
 from fastmcp import Context, FastMCP
 from openwakeword.model import Model
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
@@ -106,23 +108,29 @@ def register_wake_word_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     async def configure_local_wake_word(
         ctx: Context,
-        keyword: str = "hey_jarvis",
-        sensitivity: float = 0.5,
-        action: str = "start",
+        keyword: Annotated[str, Field(
+            description="Wake word model: alexa, hey_jarvis, hey_mycroft, hey_rhasspy, timers, weather"
+        )] = "hey_jarvis",
+        sensitivity: Annotated[float, Field(
+            description="Detection threshold 0.0-1.0.", ge=0.0, le=1.0
+        )] = 0.5,
+        action: Annotated[str, Field(description="Operation: start, stop, or status")] = "start",
     ) -> dict:
         """
-        Start or stop a local wake-word listener using openWakeWord (Offline).
+        Start or stop a local wake-word listener using openWakeWord (offline).
 
         When a wake word is detected, a log entry is written and a notification
         is sent via ctx.info. The listener runs as a background daemon thread.
 
         Built-in keyword options: 'alexa', 'hey_jarvis', 'hey_mycroft', 'hey_rhasspy', 'timers', 'weather'.
 
-        Args:
-            keyword:     Wake word model name. Default: 'hey_jarvis'.
-            sensitivity: Detection threshold 0.0–1.0. Default: 0.5.
-            action:      'start' to begin listening, 'stop' to halt,
-                         'status' to query. Default: 'start'.
+        ## Return Format
+        {"success": bool, "status": str, "engine": str, "keyword"?: str, "listening"?: bool}
+
+        ## Examples
+        await configure_local_wake_word(keyword="hey_jarvis", action="start")
+        await configure_local_wake_word(action="status")
+        await configure_local_wake_word(action="stop")
         """
         global _listener_thread, _stop_event
 

@@ -1,12 +1,12 @@
 arazzo: 1.0.0
 info:
   title: Speech-MCP Agentic Workflows
-  version: 0.2.0
+  version: 0.6.0
   description: Workflows for industrial "Alexa 2.0" conversational patterns and agentic coaching.
 
 sourceDescriptions:
   - name: speech-mcp-api
-    url: http://localhost:10760
+    url: http://localhost:10909
     type: openapi
     # Note: In a real implementation, this would point to the FastAPI OpenAPI spec
 

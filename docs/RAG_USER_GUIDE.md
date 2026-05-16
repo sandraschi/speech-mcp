@@ -27,17 +27,17 @@ Returns a synthesized answer citing the actual documents used. The answer is gro
 
 ## Using it from the Webapp
 
-Open `http://localhost:10761` and navigate to **Semantic Memory**. The search bar queries the same LanceDB index in real time. Results show filename, relevance score, and a content preview.
+Open `http://localhost:10908` and navigate to **Semantic Memory**. The search bar queries the same LanceDB index in real time. Results show filename, relevance score, and a content preview.
 
 The REST endpoint is also directly accessible:
 
 ```
-GET http://localhost:10760/api/v1/search?q=expressive+synthesis
+GET http://localhost:10909/api/v1/search?q=expressive+synthesis
 ```
 
 ## What's in the knowledge base
 
-The index is built from markdown files in `data/docs/`. Current coverage includes:
+The index is built from markdown files in `docs/`. Current coverage includes:
 
 - Hume AI EVI v2/v3 and Octave TTS documentation
 - ElevenLabs voice cloning and multilingual synthesis
@@ -47,11 +47,11 @@ The index is built from markdown files in `data/docs/`. Current coverage include
 
 ## Adding your own documents
 
-Drop any markdown file into `data/docs/` and run the reindexing script:
+Drop any markdown file into `docs/` and run the reindexing script:
 
 ```powershell
 cd D:\Dev\repos\speech-mcp
-.venv\Scripts\python.exe scripts/reindex_docs.py
+uv run scripts/reindex_docs.py
 ```
 
 The script scans the folder, chunks documents into ~512-token segments with overlap, generates embeddings using the local `BAAI/bge-small-en-v1.5` model (runs on CPU, ~150MB RAM), and upserts into LanceDB. Existing entries for unchanged files are not duplicated.
@@ -69,7 +69,7 @@ Good candidates to add: your own voice project notes, custom TTS workflow docs, 
 | Search latency | <5ms on local hardware |
 | `ask_docs` synthesis | FastMCP `ctx.sample()` → Claude |
 
-The index survives server restarts. No re-indexing needed unless `data/docs/` content changes.
+The index survives server restarts. No re-indexing needed unless `docs/` content changes.
 
 ## Limitations
 

@@ -1,4 +1,5 @@
-﻿Param([switch]$Headless)
+Param([switch]$Headless)
+$SkipFrontend = $Headless
 
 # --- SOTA Headless Standard ---
 if ($Headless -and ($Host.UI.RawUI.WindowTitle -notmatch 'Hidden')) {
@@ -8,9 +9,9 @@ if ($Headless -and ($Host.UI.RawUI.WindowTitle -notmatch 'Hidden')) {
 $WindowStyle = if ($Headless) { 'Hidden' } else { 'Normal' }
 # ------------------------------
 
-# Webapp Start - Standardized SOTA (Auto-Repaired V2.5)
-$WebPort = 10917
-$BackendPort = 10918
+# Webapp Start - Standardized SOTA (Auto-Repaired V2.6)
+$WebPort = 10908
+$BackendPort = 10909
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
 # 1. Kill any process squatting on the ports
@@ -25,23 +26,36 @@ foreach ($p in $pids) {
 Set-Location $PSScriptRoot
 if (-not (Test-Path "node_modules")) { npm install }
 
-# 3. Start the Python backend (Background)
+# 3. Start the Python backend (Background) and WAIT for readiness
 Write-Host "Starting Python backend on port $BackendPort ..." -ForegroundColor Cyan
-
-# Use TRIPLE backtick to ensure $env:PYTHONPATH reaches the REAL shell
-$backendCmd = "`$env:PYTHONPATH = '$ProjectRoot;$ProjectRoot\src'; Set-Location '$ProjectRoot'; uv run uvicorn speech_mcp.server:app --host 127.0.0.1 --port $BackendPort --log-level info"
-
+$backendCmd = "`$env:PYTHONPATH = '$ProjectRoot;$ProjectRoot\src'; `$env:SPEECH_MCP_PORT = '$BackendPort'; Set-Location '$ProjectRoot'; uv run python -m speech_mcp.webapp"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCmd -WindowStyle Normal
 
-# 4. Run server (Vite dev)
+Write-Host "Waiting for backend to come online..." -ForegroundColor Yellow
+$backendReady = $false
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        $null = Invoke-WebRequest -Uri "http://127.0.0.1:${BackendPort}/api/v1/health" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+        $backendReady = $true
+        Write-Host "Backend ready on port $BackendPort." -ForegroundColor Green
+        break
+    } catch {
+        Start-Sleep -Seconds 1
+    }
+}
+if (-not $backendReady) {
+    Write-Host "WARNING: Backend failed to respond within 30s. Starting frontend anyway..." -ForegroundColor Red
+}
+
+# 4. Start Vite dev server (foreground)
 Write-Host "Starting Vite frontend on port $WebPort ..." -ForegroundColor Green
 
-# 4b. Launch background task to open browser once frontend is ready (Auto-opened by Antigravity)
 $frontendUrl = "http://127.0.0.1:$WebPort/"
-$pollAndOpen = "for (` = 0; ` -lt 60; `++) { try { ` = Invoke-WebRequest -Uri '`' -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop; Start-Process '`'; exit } catch { Start-Sleep -Seconds 1 } }"
+$pollAndOpen = "for (`$i = 0; `$i -lt 40; `$i++) { try { `$null = Invoke-WebRequest -Uri '$frontendUrl' -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop; Start-Process '$frontendUrl'; exit } catch { Start-Sleep -Seconds 1 } }"
 Start-Process powershell -ArgumentList "-NoProfile", "-WindowStyle", "Hidden", "-Command", $pollAndOpen
 
 Write-Host "Browser will open automatically when Vite is ready." -ForegroundColor Gray
+if ($SkipFrontend) { return }
 npm run dev -- --port $WebPort --host
 
 

@@ -1,6 +1,6 @@
 # Speech-MCP
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Status: Alpha](https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge)](https://github.com/sandraschi/speech-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Status: Beta](https://img.shields.io/badge/Status-Beta-blue?style=for-the-badge)](https://github.com/sandraschi/speech-mcp)
 
 A modern multi-provider speech gateway featuring **Gemini Live real-time voice chat**, **Gemini 3.1 Flash TTS**, **Hume AI Octave**, and **ElevenLabs** voice cloning.
 
@@ -76,7 +76,7 @@ uv run python -m speech_mcp.webapp
 cd web && npm install && npm run dev
 ```
 
-Backend: `http://localhost:10918` — Frontend: `http://localhost:10917`
+Backend: `http://localhost:10909` — Frontend: `http://localhost:10908`
 
 For Claude Desktop MCP integration see [docs/configuration.md](docs/configuration.md).
 

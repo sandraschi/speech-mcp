@@ -1,4 +1,4 @@
-# speech-mcp Integration Guide: OpenClaw and OpenFang
+# speech-mcp Integration Guide: OpenClaw and DeepFang
 
 **Status**: Design / Partial Implementation  
 **Date**: 2026-02-27
@@ -10,7 +10,7 @@
 Speech-mcp provides the voice layer for two larger systems in the fleet:
 
 - **OpenClaw** — the messaging gateway (WhatsApp, Telegram, Discord, Slack). Speech-mcp gives OpenClaw a voice output channel and transcription input channel.
-- **OpenFang** — the agentic mesh orchestrator. Speech-mcp gives OpenFang Council of Dozens debates an audible read-out, and gives the Resonite avatar embodiment a voice.
+- **DeepFang** — the agentic mesh orchestrator. Speech-mcp gives DeepFang Council of Dozens debates an audible read-out, and gives the Resonite avatar embodiment a voice.
 
 These integrations are independent and can be enabled selectively.
 
@@ -41,12 +41,12 @@ import httpx
 async def speak_message(text: str, provider: str = "windows"):
     """Synthesize a message via speech-mcp REST API."""
     async with httpx.AsyncClient() as client:
-        # speech-mcp webapp must be running on port 10760
+        # speech-mcp webapp must be running on port 10909
         resp = await client.get(
-            "http://localhost:10760/api/v1/voices"
+            "http://localhost:10909/api/v1/voices"
         )
         # Then trigger synthesis via the MCP tool (if via Claude session)
-        # or via a direct WebSocket to ws://localhost:10760/ws/stream
+        # or via a direct WebSocket to ws://localhost:10909/ws/stream
         return resp.json()
 ```
 
@@ -62,13 +62,13 @@ When an urgent WhatsApp message arrives while you're at the server, OpenClaw rec
 
 ---
 
-## Part 2: OpenFang Integration
+## Part 2: DeepFang Integration
 
-### What OpenFang is
+### What DeepFang is
 
-OpenFang is the agentic orchestration platform at `D:\Dev\repos\openfang`. Its core feature is the **Council of Dozens** — multi-agent debate sessions where each council member is an LLM adjudicator (or a physical sensor, or a Resonite avatar) reasoning from a specific lens.
+DeepFang is the agentic orchestration platform at `D:\Dev\repos\deepfang`. Its core feature is the **Council of Dozens** — multi-agent debate sessions where each council member is an LLM adjudicator (or a physical sensor, or a Resonite avatar) reasoning from a specific lens.
 
-### What speech-mcp adds to OpenFang
+### What speech-mcp adds to DeepFang
 
 | Capability | Use Case |
 |---|---|
@@ -79,7 +79,7 @@ OpenFang is the agentic orchestration platform at `D:\Dev\repos\openfang`. Its c
 
 ### Council debate audio pipeline
 
-OpenFang's `council_orchestrator.py` produces structured debate records. Speech-mcp can consume these via a bridge script:
+DeepFang's `council_orchestrator.py` produces structured debate records. Speech-mcp can consume these via a bridge script:
 
 ```python
 # scripts/council_tts_bridge.py (to be implemented)
@@ -102,7 +102,7 @@ async def speak_council_round(adjudicator: str, text: str):
     # REST path (webapp must be running):
     async with httpx.AsyncClient() as client:
         await client.get(
-            f"http://localhost:10760/api/v1/voices"
+            f"http://localhost:10909/api/v1/voices"
             # Full audio trigger requires WebSocket stream consumer
         )
 ```
@@ -111,10 +111,10 @@ In the full implementation each adjudicator would have a distinct voice — Hume
 
 ### RAG cross-pollination
 
-OpenFang has its own RAG (`src/openfang/core/openfang_rag.py`) for its knowledge base. Speech-mcp's `search_docs` tool can be added as a bridge in OpenFang's bridge registry, making speech AI documentation available to council members reasoning about voice interface decisions:
+DeepFang has its own RAG (`src/deepfang/core/deepfang_rag.py`) for its knowledge base. Speech-mcp's `search_docs` tool can be added as a bridge in DeepFang's bridge registry, making speech AI documentation available to council members reasoning about voice interface decisions:
 
 ```json
-// In openfang/configs/bridge_registry.json (add entry)
+// In deepfang/configs/bridge_registry.json (add entry)
 {
   "speech-mcp": {
     "tools": ["search_docs", "ask_docs"],
@@ -125,18 +125,18 @@ OpenFang has its own RAG (`src/openfang/core/openfang_rag.py`) for its knowledge
 }
 ```
 
-### OpenFang fleet registration
+### DeepFang fleet registration
 
-Speech-mcp should be registered in the OpenFang fleet:
+Speech-mcp should be registered in the DeepFang fleet:
 
 ```json
-// Add to openfang/configs/federation_map.json
+// Add to deepfang/configs/federation_map.json
 {
   "server_id": "speech-mcp",
   "name": "Speech MCP",
   "description": "Multi-provider TTS (Hume AI, ElevenLabs, Windows), RAG knowledge base for speech AI",
-  "port": 10760,
-  "webapp_port": 10761,
+  "port": 10909,
+  "webapp_port": 10908,
   "repo": "D:/Dev/repos/speech-mcp",
   "tags": ["speech", "tts", "voice", "rag", "hume", "elevenlabs"],
   "requires_env": ["HUME_API_KEY", "ELEVENLABS_API_KEY"],
@@ -146,7 +146,7 @@ Speech-mcp should be registered in the OpenFang fleet:
 
 ---
 
-## Part 3: OpenFang + OpenClaw together
+## Part 3: DeepFang + OpenClaw together
 
 The full pipeline once all three are connected:
 
@@ -159,12 +159,12 @@ User (voice or text)
 OpenClaw gateway (routes to Claude session)
     │
     ▼
-Claude + speech-mcp + OpenFang MCP tools loaded
+Claude + speech-mcp + DeepFang MCP tools loaded
     │
-    ├── Claude invokes OpenFang council session
+    ├── Claude invokes DeepFang council session
     ├── Council runs, produces synthesis
     ├── Claude calls text_to_speech on synthesis result
-    └── Audio streams to speaker via ws://localhost:10760/ws/stream
+    └── Audio streams to speaker via ws://localhost:10909/ws/stream
 ```
 
 This is a working design — no components need to be built from scratch, only wired.
@@ -177,7 +177,7 @@ This is a working design — no components need to be built from scratch, only w
 |---|---|---|
 | speech-mcp standalone | Working | — |
 | OpenClaw → speech-mcp REST | Design only | Need OpenClaw skill implementation |
-| OpenFang fleet registration | Not done | Add to federation_map.json |
+| DeepFang fleet registration | Not done | Add to federation_map.json |
 | Council TTS bridge script | Not done | Needs council_tts_bridge.py |
 | Bridge registry entry | Not done | Needs federation_map.json update |
 | Resonite avatar voice | See RESONITE_AVATAR_VOICE.md | OSC + speech-mcp wiring needed |

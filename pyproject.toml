@@ -1,13 +1,12 @@
 [project]
 name = "speech-mcp"
-version = "0.5.1"
-description = "MCP server for Hume AI EVI and Octave (Alpha)"
+version = "0.6.0"
+description = "Multi-provider speech gateway with Gemini, Hume AI, ElevenLabs TTS (Beta)"
 requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=3.2.0,<4",
     "hume>=0.7.0",
     "elevenlabs>=0.2.0",
-    "pvporcupine>=3.0.0",
     "pyaudio>=0.2.14",
     "websockets",
     "python-dotenv",

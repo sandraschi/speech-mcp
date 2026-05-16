@@ -22,7 +22,7 @@ The RAG process follows a two-stage lifecycle:
 
 ### A. Ingestion (Triggered manually/CI)
 - **Script**: `scripts/reindex_docs.py`
-- **When**: Run whenever documentation in `data/docs/` changes.
+- **When**: Run whenever documentation in `docs/` changes.
 - **Process**:
     1. Scan markdown files.
     2. Extract metadata (filename, headers).

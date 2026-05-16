@@ -208,7 +208,19 @@ const HelpPage: React.FC = () => {
           />
           <FaqItem
             q="Backend shows offline?"
-            a="Ensure the backend is running on the port the frontend expects (default 10918). Set VITE_API_URL in web/.env if you use a different port."
+            a="Ensure the backend is running on the port the frontend expects (default 10909). Set VITE_API_URL in web/.env if you use a different port."
+          />
+          <FaqItem
+            q="What is agentic sampling?"
+            a="FastMCP 3.2 ctx.sample() lets speech-mcp borrow the client's LLM for autonomous reasoning. Used in ask_docs (RAG + LLM) and agentic_conversation_workflow (goal refinement + strategy)."
+          />
+          <FaqItem
+            q="What is the MCP bridge?"
+            a="speech-mcp supports ProxyProvider bridging — it can import tools from other MCP servers via their SSE endpoints. Configure MCP_BRIDGE_URLS in .env as a comma-separated list (e.g. http://127.0.0.1:10807/mcp)."
+          />
+          <FaqItem
+            q="What tools are available?"
+            a="TTS (5 providers), STT, wake word, RAG search/ask, agentic workflows, voice cloning, IoT action bridge, timers/alarms, and Prefab UI dashboards. Run configure_local_wake_word action='list' for available wake words."
           />
         </div>
       </section>

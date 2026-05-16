@@ -1,4 +1,7 @@
+from typing import Annotated
+
 from fastmcp import Context, FastMCP
+from pydantic import Field
 
 from speech_mcp.state import get_store
 
@@ -6,16 +9,21 @@ from speech_mcp.state import get_store
 def register_rag_tools(mcp: FastMCP):
 
     @mcp.tool()
-    def search_docs(query: str, limit: int = 5) -> dict:
+    async def search_docs(
+        query: Annotated[str, Field(description="Natural language search query.")],
+        limit: Annotated[int, Field(description="Maximum number of results.")] = 5,
+        ctx: Context = None,
+    ) -> dict:
         """
         Semantic search over the speech-mcp knowledge base (RAG).
 
-        Uses LanceDB + FastEmbed (BAAI/bge-small-en-v1.5) to find relevant
-        documentation chunks.
+        Uses LanceDB + FastEmbed (BAAI/bge-small-en-v1.5) to find relevant documentation chunks.
 
-        Args:
-            query (str): Natural language search query.
-            limit (int): Maximum number of results to return. Default: 5.
+        ## Return Format
+        {"success": bool, "data": [{"filename": str, "score": float, "content": str}]}
+
+        ## Examples
+        await search_docs("expressive speech synthesis", limit=3)
         """
         results = get_store().search(query, limit=limit)
         return {
@@ -31,18 +39,23 @@ def register_rag_tools(mcp: FastMCP):
         }
 
     @mcp.tool()
-    async def ask_docs(question: str, ctx: Context) -> dict:
+    async def ask_docs(
+        question: Annotated[str, Field(description="Natural language question about speech AI.")],
+        ctx: Context,
+    ) -> dict:
         """
-        Ask complex questions about speech AI using RAG + LLM sampling.
+        Answer complex questions about speech AI using RAG + LLM sampling.
 
         Retrieves relevant documentation chunks from LanceDB, then uses
-        FastMCP 3.x ctx.sample() to generate a grounded answer.
+        FastMCP ctx.sample() to generate a grounded answer.
 
-        Args:
-            question (str): Natural language question.
-            ctx (Context): FastMCP context.
+        ## Return Format
+        {"success": bool, "answer": str, "sources": [str]}
+
+        ## Examples
+        await ask_docs("What providers does speech-mcp support?", ctx)
         """
-        search_result = search_docs(question, limit=8)
+        search_result = await search_docs(question, limit=8)
         if not search_result["success"]:
             return {**search_result, "recovery_options": ["Try search_docs directly"]}
 

@@ -1,6 +1,6 @@
 # Speech-MCP Tools Reference
 
-## v0.4.0 — April 2026
+## v0.6.0 — May 2026
 
 ---
 
@@ -189,8 +189,8 @@ Bar chart of token usage across recent speech sessions. Uses `BarChart` +
 
 ### `configure_local_wake_word`
 
-Configures Picovoice Porcupine for local wake-word detection.
-Requires `PICOVOICE_API_KEY` in `.env`.
+Configures openWakeWord for local wake-word detection.
+No API key required — runs fully offline.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|

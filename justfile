@@ -39,15 +39,15 @@ install:
     Set-Location '{{justfile_directory()}}'
     uv sync
 
-# Start the FastAPI webapp backend (port 10918)
+# Start the FastAPI webapp backend (port 10909)
 backend:
     Set-Location '{{justfile_directory()}}'
-    uv run uvicorn speech_mcp.server:app --host 127.0.0.1 --port 10918 --reload
+    $env:SPEECH_MCP_PORT = '10909'; uv run python -m speech_mcp.webapp
 
-# Start the Vite frontend (port 10917)
+# Start the Vite frontend (port 10908)
 frontend:
     Set-Location '{{justfile_directory()}}\web'
-    npm run dev
+    npm run dev -- --port 10908
 
 # Start both backend and frontend (two tabs)
 start:
@@ -161,34 +161,10 @@ demo-el-dialogue v1="" v2="":
 
 # ── Demo — Wake word ───────────────────────────────────────────────────────────
 
-# List all available built-in Porcupine keywords
+# List available openWakeWord keywords
 demo-wake-keywords:
-    Set-Location '{{justfile_directory()}}'
-    uv run python -c "import pvporcupine; print('Available keywords:'); [print(f'  {k}') for k in sorted(pvporcupine.KEYWORDS)]"
-
-# Start wake word listener for 30 seconds — say "computer" to trigger
-demo-wake-word keyword="computer":
-    Set-Location '{{justfile_directory()}}'
-    uv run python -c " \
-    import sys, os, time, threading; sys.path.insert(0, 'src'); \
-    from dotenv import load_dotenv; load_dotenv(); \
-    import pvporcupine, pyaudio; \
-    key = os.environ.get('PICOVOICE_API_KEY', ''); \
-    if not key: print('Set PICOVOICE_API_KEY in .env'); exit(1); \
-    detected = threading.Event(); \
-    def run(): \
-        p = pvporcupine.create(access_key=key, keywords=['{{keyword}}'], sensitivities=[0.5]); \
-        pa = pyaudio.PyAudio(); \
-        st = pa.open(rate=p.sample_rate, channels=1, format=pyaudio.paInt16, input=True, frames_per_buffer=p.frame_length); \
-        print(f'Listening for \"{{keyword}}\" for 30s... say it!'); \
-        deadline = time.time() + 30; \
-        while time.time() < deadline and not detected.is_set(): \
-            pcm_b = st.read(p.frame_length, exception_on_overflow=False); \
-            pcm = [int.from_bytes(pcm_b[i:i+2], 'little', signed=True) for i in range(0, len(pcm_b), 2)]; \
-            if p.process(pcm) >= 0: print('DETECTED: {{keyword}}!'); detected.set(); \
-        st.stop_stream(); st.close(); pa.terminate(); p.delete(); \
-    t = threading.Thread(target=run, daemon=True); t.start(); t.join(31); \
-    print('Done.' if detected.is_set() else 'Timeout — no detection.')"
+    @Write-Host 'openWakeWord keywords: "computer", "alexa", "hey_jarvis", "hey_google"' -ForegroundColor Cyan
+    @Write-Host 'Use the configure_local_wake_word MCP tool in a Claude session to activate.' -ForegroundColor Gray
 
 # Run the interactive weather demo with Gemini voice (Optional city parameter)
 # Usage: just demo-weather city="London"
@@ -217,7 +193,7 @@ demo-live:
 demo-live-ui:
     @Write-Host 'To run the Gemini Live UI Demo:' -ForegroundColor Cyan
     @Write-Host '1. Run `just start` to launch backend and frontend' -ForegroundColor White
-    @Write-Host '2. Navigate to http://localhost:10917/voice-chat' -ForegroundColor White
+    @Write-Host '2. Navigate to http://localhost:10908/voice-chat' -ForegroundColor White
     @Write-Host '3. Select a voice (e.g., Kore) and click "Start Session"' -ForegroundColor White
     @Write-Host '4. Speak into your mic or inject text for low-latency barge-in.' -ForegroundColor White
 

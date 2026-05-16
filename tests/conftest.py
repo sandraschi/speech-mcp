@@ -73,5 +73,5 @@ def mock_env(monkeypatch, request):
         monkeypatch.setenv("ELEVENLABS_API_KEY", "test_eleven_key")
         monkeypatch.setenv("GOOGLE_API_KEY", "test_google_key")
         monkeypatch.setenv("GEMINI_API_KEY", "test_google_key")
-        monkeypatch.setenv("PICOVOICE_API_KEY", "test_picovoice_key")
+        monkeypatch.setenv("OPENWAKEWORD_MODEL_PATH", "")
         monkeypatch.setenv("SPEECH_MCP_AUTH_TOKEN", "test_token")

@@ -12,15 +12,13 @@ HUME_CONFIG_ID=your-hume-evi-config-id   # from evi.hume.ai — needed for EVI c
 # ElevenLabs — voice cloning TTS
 ELEVENLABS_API_KEY=your-elevenlabs-api-key
 
-# Google Gemini — Gemini 2.5 Flash TTS
+# Google Gemini — Gemini 3.1 Flash TTS
 # Free key at https://aistudio.google.com/apikey
 GOOGLE_API_KEY=your-google-api-key
 
-# Picovoice — local wake-word detection (optional)
-# FREE PLAN is perpetual for personal non-commercial use (1 device, no expiry, no CC).
-# The "Free Trial" on their site is a separate 7-day enterprise eval path — ignore it.
-# Sign up at https://console.picovoice.ai/ and copy the AccessKey from the dashboard.
-PICOVOICE_API_KEY=your-picovoice-key
+# openWakeWord — local wake-word detection (optional)
+# No API key required. Runs fully offline using ONNX models.
+# Supported keywords: "computer", "alexa", "hey_jarvis", "hey_google"
 
 # Auth token for WebSocket stream endpoint (optional)
 SPEECH_MCP_AUTH_TOKEN=your-secret-token
@@ -101,9 +99,9 @@ To re-index from scratch: delete `data/lancedb/` and restart.
 
 | Service | Default port | Override |
 |---|---|---|
-| Backend (FastAPI) | `10918` | `PORT` env var |
-| Frontend (Vite) | `10917` | `web/vite.config.ts` |
-| CORS origins | `http://localhost:10917` | `CORS_ORIGINS` env var (comma-separated) |
+| Backend (FastAPI) | `10909` | `SPEECH_MCP_PORT` env var |
+| Frontend (Vite) | `10908` | `web/vite.config.ts` |
+| CORS origins | `http://localhost:10908` | `CORS_ORIGINS` env var (comma-separated) |
 
 Set `SPEECH_MCP_BACKEND_URL` if the backend runs on a different host/port.
 
@@ -150,4 +148,4 @@ C:\Users\<you>\AppData\Roaming\Claude\logs\mcp-server-speechops.log
 | Variable | Default | Description |
 |---|---|---|
 | `FASTMCP_SHOW_SERVER_BANNER` | `true` | Startup banner in logs |
-| `SPEECH_MCP_BACKEND_URL` | `http://localhost:10918` | Backend base URL for stream proxy |
+| `SPEECH_MCP_BACKEND_URL` | `http://localhost:10909` | Backend base URL for stream proxy |

@@ -41,8 +41,8 @@ This guide details how to set up and configure the Speech-MCP gateway.
     ```powershell
     just start
     ```
-    - **Frontend**: http://localhost:10917
-    - **Backend**: http://localhost:10918
+    - **Frontend**: http://localhost:10908
+    - **Backend**: http://localhost:10909
 
 ---
 
@@ -50,10 +50,8 @@ This guide details how to set up and configure the Speech-MCP gateway.
 
 | Service | Port | Protocol | Description |
 | :--- | :--- | :--- | :--- |
-| **MCP Server** | `10918` | stdio / SSE | Core tool definitions for AI agents |
-| **Web API** | `10918` | HTTP/REST | Health and control endpoints |
-| **Dashboard** | `10917` | HTTP | React/Vite user interface |
-| **Telemetry** | `10918` | WebSocket | Real-time system logs (`/ws/logs`) |
+| **Backend** | `10909` | HTTP/REST | FastAPI + MCP SSE + WebSocket |
+| **Dashboard** | `10908` | HTTP | React/Vite user interface |
 
 ---
 

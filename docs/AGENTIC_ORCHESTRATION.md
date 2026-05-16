@@ -1,6 +1,6 @@
-# Agentic Orchestration Guide (FastMCP 3.1.2+)
+# Agentic Orchestration Guide (FastMCP 3.2.4)
 
-This document details the advanced cognitive orchestration layer of Speech-MCP, leveraging the **FastMCP 3.1.2+** standards (Feb 2026).
+This document details the advanced cognitive orchestration layer of Speech-MCP, leveraging the **FastMCP 3.2.4** standards (May 2026).
 
 > [!IMPORTANT]
 > **Antigravity Extension Layer**: While compliant with standard MCP, Speech-MCP is optimized for the **Antigravity Extension Layer**, allowing for seamless multi-turn cognitive loops and autonomous sampling refinement.
@@ -50,11 +50,11 @@ Predicting the end of a turn by analyzing the **micro-latency** and **pitch-bend
 
 ### Webapp Consumption (TypeScript)
 [webapp_consumption.ts](file:///D:/Dev/repos/speech-mcp/examples/webapp_consumption.ts)
-> Illustrates the "Proactive Orchestration" pattern for Advanced web interfaces on port 10761.
+> Illustrates the "Proactive Orchestration" pattern for Advanced web interfaces on port 10908.
 
 ---
 
-## 📈 Roadmap (v0.3.0+)
+## 📈 Roadmap (v0.6.0+)
 - **Alexa 2.0 Pattern**: Interleaved VAD-driven listening and responding with near-zero latency.
 - **Cognitive Persistence**: Cross-session memory for agentic speech missions.
 - **Local LLM Glomming**: Direct orchestration with Ollama-hosted models for sub-100ms reasoning.

@@ -11,7 +11,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
-const BACKEND = "http://localhost:10918";
+const BACKEND = "http://localhost:10909";
 
 const SettingsPage: React.FC = () => {
   const [localProvider, setLocalProvider] = useState(

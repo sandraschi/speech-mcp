@@ -15,7 +15,7 @@ async function orchestrateConversation(goal: string) {
     console.log(`🎯 Orchestrating mission: ${goal}`);
 
     // 1. Call the Agentic Workflow
-    const base = import.meta.env?.VITE_API_URL || 'http://localhost:10918';
+    const base = import.meta.env?.VITE_API_URL || 'http://localhost:10909';
     const response = await fetch(`${base}/api/v1/orchestrate`, {
         method: 'POST',
         body: JSON.stringify({ goal })

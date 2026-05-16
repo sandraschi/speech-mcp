@@ -25,6 +25,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from fastmcp import Context, FastMCP
+from fastmcp.providers import ProxyProvider
 from hume import HumeClient
 from pydantic import BaseModel
 
@@ -98,6 +99,36 @@ logging.getLogger("fastmcp").addHandler(_queue_handler)
 
 logger = logging.getLogger(__name__)
 
+def _probe_rag():
+    """Verify LanceDB store is accessible before serving."""
+    try:
+        store = get_store()
+        store.list_sources()
+    except Exception as e:
+        logger.warning("RAG store probe: %s — degraded mode, search will return empty.", e)
+
+def _probe_api_keys(log: logging.Logger):
+    """Warn on missing API keys but allow degraded startup."""
+    if not os.getenv("GOOGLE_API_KEY"):
+        log.warning("GOOGLE_API_KEY not set — Gemini TTS/STT disabled.")
+    if not os.getenv("HUME_API_KEY"):
+        log.warning("HUME_API_KEY not set — Hume EVI/Octave disabled.")
+    if not os.getenv("ELEVENLABS_API_KEY"):
+        log.warning("ELEVENLABS_API_KEY not set — ElevenLabs TTS disabled.")
+    if all(k not in os.environ for k in ("GOOGLE_API_KEY", "HUME_API_KEY", "ELEVENLABS_API_KEY")):
+        log.info("No TTS API keys configured — only Windows SAPI5 available.")
+
+def _probe_bridges():
+    """Verify MCP bridge URLs are reachable."""
+    for url in _bridge_proxies:
+        try:
+            import httpx
+            resp = httpx.get(url, timeout=5.0)
+            resp.raise_for_status()
+            logger.info("Bridge probe OK: %s", url)
+        except Exception as e:
+            logger.warning("Bridge probe failed for %s: %s — bridge will be unavailable.", url, e)
+
 async def _log_broadcaster():
     while True:
         msg = await _log_queue.get()
@@ -108,8 +139,14 @@ async def lifespan(app: FastAPI):
     global _log_queue
     _log_queue = asyncio.Queue(maxsize=500)
     get_store()
+
+    # ── Startup probes ─────────────────────────────────────────────────────
+    _probe_rag()
+    _probe_api_keys(logger)
+    _probe_bridges()
+
     broadcaster = asyncio.create_task(_log_broadcaster())
-    logger.info("Speech-MCP backend started on port %s", os.getenv("PORT", "10918"))
+    logger.info("Speech-MCP backend started on port %s", os.getenv("SPEECH_MCP_PORT", "10909"))
     yield
     broadcaster.cancel()
     for task in _timers.values():
@@ -121,8 +158,8 @@ app = FastAPI(title="Speech MCP Stream Gateway", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:10917", "http://127.0.0.1:10917",
-        "http://localhost:10761", "http://127.0.0.1:10761"
+        "http://localhost:10908", "http://127.0.0.1:10908",
+        "http://localhost:10947", "http://127.0.0.1:10947"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -130,6 +167,20 @@ app.add_middleware(
 )
 
 mcp = FastMCP("speech-mcp")
+
+# ── MCP Bridge (ProxyProvider) ────────────────────────────────────────────
+_bridge_proxies: list[str] = []
+bridge_urls = os.getenv("MCP_BRIDGE_URLS", "")
+if bridge_urls:
+    for url in bridge_urls.split(","):
+        url = url.strip()
+        if url:
+            try:
+                mcp.add_provider(ProxyProvider(url=url))
+                _bridge_proxies.append(url)
+                logger.info("MCP bridge added: %s", url)
+            except Exception as e:
+                logger.warning("MCP bridge failed for %s: %s", url, e)
 
 hume_client = HumeClient(api_key=HUME_API_KEY) if HUME_API_KEY else None
 eleven_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
@@ -208,8 +259,9 @@ async def api_stop():
         _timers.pop(timer_id, None)
 
     # Stop wake word listener
-    from speech_mcp.tools.wake_word import configure_local_wake_word
     from fastmcp import Context
+
+    from speech_mcp.tools.wake_word import configure_local_wake_word
     try:
         await configure_local_wake_word(ctx=Context(), action="stop")
     except Exception:
@@ -223,10 +275,9 @@ async def health_check():
     from speech_mcp.tools.wake_word import _listener_thread
     wake_active = _listener_thread is not None and _listener_thread.is_alive()
 
-    # Dynamic connectivity check
     return {
         "status": "healthy",
-        "version": "0.3.0",
+        "version": "0.6.0",
         "mcp_server": "online",
         "rag_sources": get_store().list_sources(),
         "active_timers": len(_timers),
@@ -243,6 +294,42 @@ async def health_check():
             "gemini": bool(gemini_client),
             "gemma": True, # Local engine always assumed available
             "windows": True,
+        },
+    }
+
+@app.get("/health")
+@app.get("/api/health")
+@app.get("/api/status")
+@app.get("/")
+async def fleet_health_check():
+    return {"status": "ok", "version": "0.6.0"}
+
+@app.get("/api/capabilities")
+async def api_capabilities():
+    return {
+        "server": "speech-mcp",
+        "version": "0.6.0",
+        "fastmcp": "3.2.0+",
+        "protocols": ["MCP SSE", "REST", "WebSocket"],
+        "features": {
+            "tts": ["windows", "gemini", "hume", "elevenlabs", "gemma"],
+            "stt": ["gemini", "gemma"],
+            "streaming": ["hume_evi", "gemini_live"],
+            "rag": True,
+            "voice_cloning": True,
+            "wake_word": True,
+            "prefab_ui": True,
+            "sampling": True,
+            "agentic_workflow": True,
+            "mcp_bridge": bool(_bridge_proxies),
+        },
+        "bridges": _bridge_proxies,
+        "endpoints": {
+            "health": "/api/v1/health",
+            "capabilities": "/api/capabilities",
+            "mcp": "/mcp",
+            "stream": "/ws/stream",
+            "logs": "/ws/logs",
         },
     }
 

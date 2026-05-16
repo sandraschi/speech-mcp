@@ -426,7 +426,7 @@ const InteractionLab: React.FC = () => {
               {[
                 {
                   label: "Backend",
-                  value: "localhost:10918",
+                  value: "localhost:10909",
                   status: "online",
                 },
                 { label: "Stream", value: "/ws/stream", status: "ready" },

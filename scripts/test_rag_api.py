@@ -2,7 +2,7 @@ import os
 
 import requests
 
-BASE_URL = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10918") + "/api/v1"
+BASE_URL = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10909") + "/api/v1"
 
 
 def test_rag_api():

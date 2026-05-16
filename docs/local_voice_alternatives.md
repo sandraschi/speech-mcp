@@ -42,8 +42,8 @@ Both servers can run simultaneously — they use separate port ranges:
 
 | Service | speech-mcp | kyutai-mcp |
 |---|---|---|
-| Backend | 10918 | 10924 |
-| Frontend | 10917 | 10925 |
+| Backend | 10909 | 10924 |
+| Frontend | 10908 | 10925 |
 | MCP HTTP | — | 10926 |
 
 ### Robot integration

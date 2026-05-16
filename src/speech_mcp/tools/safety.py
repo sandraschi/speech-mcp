@@ -1,7 +1,8 @@
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
@@ -11,9 +12,6 @@ async def validate_speech_intent(text: str) -> dict[str, Any]:
     [BASTION-SAFEGUARD] Validates speech text against social engineering patterns.
     Checks for high-risk intent like 'urgent money transfers', 'impersonation',
     or 'credential phishing'.
-
-    Args:
-        text: The text intended for synthesis.
     """
     # SOTA Pattern Match for common social engineering triggers
     risk_patterns = [
@@ -117,16 +115,24 @@ def register_safety_tools(mcp: FastMCP):
     """Register safety and intent validation tools."""
 
     @mcp.tool()
-    async def safety_validate_intent(text: str) -> dict[str, Any]:
+    async def safety_validate_intent(
+        text: Annotated[str, Field(description="Text intended for synthesis.")],
+    ) -> dict[str, Any]:
         """[BASTION] Validates speech text against social engineering patterns."""
         return await validate_speech_intent(text)
 
     @mcp.tool()
-    async def safety_log_audit(text: str, provider: str, emotional_intensity: float) -> str:
+    async def safety_log_audit(
+        text: Annotated[str, Field(description="Synthesized text for audit.")],
+        provider: Annotated[str, Field(description="TTS provider used.")],
+        emotional_intensity: Annotated[float, Field(description="Emotional intensity 0.0-1.0.", ge=0.0, le=1.0)] = 0.5,
+    ) -> str:
         """Logs a permanent audit trail for high-intensity emotional speech."""
         return await log_speech_audit(text, provider, emotional_intensity)
 
     @mcp.tool()
-    async def safety_verify_auth(token: str) -> bool:
+    async def safety_verify_auth(
+        token: Annotated[str, Field(description="Auth token to verify against SPEECH_MCP_AUTH_TOKEN.")],
+    ) -> bool:
         """Verification tool for Speech-MCP Auth Token."""
         return await verify_authorization(token)

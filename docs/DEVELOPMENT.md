@@ -12,8 +12,8 @@ Speech-MCP is designed as a modular gateway for speech services:
 - **Wake-Word Engine**: Fully offline detection powered by **openWakeWord**.
 
 ### Port Registry
-- **10918**: Backend (MCP stdio/SSE + REST API + WebSockets)
-- **10917**: Frontend (Vite/React Dashboard)
+- **10909**: Backend (MCP SSE + REST API + WebSockets)
+- **10908**: Frontend (Vite/React Dashboard)
 
 ---
 

@@ -198,7 +198,7 @@ export const SpeechToText: React.FC = () => {
               >
                 Wake Keyword
                 <span className="text-accent-purple font-mono lowercase">
-                  pvporcupine/4.x
+                  openWakeWord
                 </span>
               </label>
               <div className="grid grid-cols-2 gap-2 max-h-[220px] overflow-y-auto custom-scrollbar pr-2">

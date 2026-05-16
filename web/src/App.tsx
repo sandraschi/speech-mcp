@@ -17,6 +17,7 @@ import VoiceChat from "./components/VoiceChat";
 import VoicesPage from "./components/VoicesPage";
 import DeviceSettings from "./components/DeviceSettings";
 import HealthPage from "./components/HealthPage";
+import SystemLogs from "./components/SystemLogs";
 
 const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
   onNavigate,

@@ -14,10 +14,10 @@ This document provides grounding for the AI agent. Refer to this before performi
     - **Wake Word**: **openWakeWord** (Offline ONNX Models)
 
 ## 📡 Registry & Ports
-- **Backend API**: `http://localhost:10918`
-- **Frontend UI**: `http://localhost:10917`
-- **WebSocket Gateway**: `ws://localhost:10918/ws/stream`
-- **Telemetry Stream**: `ws://localhost:10918/ws/logs` (JSON Payload)
+- **Backend API**: `http://localhost:10909`
+- **Frontend UI**: `http://localhost:10908`
+- **WebSocket Gateway**: `ws://localhost:10909/ws/stream`
+- **Telemetry Stream**: `ws://localhost:10909/ws/logs` (JSON Payload)
 
 ## 🏗 Directory Structure
 - `/src/speech_mcp`: Core Python logic and MCP tool definitions
@@ -38,4 +38,4 @@ This document provides grounding for the AI agent. Refer to this before performi
 4. **Tool Integrity**: Preserve existing docstrings and FastMCP decorators.
 
 ---
-*Reference global patterns in* `d:/Dev/repos/mcp-central-docs/patterns`
+*Reference global patterns in* `D:\Dev\repos\mcp-central-docs\patterns`

@@ -1,6 +1,8 @@
 import logging
+from typing import Annotated
 
 from fastmcp import Context, FastMCP
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
@@ -9,21 +11,17 @@ def register_monitoring_tools(mcp: FastMCP):
 
     @mcp.tool()
     async def trigger_action(
-        action_type: str,
-        params: dict | None = None,
+        action_type: Annotated[str, Field(description="Action type: light_on, light_off, notify")],
+        params: Annotated[dict | None, Field(description="Action parameters, e.g. {'room': 'living_room'}")] = None,
         ctx: Context = None,
     ) -> dict:
         """
-        Elicit physical effects (IoT lights, smart devices) or UI notifications.
+        Trigger IoT or UI actions via the devices-mcp bridge.
 
-        Provides a standardized bridge to devices-mcp / Tapo smart home orchestration.
+        Provides a standardized bridge to Tapo smart home orchestration and UI notifications.
 
-        Args:
-            action_type (str): Action to trigger. Examples: 'light_on',
-                'light_off', 'notify'. Follows devices-mcp naming conventions.
-            params (dict | None): Action parameters. For light actions: {'room': 'living_room'}.
-                For notifications: {'message': 'Timer expired!'}.
-            ctx (Context): FastMCP context.
+        ## Return Format
+        {"success": bool, "device"?: str, "state"?: str, "action_elicited"?: str, "status": str}
         """
         if ctx:
             await ctx.info(f"Eliciting action: {action_type}")

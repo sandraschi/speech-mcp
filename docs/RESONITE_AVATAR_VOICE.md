@@ -1,16 +1,16 @@
 # speech-mcp + Resonite: Voice for Avatars and Bots
 
 **Status**: Design / Partial — OSC bridge not yet implemented  
-**Date**: 2026-02-27  
-**Related**: `openfang/docs/RESONITE_COUNCIL_AGENT.md`, `openfang/docs/WORLDLABS_RESONITE_INTEGRATION.md`
+**Date**: 2026-05-16  
+**Related**: `deepfang/docs/RESONITE_COUNCIL_AGENT.md`, `deepfang/docs/WORLDLABS_RESONITE_INTEGRATION.md`
 
 ---
 
 ## The Vision
 
-A Resonite avatar — whether it's your VRoid-based social avatar, an OpenFang council member vbot, or a robot stand-in (Unitree G1 shape) — speaks with a real synthesized voice driven by speech-mcp, not the flat robotic output of a script.
+A Resonite avatar — whether it's your VRoid-based social avatar, a DeepFang council member vbot, or a robot stand-in (Unitree G1 shape) — speaks with a real synthesized voice driven by speech-mcp, not the flat robotic output of a script.
 
-When the OpenFang council session produces a synthesis and routes it to the embodied Resonite adjudicator, that avatar's mouth moves and a Hume AI expressive voice comes out of its position in the 3D world. Other users in the Resonite session hear it spatially — louder when nearby, quieter when far.
+When the DeepFang council session produces a synthesis and routes it to the embodied Resonite adjudicator, that avatar's mouth moves and a Hume AI expressive voice comes out of its position in the 3D world. Other users in the Resonite session hear it spatially — louder when nearby, quieter when far.
 
 This is not a gimmick. Embodied voice is cognitively different from text-in-a-panel. It anchors the agent as a presence.
 
@@ -19,7 +19,7 @@ This is not a gimmick. Embodied voice is cognitively different from text-in-a-pa
 ## Architecture
 
 ```
-OpenFang Council Session
+DeepFang Council Session
         │
         ▼ adjudicator response text
 council_tts_bridge.py
@@ -27,7 +27,7 @@ council_tts_bridge.py
         ▼ calls speech-mcp text_to_speech tool
 speech-mcp MCP server
         │
-        ▼ returns stream_url: ws://localhost:10760/ws/stream?provider=hume&voice=ito
+        ▼ returns stream_url: ws://localhost:10909/ws/stream?provider=hume&voice=ito
 Audio Stream Consumer (bridge script)
         │
         ├── Option A: Play locally via Windows audio (speaker output)
@@ -70,10 +70,10 @@ async def play_speech_stream(stream_url: str):
     pa.terminate()
 
 # Use after calling text_to_speech tool
-asyncio.run(play_speech_stream("ws://localhost:10760/ws/stream?provider=hume&voice=ito"))
+asyncio.run(play_speech_stream("ws://localhost:10909/ws/stream?provider=hume&voice=ito"))
 ```
 
-> Note: The WebSocket stream in the current v0.2.x implementation is a placeholder that echoes bytes. Full TTS streaming from Hume/ElevenLabs to WebSocket is on the v0.3.0 roadmap.
+> Note: The WebSocket stream provides audio forwarding for Hume and ElevenLabs TTS. For Gemini Live streaming, use the `/ws/stream` endpoint with the appropriate provider parameter.
 
 ---
 
@@ -88,7 +88,7 @@ Resonite supports audio playback via ProtoFlux using audio clip assets. The brid
 
 ```
 OSC message to Resonite:
-Address: /openfang/avatar/speak
+Address: /deepfang/avatar/speak
 Arguments:
   avatar_id: str   — which avatar/slot should play
   audio_url: str   — http://localhost:PORT/temp/speech_XXXXXXXX.wav
@@ -122,12 +122,12 @@ Different Resonite avatar roles should have distinct voices to signal their func
 | Avatar Role | Recommended Provider | Voice | Why |
 |---|---|---|---|
 | Your main social avatar | Hume EVI | `kora` | Expressive, warm, conversational |
-| OpenFang council Synthesizer | Hume Octave | `ito` | Authoritative, clear |
+| DeepFang council Synthesizer | Hume Octave | `ito` | Authoritative, clear |
 | Council Adversary vbot | ElevenLabs | Custom clone | Distinct, slightly edgy |
 | Robot avatar (Unitree G1) | Windows TTS | `default` | Deliberately mechanical — it's a robot |
 | Sensor agent (robohoover) | None / beep | — | It has no voice, just data readouts |
 
-This is configured in the `council_tts_bridge.py` voice map (see `OPENCLAW_OPENFANG_INTEGRATION.md`).
+This is configured in the `council_tts_bridge.py` voice map (see `OPENCLAW_DEEPFANG_INTEGRATION.md`).
 
 ---
 
@@ -143,7 +143,7 @@ This is a proper project (ProtoFlux viseme driver + speech-mcp phoneme relay) �
 
 ## Council of Dozens: Multi-Voice Debates in Resonite
 
-The most compelling near-term use: run an OpenFang council debate while in a Resonite session, with each adjudicator's contribution synthesized in a distinct voice and played spatially from different positions in the world.
+The most compelling near-term use: run a DeepFang council debate while in a Resonite session, with each adjudicator's contribution synthesized in a distinct voice and played spatially from different positions in the world.
 
 Rough layout:
 - 12 avatar positions arranged in a circle (the "council chamber")
@@ -161,7 +161,7 @@ This is less sci-fi than it sounds — it's a structured audio experience, not r
 |---|---|---|
 | `play_speech_stream.py` local audio consumer | 1 day | Not started |
 | speech-mcp WebSocket full TTS streaming | 2-3 days | Placeholder in v0.2.x |
-| `council_tts_bridge.py` (OpenFang → speech-mcp) | 1 day | Not started |
+| `council_tts_bridge.py` (DeepFang → speech-mcp) | 1 day | Not started |
 | OSC audio bridge to Resonite | 2-3 days | Design only |
 | Resonite ProtoFlux audio player ProtoFlux | 1 day (in-world) | Not started |
 | Full lip-sync / viseme system | 1-2 weeks | Long-term goal |

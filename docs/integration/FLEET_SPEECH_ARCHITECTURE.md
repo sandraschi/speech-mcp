@@ -27,12 +27,12 @@ graph TD
 
 ### Phase A: Wake Word & Capture (Local Edge)
 - **Role**: Continuous listening for wake words (e.g., "Hey Benny") and raw audio capture.
-- **Provider**: `yahboom-mcp` (using the CSK4002 module) or local Porcupine installations.
+- **Provider**: `yahboom-mcp` (using the CSK4002 module) or local openWakeWord installations.
 - **Output**: Raw PCM stream or trigger signal.
 
 ### Phase B: Speech-to-Text & Reasoning (Cloud/Bridge)
 - **Role**: Converting vocal intent into actionable knowledge.
-- **Engine**: Gemini 2.0 Flash (via `speech-mcp`).
+- **Engine**: Gemini 3.1 Flash (via `speech-mcp`).
 - **Antigravity Synergy**: Use `speech-mcp` to bridge with `kyutai-mcp` (Moshi) for full-duplex conversational logic when ultra-sub-second response is prioritized over complex reasoning.
 
 ### Phase C: Text-to-Speech & Delivery (Generative)
@@ -67,5 +67,5 @@ For "always-on" conversational bridges, use the **WebSocket Proxy**:
 ---
 
 > [!TIP]
-> **Standard Standard**: Always use `Gemini 2.0 Flash` for STT tasks. It out-performs Whisper V3 in multi-speaker overlapping environments and handles "Barge-in" natively through the Multimodal Live protocol.
+> **Standard Standard**: Always use `Gemini 3.1 Flash` for STT tasks. It out-performs Whisper V3 in multi-speaker overlapping environments and handles "Barge-in" natively through the Multimodal Live protocol.
 鼓

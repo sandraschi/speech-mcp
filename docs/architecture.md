@@ -28,7 +28,7 @@ Browser Dashboard
     ▼
 speech_mcp.webapp          ← python -m speech_mcp.webapp
     │
-    ├── FastAPI app (port 10918)
+    ├── FastAPI app (port 10909)
     │   ├── GET  /api/v1/health
     │   ├── GET  /api/v1/voices
     │   ├── POST /api/v1/voices/clone       (ElevenLabs IVC multipart upload)
@@ -42,7 +42,7 @@ speech_mcp.webapp          ← python -m speech_mcp.webapp
     │   ├── WS   /ws/logs                  (live log broadcast)
     │   └── /mcp → FastMCP SSE transport
     │
-    └── Vite React frontend (port 10917)
+    └── Vite React frontend (port 10908)
         ├── VoiceChat          ← Gemini Live real-time voice (NEW)
         ├── CreativeLabs       ← Polyglot TTS + prosody demos
         ├── VoicesPage         ← ElevenLabs voice library + IVC cloning
@@ -140,8 +140,8 @@ Documents are ingested once and persist across restarts. The `ask_docs` tool ret
 
 | Port | Service |
 |---|---|
-| 10918 | FastAPI backend (REST + WebSocket + MCP SSE) |
-| 10917 | Vite React frontend dashboard |
+| 10909 | FastAPI backend (REST + WebSocket + MCP SSE) |
+| 10908 | Vite React frontend dashboard |
 
 ---
 

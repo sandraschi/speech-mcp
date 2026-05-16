@@ -1,4 +1,4 @@
-# Technical Repository Assessment: speech-mcp (v0.3.2)
+# Technical Repository Assessment: speech-mcp (v0.6.0)
 
 ## 📊 Quick Stats
 - **Architecture**: Modular FastAPI + FastMCP (Professional)
@@ -22,7 +22,7 @@ The integration of **Gemini 3.1 Flash TTS** allows the fleet to move beyond "rob
 - **Modularity**: Tools are cleanly separated into domain-specific modules, reducing merge conflicts and improving cognitive load.
 
 ## 🛡️ Hardening Status
-- [x] **Rubble Purged**: All recursive `.bak` and `__pycache__` artifacts removed.
+- [x] **Rubble Purged**: All recursive `__pycache__` artifacts removed.
 - [x] **Justfile Optimized**: Paths localized to `{{justfile_directory()}}`.
 - [x] **README Synchronized**: Documentation now reflects the April 2026 multimodal roadmap.
 - [/] **Linting**: Python (Ruff) is at zero-diagnostics. Webapp (Biome) has residual CSS parsing warnings (Tailwind v4 compatibility).

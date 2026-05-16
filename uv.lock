@@ -1441,15 +1441,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pvporcupine"
-version = "4.0.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ec/41/e3f9f931b4dcf2288ce132015e62372a0395e7ae70789d5b7335bc893f21/pvporcupine-4.0.2.tar.gz", hash = "sha256:922e64bba176f7a8536c660ee5933a8de80ad9116c4d886d5db85d054a8ac3d2", size = 3642087, upload-time = "2026-02-13T06:41:59.526Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/88/72d5f210e6b2da2cc82bb7691883b03d9015cb556bca9f02138a127a97f5/pvporcupine-4.0.2-py3-none-any.whl", hash = "sha256:6bf5863469a45789e8150dd94779ba6051e8d3d860b486d72497cc6ecc7bafab", size = 3658714, upload-time = "2026-02-13T06:41:56.746Z" },
-]
-
-[[package]]
 name = "py-key-value-aio"
 version = "0.4.4"
 source = { registry = "https://pypi.org/simple" }
@@ -4916,7 +4907,7 @@ wheels = [
 
 [[package]]
 name = "speech-mcp"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -4930,7 +4921,6 @@ dependencies = [
     { name = "openwakeword" },
     { name = "prefab-ui" },
     { name = "prometheus-client" },
-    { name = "pvporcupine" },
     { name = "pyarrow" },
     { name = "pyaudio" },
     { name = "pydantic" },
@@ -4963,7 +4953,6 @@ requires-dist = [
     { name = "openwakeword", specifier = ">=0.4.0" },
     { name = "prefab-ui", specifier = ">=0.14.0" },
     { name = "prometheus-client", specifier = ">=0.19.0" },
-    { name = "pvporcupine", specifier = ">=3.0.0" },
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pyaudio", specifier = ">=0.2.14" },
     { name = "pydantic", specifier = ">=2.0.0" },

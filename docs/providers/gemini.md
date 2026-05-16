@@ -25,14 +25,9 @@ Simply wrap any segment in square brackets to shift the model's psychological st
 ---
 
 ## 🎙️ Prebuilt Voices
-Gemini 3.1 provides six high-fidelity voices, each with a distinct personality:
+Gemini 3.1 provides 31+ high-fidelity voices, each with a distinct personality:
 
-1. **Aoede**: Warm, balanced, and highly expressive. The default recommendation for agents.
-2. **Charon**: Deep, authoritative, and steady. Ideal for monitoring and security.
-3. **Fenrir**: Energetic and bright. Perfect for creative tasks or gaming integrations.
-4. **Kore**: Sophisticated and precise. Best for technical data and analysis.
-5. **Orion**: Friendly and approachable. Good for general consumer-facing tasks.
-6. **Puck**: Playful and slightly mischievous. Great for "Assistant" personalities.
+Key voices include **Aoede** (warm, expressive), **Charon** (deep, authoritative), **Fenrir** (energetic), **Kore** (precise), **Orion** (friendly), and **Puck** (playful). See the full list at `docs/configuration.md`.
 
 ---
 

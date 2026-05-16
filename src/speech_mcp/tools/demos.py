@@ -3,8 +3,10 @@ import os
 import shutil
 import subprocess
 from enum import StrEnum
+from typing import Annotated
 
 from fastmcp import Context, FastMCP
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +47,17 @@ def register_demo_tools(mcp: FastMCP):
     """Register tools for running expressive speech and capability demos."""
 
     @mcp.tool()
-    async def run_speech_demo(demo: DemoName, ctx: Context = None) -> dict:
+    async def run_speech_demo(
+        demo: Annotated[DemoName, Field(description="Demo name to execute.")],
+        ctx: Context = None,
+    ) -> dict:
         """
         Execute a hardware-specific speech or capability demo script.
-        This verifies API connectivity, local hardware (SAPI5), and RAG status.
 
-        Args:
-            demo: The name of the demo to run.
-            ctx: FastMCP context for logging.
+        Verifies API connectivity, local hardware (SAPI5), and RAG status.
+
+        ## Return Format
+        {"success": bool, "demo": str, "exit_code"?: int, "output"?: str, "error"?: str}
         """
         script_filename = DEMO_MAP.get(demo)
         if not script_filename:

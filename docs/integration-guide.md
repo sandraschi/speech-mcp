@@ -79,7 +79,7 @@ the `BAAI/bge-small-en-v1.5` embedding model (~25 MB) for the RAG knowledge base
 | `HUME_API_KEY` | No | [platform.hume.ai](https://platform.hume.ai) |
 | `HUME_CONFIG_ID` | No | [evi.hume.ai](https://evi.hume.ai) — EVI chat only, not needed for TTS |
 | `ELEVENLABS_API_KEY` | No | [elevenlabs.io](https://elevenlabs.io) |
-| `PICOVOICE_API_KEY` | No | [picovoice.ai](https://picovoice.ai) — wake word only |
+| `openWakeWord` | No | Built-in local wake word (no API key) |
 
 Variables can be placed in `.env` in the project root **or** in the Claude Desktop
 config `env` block. The config block takes priority.
@@ -148,7 +148,7 @@ The webapp runs separately from the MCP server:
 .\start.ps1
 ```
 
-- Backend: `http://localhost:10918`
-- Frontend: `http://localhost:10917`
+- Backend: `http://localhost:10909`
+- Frontend: `http://localhost:10908`
 
 The MCP tools work without the webapp running.
