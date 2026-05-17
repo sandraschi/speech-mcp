@@ -5,6 +5,8 @@ from fastmcp import Context, FastMCP
 from hume import HumeClient
 from pydantic import Field
 
+from speech_mcp.sanitize import wrap_untrusted
+
 
 def _local_proxy_url() -> str:
     base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10909")
@@ -88,7 +90,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
         # SEP-1577 Sampling for strategy
         strategy_prompt = (
-            f"The user wants a proactive 'Alexa 2' style interaction for: {user_goal}. "
+            f"The user wants a proactive 'Alexa 2' style interaction for: {wrap_untrusted(user_goal, 'user_goal')}. "
             "Suggest a sequence of tool calls (Listening -> Analysis -> Response) and the "
             "ideal emotional persona for the Hume AI provider."
         )
@@ -148,7 +150,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
         # Step 1: Request an AI sample to internalize the goal
         sample_result = await ctx.sample(
-            messages=f"Suggest a conversational strategy for: {goal}",
+            messages=f"Suggest a conversational strategy for: {wrap_untrusted(goal, 'user_goal')}",
             system_prompt=("You are a SOTA speech specialist. Draft a high-level cognitive mission plan."),
             max_tokens=100,
         )

@@ -25,7 +25,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from fastmcp import Context, FastMCP
-from fastmcp.providers import ProxyProvider
+from fastmcp.server import create_proxy
 from hume import HumeClient
 from pydantic import BaseModel
 
@@ -176,7 +176,7 @@ if bridge_urls:
         url = url.strip()
         if url:
             try:
-                mcp.add_provider(ProxyProvider(url=url))
+                mcp.add_provider(create_proxy(url))
                 _bridge_proxies.append(url)
                 logger.info("MCP bridge added: %s", url)
             except Exception as e:

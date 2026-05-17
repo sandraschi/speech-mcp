@@ -64,7 +64,7 @@ def register_rag_tools(mcp: FastMCP):
         sources = list({r["filename"] for r in chunks})
 
         result = await ctx.sample(
-            messages=f"Context:\n{context_text}\n\nQuestion: {question}",
+            messages=f"Context:\n{context_text}\n\nQuestion: {wrap_untrusted(question, 'user_question')}",
             system_prompt=("You are a SOTA speech technology expert. Answer concisely based on the context."),
         )
 
