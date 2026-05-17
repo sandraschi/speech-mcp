@@ -269,3 +269,17 @@ clean:
     Get-ChildItem -Recurse -Filter '*.tmp' | Remove-Item -Force -ErrorAction SilentlyContinue
     Get-ChildItem -Recurse -Filter 'venv' -Directory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     Write-Host 'Workspace purged of ephemeral artifacts.' -ForegroundColor Green
+
+# ── Speech ────────────────────────────────────────────────────────────────
+
+# Speak some text via TTS
+speak text="Hello from the fleet":
+    curl -s -X POST http://127.0.0.1:10909/api/v1/tts -H "Content-Type: application/json" -d '{"text":"{{text}}"}' | python -c "import sys,json; d=json.load(sys.stdin); print('Spoken' if d.get('success') else d.get('error',''))"
+
+# List available voices
+voices:
+    curl -s http://127.0.0.1:10909/api/v1/voices | python -c "import sys,json; d=json.load(sys.stdin); [print(f'  {v}') for v in (d if isinstance(d,list) else d.get('voices',[]))]"
+
+# Show TTS status
+tts-status:
+    curl -s http://127.0.0.1:10909/api/v1/stats | python -c "import sys,json; d=json.load(sys.stdin); [print(f'{k}: {v}') for k,v in d.items()]"
