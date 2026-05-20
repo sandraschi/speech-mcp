@@ -4,33 +4,9 @@ set dotenv-load := true
 
 # ── Dashboard ──────────────────────────────────────────────────────────────────
 
-# Show all available recipes
+# Open the interactive recipe dashboard in the browser
 default:
-    @$lines = Get-Content '{{justfile()}}'; \
-    Write-Host '  speech-mcp industrial console' -ForegroundColor White -BackgroundColor DarkBlue -NoNewline; \
-    Write-Host ' (SOTA)' -ForegroundColor Cyan -BackgroundColor DarkBlue; \
-    Write-Host ''; \
-    $currentCategory = ''; \
-    foreach ($line in $lines) { \
-        if ($line -match '^# ── ([^─]+) ─') { \
-            $currentCategory = $matches[1].Trim(); \
-            Write-Host "`n  $currentCategory" -ForegroundColor Cyan; \
-            Write-Host ('  ' + ('─' * 45)) -ForegroundColor DarkGray; \
-        } elseif ($line -match '^# ([^─].+)') { \
-            $desc = $matches[1].Trim(); \
-            $idx = [array]::IndexOf($lines, $line); \
-            if ($idx -lt $lines.Count - 1) { \
-                $nextLine = $lines[$idx + 1]; \
-                if ($nextLine -match '^([a-z0-9_-]+):') { \
-                    $recipe = $matches[1]; \
-                    $pad = ' ' * [math]::Max(2, (22 - $recipe.Length)); \
-                    Write-Host "    $recipe" -ForegroundColor White -NoNewline; \
-                    Write-Host "$pad$desc" -ForegroundColor Gray; \
-                } \
-            } \
-        } \
-    } \
-    Write-Host ''
+    @pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ../mcp-central-docs/scripts/just-dashboard.ps1 -Path .
 
 # ── Dev ────────────────────────────────────────────────────────────────────────
 

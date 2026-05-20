@@ -106,3 +106,5 @@ server_advanced.py_tmp
 
 # Rust / Zed IDE — rust-analyzer may create target/ at repo root
 target/
+
+_dashboard/
