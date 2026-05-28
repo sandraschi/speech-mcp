@@ -116,3 +116,5 @@ uv run pytest tests/ -v -m "not live"
 | `src/speech_mcp/providers/gemini.py` | Gemini TTS/STT provider |
 | `web/src/api.ts` | Backend URL + API client |
 | `web/start.ps1` | Webapp launcher |
+
+Install docs: follow mcp-central-docs/standards/AGENT_INSTALL_REFERENCE.md
