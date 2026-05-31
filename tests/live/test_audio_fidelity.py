@@ -1,8 +1,12 @@
 import os
+import sys
 
 import pytest
 
-winsound = pytest.importorskip("winsound")
+if sys.platform != "win32":
+    pytest.skip("Windows-only live audio tests", allow_module_level=True)
+
+import winsound
 
 from speech_mcp.providers.gemini import GeminiProvider
 from speech_mcp.providers.windows import WindowsProvider
