@@ -1,7 +1,8 @@
 import os
-import winsound
 
 import pytest
+
+winsound = pytest.importorskip("winsound")
 
 from speech_mcp.providers.gemini import GeminiProvider
 from speech_mcp.providers.windows import WindowsProvider
