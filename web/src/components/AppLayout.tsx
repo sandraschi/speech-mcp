@@ -639,7 +639,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 boxShadow: "0 0 15px rgba(239, 68, 68, 0.4)",
                 transition: "transform 0.1s active",
               }}
-              onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")}
+              onMouseDown={(e) =>
+                (e.currentTarget.style.transform = "scale(0.95)")
+              }
               onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
             >
               <Square size={16} fill="white" /> STOP

@@ -3,6 +3,7 @@ from typing import Annotated
 from fastmcp import Context, FastMCP
 from pydantic import Field
 
+from speech_mcp.sanitize import wrap_untrusted
 from speech_mcp.state import get_store
 
 

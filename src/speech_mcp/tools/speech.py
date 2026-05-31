@@ -37,9 +37,10 @@ async def _play_mp3_bytes(data: bytes) -> None:
     tmp.close()
     try:
         await anyio.to_thread.run_sync(
-            lambda: subprocess.run(
-                ["wmplayer.exe", "/play", "/close", tmp.name],
-                check=False, capture_output=True,
+            lambda: subprocess.run(  # noqa: S603
+                ["wmplayer.exe", "/play", "/close", tmp.name],  # noqa: S607
+                check=False,
+                capture_output=True,
             )
         )
     finally:
@@ -95,15 +96,13 @@ def register_speech_tools(
     @mcp.tool()
     async def text_to_speech(
         text: Annotated[str, Field(description="Text to synthesize and play.")],
-        provider: Annotated[str, Field(
-            description="TTS provider: windows, hume, gemini, gemma, elevenlabs."
-        )] = "windows",
-        voice_id: Annotated[str, Field(
-            description="Provider-specific voice identifier."
-        )] = "default",
-        description: Annotated[str | None, Field(
-            description="Hume-only: prose style prompt driving Octave prosody."
-        )] = None,
+        provider: Annotated[
+            str, Field(description="TTS provider: windows, hume, gemini, gemma, elevenlabs.")
+        ] = "windows",
+        voice_id: Annotated[str, Field(description="Provider-specific voice identifier.")] = "default",
+        description: Annotated[
+            str | None, Field(description="Hume-only: prose style prompt driving Octave prosody.")
+        ] = None,
         ctx: Context = None,
     ) -> dict:
         """
@@ -195,9 +194,12 @@ def register_speech_tools(
                 size = os.path.getsize(tmp_path)
                 await _play_wav_file(tmp_path)
                 return {
-                    "success": True, "provider": "Hume AI Octave",
-                    "voice": voice_id, "description_used": description,
-                    "bytes_played": size, "status": "played",
+                    "success": True,
+                    "provider": "Hume AI Octave",
+                    "voice": voice_id,
+                    "description_used": description,
+                    "bytes_played": size,
+                    "status": "played",
                 }
             except Exception as e:
                 logger.exception("Hume TTS failed")
@@ -236,9 +238,12 @@ def register_speech_tools(
                 size = os.path.getsize(tmp_path)
                 await _play_wav_file(tmp_path)
                 return {
-                    "success": True, "provider": "Gemini 3.1 Flash TTS",
+                    "success": True,
+                    "provider": "Gemini 3.1 Flash TTS",
                     "model": "gemini-3.1-flash-tts-preview",
-                    "voice": effective_voice, "bytes_played": size, "status": "played",
+                    "voice": effective_voice,
+                    "bytes_played": size,
+                    "status": "played",
                 }
             except Exception as e:
                 logger.exception("Gemini TTS failed")
@@ -257,9 +262,11 @@ def register_speech_tools(
             try:
                 await gemma_client.synthesize_and_play(text, voice=voice_id)
                 return {
-                    "success": True, "provider": "Gemma 4 Native Local",
-                    "voice": voice_id, "status": "played",
-                    "note": "Native audio encoder pipeline used."
+                    "success": True,
+                    "provider": "Gemma 4 Native Local",
+                    "voice": voice_id,
+                    "status": "played",
+                    "note": "Native audio encoder pipeline used.",
                 }
             except Exception as e:
                 logger.exception("Gemma TTS failed")
@@ -272,7 +279,10 @@ def register_speech_tools(
             if not voice_id or voice_id == "default":
                 return {
                     "success": False,
-                    "error": "voice_id required for ElevenLabs — use manage_voice_clones action='list' to see available voices",
+                    "error": (
+                        "voice_id required for ElevenLabs — use manage_voice_clones "
+                        "action='list' to see available voices"
+                    ),
                 }
             tmp_path = None
             try:
@@ -298,8 +308,11 @@ def register_speech_tools(
                 size = os.path.getsize(tmp_path)
                 await _play_mp3_bytes(open(tmp_path, "rb").read())
                 return {
-                    "success": True, "provider": "ElevenLabs",
-                    "voice_id": voice_id, "bytes_played": size, "status": "played",
+                    "success": True,
+                    "provider": "ElevenLabs",
+                    "voice_id": voice_id,
+                    "bytes_played": size,
+                    "status": "played",
                 }
             except Exception as e:
                 logger.exception("ElevenLabs TTS failed")
@@ -427,9 +440,7 @@ def register_speech_tools(
 
             if action == "list":
                 try:
-                    voices = await anyio.to_thread.run_sync(
-                        lambda: eleven_client.voices.get_all()
-                    )
+                    voices = await anyio.to_thread.run_sync(lambda: eleven_client.voices.get_all())
                     return {
                         "success": True,
                         "provider": "ElevenLabs",
@@ -448,6 +459,7 @@ def register_speech_tools(
                 if not os.path.exists(audio_path):
                     return {"success": False, "error": f"File not found: {audio_path}"}
                 try:
+
                     def _clone():
                         with open(audio_path, "rb") as f:
                             return eleven_client.voices.ivc.create(
@@ -455,6 +467,7 @@ def register_speech_tools(
                                 files=[f],
                                 description=f"IVC clone from {os.path.basename(audio_path)}",
                             )
+
                     result = await anyio.to_thread.run_sync(_clone)
                     return {
                         "success": True,
@@ -470,9 +483,7 @@ def register_speech_tools(
                 if not voice_id:
                     return {"success": False, "error": "voice_id required for delete"}
                 try:
-                    await anyio.to_thread.run_sync(
-                        lambda: eleven_client.voices.delete(voice_id)
-                    )
+                    await anyio.to_thread.run_sync(lambda: eleven_client.voices.delete(voice_id))
                     return {"success": True, "deleted": voice_id}
                 except Exception as e:
                     return {"success": False, "error": str(e)}
@@ -484,11 +495,10 @@ def register_speech_tools(
                 return {"success": False, "error": "HUME_API_KEY not configured"}
             if action == "list":
                 try:
-                    voices = await anyio.to_thread.run_sync(
-                        lambda: list(hume_client.tts.voices.list())
-                    )
+                    voices = await anyio.to_thread.run_sync(lambda: list(hume_client.tts.voices.list()))
                     return {
-                        "success": True, "provider": "Hume AI",
+                        "success": True,
+                        "provider": "Hume AI",
                         "voices": [{"id": v.id, "name": v.name} for v in voices],
                     }
                 except Exception as e:

@@ -1,10 +1,10 @@
-import os
-import shutil
+import argparse
 import json
 import logging
-import argparse
-import tempfile
+import os
 import re
+import shutil
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -41,10 +41,10 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
     if target.exists() and not force:
         existing_content = target.read_text(encoding="utf-8", errors="ignore")
         existing_size = len(existing_content.encode("utf-8"))
-        
+
         e_defs, e_classes = count_structures(existing_content)
         n_defs, n_classes = count_structures(content)
-        
+
         # Heuristic A: Significant Size Regression
         if existing_size > 500 and new_size < (existing_size * 0.25):
             return {
@@ -74,10 +74,10 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
     # 3. Local Backup (Side-car)
     backup_dir = target_dir / ".backups"
     backup_dir.mkdir(exist_ok=True)
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     local_bak = backup_dir / f"{timestamp}_{filename}.bak"
-    
+
     if target.exists():
         shutil.copy2(target, local_bak)
         logger.info(f"Local backup created: {local_bak}")
@@ -106,7 +106,7 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
             tmp_name = tmp.name
 
         if len(content) > 0 and os.path.getsize(tmp_name) == 0:
-            raise IOError("Temp file verification failed: File is 0 bytes.")
+            raise OSError("Temp file verification failed: File is 0 bytes.")
 
         os.replace(tmp_name, target)
         logger.info(f"Atomic write successful: {target}")
@@ -121,7 +121,7 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
     except Exception as e:
         if 'tmp_name' in locals() and os.path.exists(tmp_name):
             os.remove(tmp_name)
-            
+
         return {
             "success": False,
             "error": "WriteFailure",
@@ -138,8 +138,8 @@ if __name__ == "__main__":
     parser.add_argument("--content", required=True, help="New file content")
     parser.add_argument("--author", default="Assistant", help="Change author")
     parser.add_argument("--force", action="store_true", help="Force overwrite despite regression alerts")
-    
+
     args = parser.parse_args()
-    
+
     result = safe_write(args.file, args.content, args.author, args.force)
     print(json.dumps(result, indent=2))

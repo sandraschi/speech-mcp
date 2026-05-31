@@ -6,6 +6,7 @@ import pyttsx3
 
 logger = logging.getLogger(__name__)
 
+
 class WindowsProvider:
     """
     Modular Windows SAPI5 provider using pyttsx3.
@@ -20,14 +21,14 @@ class WindowsProvider:
     def synthesize_wav(self, text: str) -> bytes:
         """
         Synthesize text to WAV bytes using the Windows SAPI5 engine.
-        
+
         Args:
             text: The text to speak.
-            
+
         Returns:
             WAV file bytes.
         """
-        tmp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+        tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
         tmp.close()
 
         try:

@@ -56,11 +56,7 @@ def _run_listener(
 
         # Initialize openWakeWord Model
         # vad_threshold=0.5 helps filter out non-speech noise
-        oww_model = Model(
-            wakeword_models=[keyword],
-            vad_threshold=0.5,
-            inference_framework="onnx"
-        )
+        oww_model = Model(wakeword_models=[keyword], vad_threshold=0.5, inference_framework="onnx")
 
         CHUNK = 1280  # 80ms at 16kHz
         pa = pyaudio.PyAudio()
@@ -74,7 +70,8 @@ def _run_listener(
 
         logger.info(
             "Wake word listener started (openWakeWord): keyword='%s' sensitivity=%.2f",
-            keyword, sensitivity,
+            keyword,
+            sensitivity,
         )
 
         while not _stop_event.is_set():
@@ -108,12 +105,10 @@ def register_wake_word_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     async def configure_local_wake_word(
         ctx: Context,
-        keyword: Annotated[str, Field(
-            description="Wake word model: alexa, hey_jarvis, hey_mycroft, hey_rhasspy, timers, weather"
-        )] = "hey_jarvis",
-        sensitivity: Annotated[float, Field(
-            description="Detection threshold 0.0-1.0.", ge=0.0, le=1.0
-        )] = 0.5,
+        keyword: Annotated[
+            str, Field(description="Wake word model: alexa, hey_jarvis, hey_mycroft, hey_rhasspy, timers, weather")
+        ] = "hey_jarvis",
+        sensitivity: Annotated[float, Field(description="Detection threshold 0.0-1.0.", ge=0.0, le=1.0)] = 0.5,
         action: Annotated[str, Field(description="Operation: start, stop, or status")] = "start",
     ) -> dict:
         """
@@ -173,11 +168,7 @@ def register_wake_word_tools(mcp: FastMCP) -> None:
                 logger.info("[WAKE WORD] '%s' detected", kw)
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    loop.call_soon_threadsafe(
-                        lambda: asyncio.ensure_future(
-                            ctx.info(f"Wake word '{kw}' detected")
-                        )
-                    )
+                    loop.call_soon_threadsafe(lambda: asyncio.ensure_future(ctx.info(f"Wake word '{kw}' detected")))
 
             _listener_thread = threading.Thread(
                 target=_run_listener,

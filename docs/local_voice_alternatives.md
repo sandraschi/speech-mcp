@@ -56,6 +56,8 @@ Both can serve as the brain for robot voice control. The Yahboom bridge pattern 
 
 **CosyVoice 2** — Zero-shot voice cloning from Alibaba. Primarily Chinese/English TTS.
 
+**FunASR (Alibaba)** — Integrated into speech-mcp as local STT. See [docs/providers/funasr.md](providers/funasr.md). Fun-ASR-Nano and SenseVoiceSmall provide VAD + diarization + punctuation in one pass at 17–170× real-time.
+
 **Ollama + Kokoro/Piper TTS** — Combine a local LLM (Ollama) with a fast local TTS engine (Piper or Kokoro) for a fully offline pipeline. No native audio model — still the traditional STT→LLM→TTS stack with its latency.
 
 None of the above are currently integrated into speech-mcp directly, but the `text_to_speech` tool's provider routing is designed to be extended.

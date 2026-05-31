@@ -1,20 +1,24 @@
-from unittest.mock import MagicMock, patch
+import ctypes
+import sys
+from ctypes import wintypes
+from unittest.mock import patch
+
+import pytest
 
 from scripts.utils.hardware_probe import get_cameras, get_microphones, get_monitors
 
 
 def test_monitor_enumeration_logic():
     """Verify that monitor enumeration handles the ctypes callback logic."""
-    # We mock EnumDisplayMonitors to simulate the callback
     with patch("ctypes.windll.user32.EnumDisplayMonitors") as mock_enum:
+
         def fake_enum(hdc, rect, callback, data):
-            # Simulate a 1080p monitor
-            rect_obj = MagicMock()
-            rect_obj.contents.left = 0
-            rect_obj.contents.top = 0
-            rect_obj.contents.right = 1920
-            rect_obj.contents.bottom = 1080
-            callback(0, 0, rect_obj, 0)
+            monitor_rect = wintypes.RECT()
+            monitor_rect.left = 0
+            monitor_rect.top = 0
+            monitor_rect.right = 1920
+            monitor_rect.bottom = 1080
+            callback(0, 0, ctypes.pointer(monitor_rect), 0)
             return True
 
         mock_enum.side_effect = fake_enum
@@ -22,6 +26,8 @@ def test_monitor_enumeration_logic():
         assert len(monitors) == 1
         assert monitors[0]["width"] == 1920
 
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows PowerShell camera probe only")
 def test_camera_detection_powershell_mock():
     """Verify that camera detection correctly parses PowerShell JSON output."""
     mock_ps_output = '[{"Name":"c922 Pro Stream Webcam"}]'
@@ -30,6 +36,7 @@ def test_camera_detection_powershell_mock():
         cams = get_cameras()
         assert len(cams) == 1
         assert cams[0] == "c922 Pro Stream Webcam"
+
 
 def test_microphone_enumeration_import_fallback():
     """Verify that microphone detection handles missing pyaudio gracefully."""

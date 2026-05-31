@@ -3,8 +3,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 import {
   fetchHealth,
   fetchStats,
-  request,
   type HealthData,
+  request,
   type StatsData,
 } from "./api";
 
@@ -55,7 +55,9 @@ export function BackendProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <BackendContext.Provider value={{ health, stats, error, request, emergencyStop }}>
+    <BackendContext.Provider
+      value={{ health, stats, error, request, emergencyStop }}
+    >
       {children}
     </BackendContext.Provider>
   );

@@ -11,6 +11,7 @@ def test_hardware_map_acquisition():
         hw = get_hardware_map()
         assert len(hw["monitors"]) == 1
 
+
 def test_window_movement_powershell_invocation():
     """Verify that window movement triggers the correct PowerShell snippet."""
     monitors = [{"left": 1920, "top": 0, "width": 1920, "height": 1080}]
@@ -18,9 +19,10 @@ def test_window_movement_powershell_invocation():
         move_window_to_monitor("chrome", 0, monitors)
         args, _kwargs = mock_run.call_args
         ps_cmd = args[0][2]
-        assert 'SetWindowPos' in ps_cmd
-        assert '1920' in ps_cmd
-        assert 'chrome' in ps_cmd
+        assert "SetWindowPos" in ps_cmd
+        assert "1920" in ps_cmd
+        assert "chrome" in ps_cmd
+
 
 def test_invalid_monitor_index_safety():
     """Verify that moving to an out-of-bounds monitor index returns silently."""

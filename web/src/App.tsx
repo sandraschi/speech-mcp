@@ -5,19 +5,18 @@ import { BackendProvider, useBackend } from "./BackendContext";
 import AgenticWorkflow from "./components/AgenticWorkflow";
 import AppLayout from "./components/AppLayout";
 import CreativeLabs from "./components/CreativeLabs";
+import DeviceSettings from "./components/DeviceSettings";
+import HealthPage from "./components/HealthPage";
 import HelpPage from "./components/HelpPage";
 import HistoryPage from "./components/HistoryPage";
 import InteractionLab from "./components/InteractionLab";
 import SemanticSearch from "./components/SemanticSearch";
 import ServiceLinkage from "./components/ServiceLinkage";
-import SettingsPage from "./components/SettingsPage";
 import { SpeechToText } from "./components/SpeechToText";
+import SystemLogs from "./components/SystemLogs";
 import ToolsPage from "./components/ToolsPage";
 import VoiceChat from "./components/VoiceChat";
 import VoicesPage from "./components/VoicesPage";
-import DeviceSettings from "./components/DeviceSettings";
-import HealthPage from "./components/HealthPage";
-import SystemLogs from "./components/SystemLogs";
 
 const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
   onNavigate,

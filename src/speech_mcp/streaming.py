@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 # OSC client for lip-flap (VRChat / Avatar protocol)
 osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
 
+
 def calculate_amplitude(audio_b64: str) -> float:
     """Calculate normalized amplitude from base64 PCM data."""
     try:
@@ -24,12 +25,14 @@ def calculate_amplitude(audio_b64: str) -> float:
         if len(raw_bytes) < 2:
             return 0.0
         import numpy as np
+
         samples = np.frombuffer(raw_bytes, dtype=np.int16)
         if len(samples) == 0:
             return 0.0
         return float(np.abs(samples).mean() / 32768.0)
     except Exception:
         return 0.0
+
 
 async def handle_websocket_stream(
     websocket: WebSocket,
@@ -92,6 +95,19 @@ async def handle_websocket_stream(
         except Exception:
             pass
 
+
+async def _handle_stt_stream(websocket: WebSocket, api_key: str):
+    """Gemini Live STT proxy placeholder — use REST /api/v1/transcribe for file/chunk STT."""
+    del api_key
+    await websocket.send_json(
+        {
+            "type": "error",
+            "message": "STT stream not implemented — use /api/v1/transcribe?provider=funasr",
+        }
+    )
+    await websocket.close(code=1008, reason="STT stream not implemented")
+
+
 async def _handle_windows(websocket: WebSocket):
     while True:
         try:
@@ -100,8 +116,10 @@ async def _handle_windows(websocket: WebSocket):
                 text = msg.get("text")
                 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
                     tmp_path = tmp.name
+
                 def _synth(t=text, p=tmp_path):
                     import pyttsx3
+
                     e = pyttsx3.init()
                     e.save_to_file(t, p)
                     e.runAndWait()
@@ -112,6 +130,7 @@ async def _handle_windows(websocket: WebSocket):
                 os.remove(tmp_path)
         except Exception:
             break
+
 
 async def _handle_elevenlabs(websocket: WebSocket, client: ElevenLabs, voice_id: str):
     while True:
@@ -125,13 +144,16 @@ async def _handle_elevenlabs(websocket: WebSocket, client: ElevenLabs, voice_id:
         except Exception:
             break
 
+
 async def _handle_hume(websocket: WebSocket, api_key: str):
     # Hume uses its own socket-like protocol, but we can proxy it
     pass
 
+
 async def _handle_gemini(websocket: WebSocket, api_key: str, voice_id: str):
     """Synthesize via GeminiProvider and send as a single WAV chunk."""
     from speech_mcp.providers.gemini import GeminiProvider
+
     try:
         provider = GeminiProvider()
     except Exception as e:
@@ -153,12 +175,13 @@ async def _handle_gemini(websocket: WebSocket, api_key: str, voice_id: str):
             effective_voice = voice_id if voice_id and voice_id.lower() != "default" else "Kore"
             try:
                 wav_bytes = await anyio.to_thread.run_sync(
-                    lambda: provider.synthesize_wav(text, voice_name=effective_voice)
+                    lambda t=text, v=effective_voice: provider.synthesize_wav(t, voice_name=v)
                 )
                 await websocket.send_bytes(wav_bytes)
             except Exception as e:
                 logger.exception("Gemini WS TTS failed")
                 await websocket.send_json({"type": "error", "message": str(e)})
+
 
 def _pcm_to_wav_bytes(pcm_bytes: bytes, sample_rate: int = 24000) -> bytes:
     """Wrap raw 16-bit mono PCM in a WAV container."""
@@ -205,9 +228,7 @@ async def _handle_gemini_live(
     config = types.LiveConnectConfig(
         response_modalities=["AUDIO"],
         speech_config=types.SpeechConfig(
-            voice_config=types.VoiceConfig(
-                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice_id)
-            )
+            voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice_id))
         ),
         output_audio_transcription=types.AudioTranscriptionConfig(),
         input_audio_transcription=types.AudioTranscriptionConfig(),
@@ -244,9 +265,7 @@ async def _handle_gemini_live(
                                 ctrl = json.loads(msg["text"])
                                 if ctrl.get("type") == "text":
                                     # Inject text as user message
-                                    await session.send_realtime_input(
-                                        text=ctrl.get("text", "")
-                                    )
+                                    await session.send_realtime_input(text=ctrl.get("text", ""))
                                 elif ctrl.get("type") == "end_turn":
                                     await session.send_realtime_input(audio_stream_end=True)
                                 elif ctrl.get("type") == "interrupt":
@@ -285,21 +304,29 @@ async def _handle_gemini_live(
                         if hasattr(sc, "output_transcription") and sc.output_transcription:
                             t = sc.output_transcription
                             if hasattr(t, "text") and t.text:
-                                await websocket.send_text(json.dumps({
-                                    "type": "transcript",
-                                    "role": "model",
-                                    "text": t.text,
-                                }))
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "transcript",
+                                            "role": "model",
+                                            "text": t.text,
+                                        }
+                                    )
+                                )
 
                         # Input transcription (user speech → text)
                         if hasattr(sc, "input_transcription") and sc.input_transcription:
                             t = sc.input_transcription
                             if hasattr(t, "text") and t.text:
-                                await websocket.send_text(json.dumps({
-                                    "type": "transcript",
-                                    "role": "user",
-                                    "text": t.text,
-                                }))
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "transcript",
+                                            "role": "user",
+                                            "text": t.text,
+                                        }
+                                    )
+                                )
 
                         # Turn complete
                         if sc.turn_complete:

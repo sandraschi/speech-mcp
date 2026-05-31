@@ -49,7 +49,9 @@ class LocalLLMProvider:
         Grounded context should be injected into the prompt before calling this.
         """
         try:
-            return await anyio.to_thread.run_sync(lambda: self._generate_sync(provider, base_url, model, prompt, system))
+            return await anyio.to_thread.run_sync(
+                lambda: self._generate_sync(provider, base_url, model, prompt, system)
+            )
         except Exception as e:
             logger.error(f"Local generation failed ({provider}): {e}")
             return f"Generation failed: {e}"

@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint & Format (Ruff)
@@ -24,21 +27,46 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
 
+      - name: Install PortAudio (pyaudio)
+        run: sudo apt-get update; sudo apt-get install -y portaudio19-dev
+
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --extra dev
 
       - name: Ruff Check
-        run: uv run ruff check .
+        run: uv run ruff check src tests
 
       - name: Ruff Format Check
-        run: uv run ruff format --check .
+        run: uv run ruff format --check src tests
 
       - name: Sync Check
         run: uv lock --check
 
+  lint-web:
+    name: Lint (Biome)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Biome Check
+        run: npm run biome:ci
+        working-directory: web
+
   test:
     name: Test Suite (Pytest)
     runs-on: ubuntu-latest
+    needs: [lint, lint-web]
     steps:
       - uses: actions/checkout@v4
 
@@ -53,8 +81,11 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
 
+      - name: Install PortAudio (pyaudio)
+        run: sudo apt-get update; sudo apt-get install -y portaudio19-dev
+
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --extra dev
 
       - name: Run Pytest (Mocks Only)
         run: uv run pytest tests/ -v -m "not live"

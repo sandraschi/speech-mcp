@@ -11,6 +11,7 @@ Usage:
 """
 
 import os
+
 import uvicorn
 
 from speech_mcp.server import app, mcp

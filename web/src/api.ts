@@ -101,7 +101,10 @@ export interface HealthData {
   };
 }
 
-export async function request(path: string, options: RequestInit = {}): Promise<any> {
+export async function request(
+  path: string,
+  options: RequestInit = {},
+): Promise<any> {
   const res = await fetch(`${BACKEND}${path}`, {
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },

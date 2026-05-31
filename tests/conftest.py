@@ -45,21 +45,19 @@ def mock_hardware():
     return {
         "monitors": [
             {"left": 0, "top": 0, "right": 1920, "bottom": 1080, "width": 1920, "height": 1080},
-            {"left": 1920, "top": 0, "right": 3840, "bottom": 1080, "width": 1920, "height": 1080}
+            {"left": 1920, "top": 0, "right": 3840, "bottom": 1080, "width": 1920, "height": 1080},
         ],
         "microphones": [
             {"index": 0, "name": "Mock Mic", "channels": 1, "rate": 44100},
-            {"index": 1, "name": "c922 Pro Stream Webcam", "channels": 2, "rate": 32000}
+            {"index": 1, "name": "c922 Pro Stream Webcam", "channels": 2, "rate": 32000},
         ],
-        "cameras": ["c922 Pro Stream Webcam"]
+        "cameras": ["c922 Pro Stream Webcam"],
     }
 
 
 def pytest_addoption(parser):
     """Add --live flag to pytest."""
-    parser.addoption(
-        "--live", action="store_true", default=False, help="Run live integration tests with real keys"
-    )
+    parser.addoption("--live", action="store_true", default=False, help="Run live integration tests with real keys")
 
 
 @pytest.fixture(autouse=True)

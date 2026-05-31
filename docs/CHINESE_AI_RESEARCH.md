@@ -1,33 +1,45 @@
-# Advanced Research: Hyperactive Chinese AI Speech (Feb 2026)
+# Advanced Research: Chinese Open-Weight Speech AI (2026)
 
-The Chinese AI speech ecosystem is currently leading in prosodic expressiveness and low-latency multilingual models. These are strong candidates for future Speech-MCP provider substrates.
+The Chinese AI speech ecosystem leads in open-weight industrial ASR, prosodic TTS, and edge deployment. **FunASR is now integrated into speech-mcp** — the rest remain future provider candidates.
 
-## 🚀 Key Models & Tools
+## Integrated
 
-### 1. SenseVoice (FunAudioLLM)
-- **Primary Strength**: Ultra-low latency voice understanding.
-- **Features**: Multilingual ASR (Mandarin, English, Japanese, Korean, Cantonese) + Emotional Recognition + Audio Event Detection.
-- **Advanced Trick**: Exceptionally fast inference, making it ideal for the "Alexa 2.0" near-zero latency requirement.
+### FunASR / Fun-ASR / SenseVoice (Alibaba Tongyi) ✅
 
-### 2. GPT-SoVITS (v3+ 2025)
-- **Primary Strength**: High-fidelity zero-shot voice cloning.
-- **Features**: 5-second few-shot cloning, multilingual inference.
-- **Advanced Trick**: Highly efficient weights and rapid domain adaptation.
+- **Status:** Integrated in speech-mcp as default local STT (`transcribe_audio_file`, `transcribe_stream_chunk`)
+- **Guide:** [providers/funasr.md](providers/funasr.md)
+- **Papers:** [2509.12508](https://arxiv.org/abs/2509.12508) (Fun-ASR), [2407.04051](https://arxiv.org/abs/2407.04051) (FunAudioLLM)
+- **Repos:** [modelscope/FunASR](https://github.com/modelscope/FunASR), [FunAudioLLM/Fun-ASR](https://github.com/FunAudioLLM/Fun-ASR), [FunAudioLLM/SenseVoice](https://github.com/FunAudioLLM/SenseVoice)
+- **Why it wins:** Open weights, no subscription, 170× GPU RTF, unified VAD+ASR+punc+diarization, emotion via SenseVoice, ONNX/CPU/GPU/Windows SDK edge matrix, OpenAI-compatible `funasr-server` sidecar
 
-### 3. ChatTTS
-- **Primary Strength**: Conversational prosody.
-- **Features**: Optimized for LLM assistants. Expert control over laughter, pauses, and oral interjections.
-- **Advanced Trick**: Outperforms most open-source models in "human-like" delivery and prosodic fluency.
+## Candidates (not yet integrated)
 
-### 4. FunASR (Tongyi Lab)
-- **Primary Strength**: Standard-scale ASR with regional nuances.
-- **Features**: Supports 31+ languages with regional accent support. Features VAD and punctuation restoration.
-- **Advanced Trick**: Trained on millions of hours of data; robust in noisy Standard environments.
+### GPT-SoVITS (v3+)
 
-## 🎯 Integration Potential (Speech-MCP)
-- **Phase 11 Pattern**: Integrate `fun_asr` as a local-first VAD substrate for `detect_wake_word`.
-- **Phase 12 Pattern**: Use `GPT-SoVITS` as a high-fidelity alternative to ElevenLabs for local-only cloning.
-- **Phase 13 Pattern**: Map `ChatTTS` prosodic tags to the Dialogic Return structure for "prosody-first" responses.
+- **Strength:** High-fidelity zero-shot voice cloning
+- **Use case:** Local ElevenLabs alternative for TTS/cloning
+
+### ChatTTS
+
+- **Strength:** Conversational prosody — laughter, pauses, oral interjections
+- **Use case:** Prosody-first assistant responses
+
+### CosyVoice 2/3 (Alibaba)
+
+- **Strength:** Zero-shot multilingual TTS, cross-lingual cloning
+- **Use case:** TTS complement to FunASR STT (same FunAudioLLM family)
+
+## Fleet integration map
+
+| Pattern | Provider | Status |
+|---|---|---|
+| Local batch STT | FunASR | ✅ Done |
+| Local duplex conversation | kyutai-mcp (Moshi) | Separate repo |
+| Cloud TTS/STT | Gemini, Hume, ElevenLabs | ✅ Done |
+| Wake word | openWakeWord | ✅ Done |
+| Local cloning | GPT-SoVITS | Future |
+| Local expressive TTS | ChatTTS / CosyVoice | Future |
 
 ---
-*Verified via empirical ArXiv and ModelScope trending (Feb 2026).*
+
+*Updated May 2026 after FunASR integration. Benchmarks and links verified against arXiv 2509.12508 and official GitHub releases.*

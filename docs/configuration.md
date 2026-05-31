@@ -16,6 +16,13 @@ ELEVENLABS_API_KEY=your-elevenlabs-api-key
 # Free key at https://aistudio.google.com/apikey
 GOOGLE_API_KEY=your-google-api-key
 
+# FunASR — Alibaba local STT (optional, recommended for offline agents)
+# Full guide: docs/providers/funasr.md
+# FUNASR_ENABLED=true
+# FUNASR_MODEL=FunAudioLLM/Fun-ASR-Nano-2512
+# FUNASR_DEVICE=cuda:0
+# FUNASR_OPENAI_URL=http://127.0.0.1:10910/v1
+
 # openWakeWord — local wake-word detection (optional)
 # No API key required. Runs fully offline using ONNX models.
 # Supported keywords: "computer", "alexa", "hey_jarvis", "hey_google"
@@ -36,6 +43,7 @@ None are required — the server starts and defaults to Windows TTS with no keys
 
 | Provider | Key | Mode | Audio quality | Notes |
 |---|---|---|---|---|
+| `funasr` | `FUNASR_ENABLED` or sidecar URL | Batch STT | Highest local | VAD + diarization + punctuation; see [funasr.md](providers/funasr.md) |
 | `windows` | None | Batch | Low (SAPI5 robotic) | Always works, instant, no API key |
 | `hume` | `HUME_API_KEY` | Batch | High (Octave) | `description` prose style prompt |
 | `gemini` | `GOOGLE_API_KEY` | Batch | Highest | Model: `gemini-3.1-flash-tts-preview` |

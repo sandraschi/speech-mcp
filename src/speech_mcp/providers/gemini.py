@@ -57,11 +57,37 @@ class GeminiProvider:
 
     # All prebuilt voices as of April 2026
     VOICES: ClassVar[list[str]] = [
-        "Aoede", "Charon", "Fenrir", "Kore", "Orion", "Puck", "Leda", "Orus", "Zephyr",
-        "Callirrhoe", "Autonoe", "Enceladus", "Iocaste", "Umbriel", "Algieba",
-        "Despina", "Erinome", "Algenib", "Rasalgethi", "Laomedeia", "Achernar",
-        "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird", "Zubenelgenubi",
-        "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafar",
+        "Aoede",
+        "Charon",
+        "Fenrir",
+        "Kore",
+        "Orion",
+        "Puck",
+        "Leda",
+        "Orus",
+        "Zephyr",
+        "Callirrhoe",
+        "Autonoe",
+        "Enceladus",
+        "Iocaste",
+        "Umbriel",
+        "Algieba",
+        "Despina",
+        "Erinome",
+        "Algenib",
+        "Rasalgethi",
+        "Laomedeia",
+        "Achernar",
+        "Alnilam",
+        "Schedar",
+        "Gacrux",
+        "Pulcherrima",
+        "Achird",
+        "Zubenelgenubi",
+        "Vindemiatrix",
+        "Sadachbia",
+        "Sadaltager",
+        "Sulafar",
     ]
 
     def __init__(self, api_key: str | None = None):
@@ -69,11 +95,13 @@ class GeminiProvider:
         if not self.api_key:
             raise ValueError("GOOGLE_API_KEY is not set.")
         from google import genai
+
         self._client = genai.Client(api_key=self.api_key)
 
     def synthesize_wav(self, text: str, voice_name: str = "Kore") -> bytes:
         """Synchronous TTS synthesis."""
         from google.genai import types
+
         if voice_name not in self.VOICES:
             logger.warning("Voice '%s' not in known list.", voice_name)
 
@@ -103,11 +131,11 @@ class GeminiProvider:
     def transcribe(self, audio_bytes: bytes, mime_type: str = "audio/wav") -> str:
         """
         Synchronous STT (Transcription).
-        
+
         Args:
             audio_bytes: Raw audio data.
             mime_type:   audio/wav, audio/mpeg, etc.
-            
+
         Returns:
             The transcribed text.
         """
@@ -121,7 +149,7 @@ class GeminiProvider:
             ],
             config=types.GenerateContentConfig(
                 system_instruction="You are a professional stenographer. Transcribe audio exactly as heard."
-            )
+            ),
         )
 
         try:

@@ -17,9 +17,9 @@ def register_utility_tools(mcp: FastMCP):
     async def manage_domestic_utility(
         action: Annotated[str, Field(description="Operation: set, cancel, query")],
         type: Annotated[str, Field(description="Utility type: timer, alarm, weather")],
-        value: Annotated[str | int | None, Field(
-            description="Duration in seconds for timers, time string for alarms."
-        )] = None,
+        value: Annotated[
+            str | int | None, Field(description="Duration in seconds for timers, time string for alarms.")
+        ] = None,
         label: Annotated[str, Field(description="Human-readable label.")] = "Default",
         ctx: Context = None,
     ) -> dict:

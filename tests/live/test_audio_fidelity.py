@@ -29,6 +29,7 @@ def test_gemini_audio_fidelity(request):
     winsound.PlaySound(wav_bytes, winsound.SND_MEMORY)
     print("[LIVE] Gemini Playback OK")
 
+
 @pytest.mark.live
 def test_windows_audio_fidelity(request, mock_ctx):
     """
@@ -49,6 +50,7 @@ def test_windows_audio_fidelity(request, mock_ctx):
     winsound.PlaySound(wav_bytes, winsound.SND_MEMORY)
     print("[LIVE] Windows Playback OK")
 
+
 @pytest.mark.live
 def test_c922_hardware_presence(request):
     """
@@ -58,6 +60,7 @@ def test_c922_hardware_presence(request):
         pytest.skip("Use --live to run real hardware detection tests")
 
     from scripts.utils.hardware_probe import get_cameras, get_microphones
+
     cams = get_cameras()
     mics = get_microphones()
 
@@ -72,6 +75,7 @@ def test_c922_hardware_presence(request):
     # The user mentioned C922 is always connected.
     assert c922_cam or c922_mic, "C922 hardware not detected in live environment"
 
+
 @pytest.mark.live
 def test_success_chime_haiku(request):
     """
@@ -81,6 +85,7 @@ def test_success_chime_haiku(request):
         pytest.skip("Use --live to run audio haiku tests")
 
     from speech_mcp.providers.windows import WindowsProvider
+
     p = WindowsProvider()
 
     # A professional yet interesting haiku for a successful test suite

@@ -52,6 +52,36 @@ List or manage voice clones across providers.
 
 ---
 
+## Speech-to-Text (FunASR)
+
+### `transcribe_audio_file`
+
+High-accuracy batch transcription via Alibaba FunASR (default) or cloud fallbacks.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `file_path` | str | required | Absolute path to WAV/MP3/FLAC |
+| `provider` | str | `"funasr"` | `funasr`, `gemini`, or `gemma` |
+| `language` | str | `"auto"` | Language code or auto-detect |
+
+**Returns:** `{"success": true, "text": "...", "segments": [...], "formatted": "..."}`
+
+See [docs/providers/funasr.md](providers/funasr.md) for setup (`FUNASR_ENABLED`, sidecar mode).
+
+### `transcribe_stream_chunk`
+
+Stateless chunk transcription for stream bridges.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `audio_base64` | str | required | Base64-encoded audio chunk |
+| `provider` | str | `"funasr"` | STT backend |
+| `language` | str | `"auto"` | Language code |
+| `sample_rate` | int | `16000` | Input sample rate (informational) |
+| `mime_type` | str | `"audio/wav"` | Chunk MIME type |
+
+---
+
 ## Agentic
 
 ### `start_evi_session`

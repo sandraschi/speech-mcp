@@ -1,8 +1,9 @@
-import sys
 import os
+import sys
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
 
 # Ensure root is in path for scripts.utils imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -19,8 +20,6 @@ async def test_server_initialization():
     assert mcp.name == "speech-mcp"
     tools = await mcp.list_tools()
     assert len(tools) >= 5
-
-
 
 
 def test_health_check_success():
