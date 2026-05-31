@@ -21,12 +21,17 @@ def _tool_result_data(result):
 @pytest.mark.asyncio
 async def test_search_docs_tool(mcp_app):
     """Test search_docs returns success and data list."""
-    result = await mcp_app.call_tool("search_docs", {"query": "AI"})
+    with patch("speech_mcp.tools.rag.get_store") as mock_get_store:
+        mock_get_store.return_value.search.return_value = [
+            {"content": "Speech AI is cool", "metadata": {"filename": "doc1.md"}, "_distance": 0.2}
+        ]
+        result = await mcp_app.call_tool("search_docs", {"query": "AI"})
     data = _tool_result_data(result)
     assert isinstance(data, dict)
     assert data.get("success") is True
     assert "data" in data
     assert isinstance(data["data"], list)
+    assert len(data["data"]) == 1
 
 
 @pytest.mark.asyncio

@@ -63,10 +63,15 @@ def test_history_endpoint():
 
 def test_search_endpoint():
     """Verify search returns list of results."""
-    response = client.get("/api/v1/search", params={"q": "test"})
+    with patch("speech_mcp.server.get_store") as mock_get_store:
+        mock_get_store.return_value.search.return_value = [
+            {"content": "test chunk", "metadata": {"filename": "doc.md"}, "_distance": 0.1}
+        ]
+        response = client.get("/api/v1/search", params={"q": "test"})
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
+    assert len(data) == 1
 
 
 def test_agentic_post():

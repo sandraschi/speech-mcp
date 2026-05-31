@@ -8,6 +8,7 @@ import pytest
 from scripts.utils.hardware_probe import get_cameras, get_microphones, get_monitors
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows monitor APIs only")
 def test_monitor_enumeration_logic():
     """Verify that monitor enumeration handles the ctypes callback logic."""
     with patch("ctypes.windll.user32.EnumDisplayMonitors") as mock_enum:
