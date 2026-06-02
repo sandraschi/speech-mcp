@@ -2,15 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.6.0] - 2026-04-20
+## [0.6.1] - 2026-05-31 (beta)
 
-### Added — Gemma 4 Native Multimodal Industrialization
+### Added — Fleet Voice Command Bus
 
-- Integrated `GemmaProvider` for SOTA 2026 local-first interaction.
-- Native STT/TTS pipelines leveraging Gemma 4's audio encoders.
-- Hybrid transcription fallback: prefers local Gemma engine, falls back to Cloud Gemini on failure.
-- Prosody-aware local synthesis (Phase 1 prototype).
-- Updated health checks and voice discovery to prioritize local engines.
+- Optional wake → record → FunASR STT → `POST` fleet-agent `/api/voice/intent` when `FLEET_VOICE_DELEGATE=1`
+- `voice_bus.py` / `voice_listener.py`; wake-word tool reports `fleet_delegate` and router URL
+- Guide: [docs/VOICE_COMMAND_BUS.md](docs/VOICE_COMMAND_BUS.md)
+
+### Changed
+
+- Biome formatter: `lineEnding: lf` for stable web CI on Windows
+
+**Status:** pre-1.0 beta — env names and router contract may change.
+
+## [0.6.0] - 2026-05-31 (beta)
+
+### Added — FunASR local STT
+
+- `FunASRProvider` (native ModelScope + OpenAI-compatible sidecar)
+- MCP tools `transcribe_audio_file`, `transcribe_stream_chunk`; REST `POST /api/v1/transcribe?provider=funasr`
+- [docs/providers/funasr.md](docs/providers/funasr.md)
+
+### Changed
+
+- CI: Biome web lint, Ruff on `src`/`tests`, Python 3.12, PortAudio for pytest
+- GitHub description and topics refreshed
+
+### Added — Gemma 4 Native Multimodal (April 2026)
+
+- `GemmaProvider` local-first STT/TTS prototype; hybrid fallback to cloud Gemini
+- Health checks and voice discovery prioritize local engines
+
+**Status:** pre-1.0 beta.
 
 ## [0.5.1] - 2026-04-20
 
