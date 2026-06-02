@@ -173,6 +173,29 @@ demo-live-ui:
     @Write-Host '3. Select a voice (e.g., Kore) and click "Start Session"' -ForegroundColor White
     @Write-Host '4. Speak into your mic or inject text for low-latency barge-in.' -ForegroundColor White
 
+# ── Distribution (MCPB + Tauri) ───────────────────────────────────────────────
+
+# Build Vite webapp only (dev proxy; Tauri sets VITE_API_BASE in build.ps1)
+build-webapp:
+    Set-Location '{{justfile_directory()}}\web'
+    npm install
+    npm run build
+
+# MCPB bundle for Claude Desktop (drag-and-drop install)
+mcpb-pack:
+    Set-Location '{{justfile_directory()}}'
+    npx -y @anthropic-ai/mcpb pack . dist/speech-mcp-v0.6.3.mcpb
+
+# Tauri native installer (Windows NSIS + MSI) — web + PyInstaller sidecar + bundle
+build-native:
+    Set-Location '{{justfile_directory()}}'
+    pwsh -NoLogo -File native/build.ps1
+
+build-native-debug:
+    Set-Location '{{justfile_directory()}}\native'
+    $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+    npx @tauri-apps/cli build --debug
+
 # ── Quality ────────────────────────────────────────────────────────────────────
 
 # Lint everything (Python + Justfile)

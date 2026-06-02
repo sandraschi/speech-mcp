@@ -165,7 +165,11 @@ flowchart TB
   Voice --> Wake
 ```
 
-### 4.2 Ports (fleet-safe)
+### 4.2 Desktop installer (Tauri)
+
+Windows **Speech MCP** installer (Tauri 2 + PyInstaller sidecar) bundles the cockpit and backend on **10909**. FunASR is not bundled in the installer — use a dev install with `uv sync --extra funasr` for edge STT. Build: `just build-native`.
+
+### 4.3 Ports (fleet-safe)
 
 | Service | Port | Role |
 |---------|------|------|
@@ -177,7 +181,7 @@ flowchart TB
 
 See `mcp-central-docs/operations/WEBAPP_PORTS.md` for the full reservoir.
 
-### 4.3 Voice Command Bus (embodied commands)
+### 4.4 Voice Command Bus (embodied commands)
 
 Canonical flow — [VOICE_COMMAND_BUS.md](VOICE_COMMAND_BUS.md):
 
@@ -193,7 +197,7 @@ Example utterance:
 
 → `yahboom_agent_mission` (see fleet-agent and yahboom-mcp docs).
 
-### 4.4 Yahboom / education robots (today)
+### 4.5 Yahboom / education robots (today)
 
 Not a full humanoid, but the **same integration pattern** applies:
 
@@ -203,7 +207,7 @@ Not a full humanoid, but the **same integration pattern** applies:
 
 Details: [YAHBOOM_RASPBOT_VOICE.md](YAHBOOM_RASPBOT_VOICE.md).
 
-### 4.5 Humanoid-scale (tomorrow)
+### 4.6 Humanoid-scale (tomorrow)
 
 | Component | Today in fleet | Humanoid note |
 |-----------|----------------|---------------|

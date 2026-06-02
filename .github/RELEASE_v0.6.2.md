@@ -68,12 +68,7 @@ uv sync --extra funasr
 
 ### Desktop / Tauri
 
-This repository has **no Tauri shell**. Distribution for this tag:
-
-- **Python** sdist + wheel via GitHub Actions (`release.yml` on tag push)
-- **Webapp** — run `just start` or Vite dev/build; backend serves API on **10909**
-
-If you need a packaged desktop host, use fleet NSSM pattern or a separate Tauri wrapper repo—out of scope for speech-mcp **0.6.2**.
+Tauri native installer added in **v0.6.3**. This tag (0.6.2) ships Python wheel/sdist and docs only.
 
 ### Artifacts
 

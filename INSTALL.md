@@ -25,6 +25,24 @@ just web         # start the frontend (if applicable)
 
 > **Why not `pip install`?** MCP servers bundle webapps, configs, project scaffolding, and tooling that a flat Python package can't deliver. PyPI offers no safety advantage — it doesn't audit packages either. `just` gives you the complete, ready-to-run stack.
 
+### Claude Desktop (MCPB — Option A)
+
+1. Download `speech-mcp-*.mcpb` from [GitHub Releases](https://github.com/sandraschi/speech-mcp/releases/latest)
+2. Drag the file into Claude Desktop (Extensions)
+3. Configure API keys in the extension settings (Google, Hume, ElevenLabs as needed)
+
+Build locally: `just mcpb-pack` (requires Node.js for `npx @anthropic-ai/mcpb`).
+
+### Windows desktop (Tauri — full installer)
+
+1. Download **Speech MCP** `*_x64-setup.exe` (NSIS) or `.msi` from [Releases](https://github.com/sandraschi/speech-mcp/releases/latest)
+2. Run the installer — launches the cockpit and starts the backend sidecar on **10909**
+3. Optional: set API keys via `.env` next to the install or extension docs
+
+Build locally: `just build-native` (Rust, Node 22+, Python 3.12+, PyInstaller). Installers appear under `native/target/release/bundle/`.
+
+FunASR weights are **not** inside the Tauri bundle; use `uv sync --extra funasr` in a dev clone for local STT.
+
 ### FunASR local STT (recommended for agents)
 
 speech-mcp uses **[FunASR](docs/providers/funasr.md)** as the default speech-to-text backend (open-weight, no per-minute STT billing).

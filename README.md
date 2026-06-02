@@ -175,6 +175,16 @@ Backend: `http://localhost:10909` — Frontend: `http://localhost:10908`
 
 For Claude Desktop MCP integration see [docs/configuration.md](docs/configuration.md).
 
+## Distribution (MCPB + Tauri)
+
+| Channel | Command / artifact |
+|---------|-------------------|
+| **Claude Desktop** | Release `.mcpb` or `just mcpb-pack` |
+| **Windows app** | Release NSIS/MSI or `just build-native` |
+| **Developers** | `just start` (backend **10909** + Vite **10908**) |
+
+Fleet pattern: [mcp-central-docs/standards/rules/tauri_godot_sota.md](https://github.com/sandraschi/mcp-central-docs/blob/main/standards/rules/tauri_godot_sota.md). Details: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

@@ -15,6 +15,17 @@ Speech-MCP is designed as a modular gateway for speech services:
 - **10909**: Backend (MCP SSE + REST API + WebSockets)
 - **10908**: Frontend (Vite/React Dashboard)
 
+### Native distribution (Tauri 2 + MCPB)
+
+| Artifact | Recipe | Output |
+|----------|--------|--------|
+| Claude Desktop bundle | `just mcpb-pack` | `dist/speech-mcp-v0.6.3.mcpb` |
+| Windows installer | `just build-native` | `native/target/release/bundle/nsis/*.exe`, `msi/*.msi` |
+
+Pipeline (`native/build.ps1`): Vite with `VITE_API_BASE=http://127.0.0.1:10909` → PyInstaller `speech-mcp-backend.exe` → Tauri bundle. Sidecar excludes FunASR/torch (install via `uv sync --extra funasr` separately).
+
+Tag releases run `.github/workflows/release.yml` (wheel + MCPB on Ubuntu, Tauri on `windows-latest`).
+
 ---
 
 ## 🛠 Technology Stack

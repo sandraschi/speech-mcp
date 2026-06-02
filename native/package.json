@@ -1,0 +1,13 @@
+{
+  "name": "speech-mcp-native",
+  "version": "0.6.3",
+  "private": true,
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:debug": "tauri build --debug"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

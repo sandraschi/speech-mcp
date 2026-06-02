@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.3] - 2026-05-31 (beta)
+
+### Added — Tauri native + MCPB distribution
+
+- **`native/`** — Tauri 2.0 desktop shell (WebView2) + PyInstaller sidecar `speech-mcp-backend` on port **10909**
+- **`just build-native`** — full pipeline: Vite (`VITE_API_BASE`) → sidecar → NSIS/MSI under `native/target/release/bundle/`
+- **`just mcpb-pack`** — Claude Desktop `.mcpb` from root `manifest.json`
+- **Release CI** — tag builds upload wheel, `.mcpb`, and Windows installers together
+
+### Fixed
+
+- Web `HealthPage` TypeScript build (optional health provider/token fields)
+
 ## [0.6.2] - 2026-05-31 (beta)
 
 ### Added — Humanoid voice thesis & documentation
