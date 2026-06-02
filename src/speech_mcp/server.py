@@ -252,6 +252,25 @@ register_ui_tools(mcp)
 register_demo_tools(mcp)
 register_wake_word_tools(mcp)
 
+if funasr_provider:
+    from pathlib import Path as _Path
+
+    from speech_mcp.voice_bus import set_transcribe_path_hook
+
+    def _voice_transcribe_file(path: _Path) -> str:
+        import anyio
+
+        async def _go() -> str:
+            result = await funasr_provider.transcribe_file(str(path), language="auto")
+            if not result.get("success", True):
+                return ""
+            return str(result.get("text") or result.get("formatted") or "").strip()
+
+        return anyio.run(_go)
+
+    set_transcribe_path_hook(_voice_transcribe_file)
+    logger.info("Fleet voice STT hook: FunASR file transcription")
+
 api_key_header = APIKeyHeader(name="X-Speech-MCP-Auth", auto_error=False)
 
 

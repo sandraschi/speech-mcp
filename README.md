@@ -73,6 +73,8 @@ Full research write-up, model zoo, benchmarks, and deployment matrix: **[docs/pr
 
 **Offline Wake-Word** — Privacy-first detection using openWakeWord (fully offline, Apache 2.0, no API key).
 
+**Fleet Voice Command Bus** — With `FLEET_VOICE_DELEGATE=1`, wake → utterance STT → `POST` fleet-agent `/api/voice/intent` (e.g. *"boomy go on patrol…"*). See [docs/VOICE_COMMAND_BUS.md](docs/VOICE_COMMAND_BUS.md) and `mcp-central-docs/standards/VOICE_COMMAND_BUS.md`.
+
 **RAG / Semantic Search** — LanceDB + FastEmbed knowledge base over project docs. `ask_docs` tool uses Claude sampling for grounded Q&A.
 
 **Local AI** — Ollama and LM Studio model discovery and grounded generation.

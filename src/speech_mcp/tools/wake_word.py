@@ -130,62 +130,92 @@ def register_wake_word_tools(mcp: FastMCP) -> None:
         global _listener_thread, _stop_event
 
         # ── status ──────────────────────────────────────────────────────────
+        from speech_mcp.voice_bus import fleet_voice_enabled
+        from speech_mcp.voice_listener import fleet_listener_active, stop_fleet_listener
+
         if action == "status":
-            running = _listener_thread is not None and _listener_thread.is_alive()
+            running = (_listener_thread is not None and _listener_thread.is_alive()) or fleet_listener_active()
             return {
                 "success": True,
                 "listening": running,
                 "engine": "openWakeWord",
+                "fleet_delegate": fleet_voice_enabled(),
                 "status": "active" if running else "stopped",
             }
 
         # ── stop ─────────────────────────────────────────────────────────────
         if action == "stop":
             with _listener_lock:
+                stopped = False
                 if _listener_thread and _listener_thread.is_alive():
                     _stop_event.set()
                     _listener_thread.join(timeout=3.0)
                     _listener_thread = None
+                    stopped = True
+                if stop_fleet_listener():
+                    stopped = True
+                if stopped:
                     await ctx.info("Wake word listener stopped.")
                     return {"success": True, "status": "stopped"}
-                else:
-                    return {"success": True, "status": "was_not_running"}
+                return {"success": True, "status": "was_not_running"}
 
         # ── start ─────────────────────────────────────────────────────────────
         if action != "start":
             return {"success": False, "error": f"Unknown action '{action}'. Use start/stop/status."}
 
+        import os
+
+        from speech_mcp.voice_bus import fleet_voice_enabled, router_url
+        from speech_mcp.voice_listener import fleet_listener_active, start_fleet_listener, stop_fleet_listener
+
+        fleet_mode = fleet_voice_enabled()
+        wake_kw = os.environ.get("FLEET_VOICE_WAKE_KEYWORD", keyword).strip() or keyword
+
         with _listener_lock:
-            # Stop existing listener if any
             if _listener_thread and _listener_thread.is_alive():
                 _stop_event.set()
                 _listener_thread.join(timeout=3.0)
+            stop_fleet_listener()
 
             _stop_event = threading.Event()
 
-            # Detection callback — fires in the listener thread
             def _on_detection(kw: str) -> None:
                 logger.info("[WAKE WORD] '%s' detected", kw)
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    loop.call_soon_threadsafe(lambda: asyncio.ensure_future(ctx.info(f"Wake word '{kw}' detected")))
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        loop.call_soon_threadsafe(
+                            lambda: asyncio.ensure_future(ctx.info(f"Wake word '{kw}' detected"))
+                        )
+                except RuntimeError:
+                    pass
 
-            _listener_thread = threading.Thread(
-                target=_run_listener,
-                args=(keyword, sensitivity, _on_detection),
-                daemon=True,
-                name=f"oww-{keyword}",
-            )
-            _listener_thread.start()
+            if fleet_mode:
+                start_fleet_listener(wake_kw, sensitivity, _on_detection)
+            else:
+                _listener_thread = threading.Thread(
+                    target=_run_listener,
+                    args=(wake_kw, sensitivity, _on_detection),
+                    daemon=True,
+                    name=f"oww-{wake_kw}",
+                )
+                _listener_thread.start()
 
-        await ctx.info(f"Wake word listener started: '{keyword}' (threshold {sensitivity})")
+        note = (
+            f"Fleet Voice Command Bus active → {router_url()}"
+            if fleet_mode
+            else "Offline wake only (set FLEET_VOICE_DELEGATE=1 to route commands)."
+        )
+        await ctx.info(f"Wake word listener started: '{wake_kw}' (threshold {sensitivity}). {note}")
 
         return {
             "success": True,
             "status": "listening",
             "engine": "openWakeWord",
-            "keyword": keyword,
+            "keyword": wake_kw,
             "threshold": sensitivity,
-            "note": "Offline detection active. No API key required.",
+            "fleet_delegate": fleet_mode,
+            "router_url": router_url() if fleet_mode else None,
+            "note": note,
             "stop_with": "configure_local_wake_word action='stop'",
         }
