@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.6.3)"
+        required: true
+        default: "v0.6.3"
 
 permissions:
   contents: write
@@ -15,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-depth: 0
 
       - uses: astral-sh/setup-uv@v5
@@ -32,7 +39,8 @@ jobs:
         run: |
           npm install -g @anthropic-ai/mcpb
           mkdir -p dist
-          mcpb pack . "dist/speech-mcp-${{ github.ref_name }}.mcpb"
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          mcpb pack . "dist/speech-mcp-${TAG}.mcpb"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -44,6 +52,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: astral-sh/setup-uv@v5
         with:
@@ -78,6 +88,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -94,7 +106,8 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: false
-          body_path: .github/RELEASE_${{ github.ref_name }}.md
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          body_path: .github/RELEASE_${{ github.event.inputs.tag || github.ref_name }}.md
           draft: false
           prerelease: true
           fail_on_unmatched_files: false
