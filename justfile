@@ -186,6 +186,11 @@ mcpb-pack:
     Set-Location '{{justfile_directory()}}'
     npx -y @anthropic-ai/mcpb pack . dist/speech-mcp-v0.6.3.mcpb
 
+# Full local release (wheel + mcpb + Tauri) — upload to GitHub Releases
+publish-release-local tag="v0.6.3":
+    Set-Location '{{justfile_directory()}}'
+    pwsh -NoLogo -File scripts/publish-release-local.ps1 -Tag "{{tag}}"
+
 # Tauri native installer (Windows NSIS + MSI) — web + PyInstaller sidecar + bundle
 build-native:
     Set-Location '{{justfile_directory()}}'

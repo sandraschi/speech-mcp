@@ -22,8 +22,7 @@ try {
     $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
     npm install
     if (-not (Test-Path "icons\icon.ico")) {
-        Write-Host "  Generating icons from web/public/vite.svg" -ForegroundColor Gray
-        npx @tauri-apps/cli icon "$Root\web\public\vite.svg"
+        pwsh -NoLogo -File "$Root\native\ensure-icons.ps1"
     }
     npx @tauri-apps/cli build
     if ($LASTEXITCODE -ne 0) { throw "Tauri build failed" }

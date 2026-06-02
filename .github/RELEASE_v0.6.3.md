@@ -10,6 +10,8 @@ Speech-MCP **0.6.3** ships **fleet-standard distribution**: Claude Desktop **MCP
 | **Windows desktop** | `Speech MCP_*_x64-setup.exe` (NSIS) or `.msi` | Full webapp + API on **10909** without separate `just start` |
 | **Python** | `.whl` / sdist | `uv pip install` / CI integrators |
 
+All five artifacts are on this release page. Tauri installers are produced on a **local Windows** machine (`just build-native` or `just publish-release-local`), not GitHub Actions.
+
 ### Tauri native app
 
 - **UI:** embedded Vite build → talks to `http://127.0.0.1:10909`

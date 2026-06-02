@@ -33,3 +33,7 @@ CLAUDE.md
 GEMINI.md
 pyproject.toml.bak
 arazzo.yaml
+uv.lock
+test_gemini.wav
+*.wav
+scratch/

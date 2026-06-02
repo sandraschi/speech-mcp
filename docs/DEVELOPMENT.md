@@ -24,7 +24,15 @@ Speech-MCP is designed as a modular gateway for speech services:
 
 Pipeline (`native/build.ps1`): Vite with `VITE_API_BASE=http://127.0.0.1:10909` → PyInstaller `speech-mcp-backend.exe` → Tauri bundle. Sidecar excludes FunASR/torch (install via `uv sync --extra funasr` separately).
 
-Tag releases run `.github/workflows/release.yml` (wheel + MCPB on Ubuntu, Tauri on `windows-latest`).
+Tag releases run `.github/workflows/release.yml` (wheel + MCPB on Ubuntu only).
+
+**Tauri NSIS/MSI (~180 MB):** build on Windows and upload:
+
+```powershell
+just publish-release-local tag=v0.6.3
+```
+
+Or `just build-native` then `gh release upload v0.6.3 native/target/release/bundle/nsis/*.exe native/target/release/bundle/msi/*.msi --clobber`.
 
 ---
 
