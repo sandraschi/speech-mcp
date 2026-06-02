@@ -2,9 +2,10 @@
 
 ## Prerequisites
 
-- Python 3.13
+- Python 3.12+
 - `uv` package manager
-- API keys for at least one cloud TTS provider (optional — Windows TTS works with no keys)
+- **FunASR (recommended):** NVIDIA GPU optional; `uv sync --extra funasr` — see [providers/funasr.md](providers/funasr.md)
+- API keys for cloud TTS (optional — Windows TTS and FunASR STT work without cloud keys)
 
 ---
 
@@ -13,11 +14,13 @@
 ```bash
 git clone https://github.com/sandraschi/speech-mcp
 cd speech-mcp
-uv sync
+uv sync --extra funasr
+cp .env.example .env
 ```
 
-Dependencies install automatically into `.venv/`. On first use, FastEmbed downloads
-the `BAAI/bge-small-en-v1.5` embedding model (~25 MB) for the RAG knowledge base.
+Set `FUNASR_ENABLED=true` in `.env` for local STT. For cloud TTS only (no torch): `uv sync` without the funasr extra.
+
+Dependencies install into `.venv/`. On first FunASR run, hub models download from HuggingFace/ModelScope. FastEmbed downloads `BAAI/bge-small-en-v1.5` (~25 MB) for RAG on first use.
 
 ---
 
@@ -42,7 +45,10 @@ the `BAAI/bge-small-en-v1.5` embedding model (~25 MB) for the RAG knowledge base
         "GOOGLE_API_KEY": "your-google-api-key",
         "HUME_API_KEY": "your-hume-api-key",
         "HUME_CONFIG_ID": "your-hume-evi-config-id",
-        "ELEVENLABS_API_KEY": "your-elevenlabs-api-key"
+        "ELEVENLABS_API_KEY": "your-elevenlabs-api-key",
+        "FUNASR_ENABLED": "true",
+        "FUNASR_MODEL": "FunAudioLLM/Fun-ASR-Nano-2512",
+        "FUNASR_DEVICE": "cuda:0"
       }
     }
   }
@@ -75,6 +81,10 @@ the `BAAI/bge-small-en-v1.5` embedding model (~25 MB) for the RAG knowledge base
 
 | Variable | Required | Where to get |
 |---|---|---|
+| `FUNASR_ENABLED` | No (recommended) | `true` after `uv sync --extra funasr` — [funasr.md](providers/funasr.md) |
+| `FUNASR_OPENAI_URL` | No | Sidecar e.g. `http://127.0.0.1:10910/v1` instead of native torch |
+| `FUNASR_MODEL` | No | Default `FunAudioLLM/Fun-ASR-Nano-2512` |
+| `FUNASR_DEVICE` | No | `cuda:0`, `cpu`, or `mps` |
 | `GOOGLE_API_KEY` | No | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — free |
 | `HUME_API_KEY` | No | [platform.hume.ai](https://platform.hume.ai) |
 | `HUME_CONFIG_ID` | No | [evi.hume.ai](https://evi.hume.ai) — EVI chat only, not needed for TTS |
@@ -110,6 +120,14 @@ Test the RAG knowledge base:
 Use search_docs to find information about Hume Octave expressive synthesis
 ```
 
+Test FunASR STT (requires `FUNASR_ENABLED` or sidecar):
+
+```
+Use transcribe_audio_file with provider funasr on a short WAV path on disk
+```
+
+See [CHINESE_AI_RESEARCH.md](CHINESE_AI_RESEARCH.md) for other Chinese open speech models (CosyVoice, ChatTTS, GPT-SoVITS).
+
 ---
 
 ## Troubleshooting
@@ -133,6 +151,12 @@ Same as above for `HUME_API_KEY`.
 **RAG slow on first call:**
 FastEmbed downloads `BAAI/bge-small-en-v1.5` (~25 MB) on first use and caches it.
 Subsequent calls are fast.
+
+**FunASR / transcribe tools not configured:**
+Run `uv sync --extra funasr`. Set `FUNASR_ENABLED=true` or `FUNASR_OPENAI_URL` in `.env` or Claude Desktop `env`. First model load downloads weights from the hub.
+
+**FunASR CUDA OOM:**
+Use `FUNASR_DEVICE=cpu`, a smaller hub model, or the sidecar on another machine; clear `FUNASR_SPK_MODEL` to disable diarization.
 
 **`ImportError: No module named 'fastmcp.ui'`:**
 Stale `.pyc` cache. Delete `src/speech_mcp/__pycache__/` and restart.

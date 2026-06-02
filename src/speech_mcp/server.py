@@ -358,7 +358,7 @@ async def health_check():
 
     return {
         "status": "healthy",
-        "version": "0.6.0",
+        "version": "0.6.2",
         "mcp_server": "online",
         "rag_sources": get_store().list_sources(),
         "active_timers": len(_timers),
@@ -386,14 +386,14 @@ async def health_check():
 @app.get("/api/status")
 @app.get("/")
 async def fleet_health_check():
-    return {"status": "ok", "version": "0.6.0"}
+    return {"status": "ok", "version": "0.6.2"}
 
 
 @app.get("/api/capabilities")
 async def api_capabilities():
     return {
         "server": "speech-mcp",
-        "version": "0.6.0",
+        "version": "0.6.2",
         "fastmcp": "3.2.0+",
         "protocols": ["MCP SSE", "REST", "WebSocket"],
         "features": {

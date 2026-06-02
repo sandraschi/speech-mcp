@@ -25,6 +25,28 @@ just web         # start the frontend (if applicable)
 
 > **Why not `pip install`?** MCP servers bundle webapps, configs, project scaffolding, and tooling that a flat Python package can't deliver. PyPI offers no safety advantage — it doesn't audit packages either. `just` gives you the complete, ready-to-run stack.
 
+### FunASR local STT (recommended for agents)
+
+speech-mcp uses **[FunASR](docs/providers/funasr.md)** as the default speech-to-text backend (open-weight, no per-minute STT billing).
+
+```powershell
+uv sync --extra funasr
+Copy-Item .env.example .env
+# Edit .env:
+# FUNASR_ENABLED=true
+# FUNASR_MODEL=FunAudioLLM/Fun-ASR-Nano-2512
+# FUNASR_DEVICE=cuda:0
+```
+
+Optional **sidecar** (keeps torch out of the main MCP process):
+
+```powershell
+uv run python scripts/start_funasr_sidecar.py
+# .env: FUNASR_OPENAI_URL=http://127.0.0.1:10910/v1
+```
+
+MCP tools: `transcribe_audio_file`, `transcribe_stream_chunk`. Full guide: [docs/providers/funasr.md](docs/providers/funasr.md). Chinese FOSS landscape: [docs/CHINESE_AI_RESEARCH.md](docs/CHINESE_AI_RESEARCH.md). **Humanoid / fleet thesis:** [docs/HUMANOID_VOICE.md](docs/HUMANOID_VOICE.md).
+
 ---
 
 ## 🐌 Traditional Setup
@@ -41,6 +63,7 @@ If you prefer not to use `just`:
    ```powershell
    uv sync --all-extras
    ```
+   For **FunASR STT only** (lighter than `--all-extras`): `uv sync --extra funasr`
 4. Start the server:
    ```powershell
    # stdio mode (for MCP clients like Claude Desktop)
@@ -59,7 +82,9 @@ If you prefer not to use `just`:
 |---|---|
 | `just` not found | Install via `winget install Casey.Just`, `scoop install just`, or `brew install just` |
 | Port conflict | Run `just kill-all` to clear fleet ports (10700–11000) |
-| Dependencies out of sync | `uv sync --all-extras` |
+| Dependencies out of sync | `uv sync --all-extras` or `uv sync --extra funasr` |
+| FunASR `ImportError` | Run `uv sync --extra funasr`; GPU drivers for `FUNASR_DEVICE=cuda:0` |
+| STT tools say not configured | Set `FUNASR_ENABLED=true` or `FUNASR_OPENAI_URL` in `.env` |
 | Something else | [Open a GitHub issue](https://github.com/sandraschi/speech-mcp/issues) |
 
 ---
@@ -103,10 +128,13 @@ This guide details how to set up and configure the Speech-MCP gateway.
 3.  **Configuration**:
     Create a `.env` file in the root directory:
     ```env
-    # Required for Wake-Word & Transcription
-    GOOGLE_API_KEY=your_gemini_key
+    # Local STT (recommended) — see docs/providers/funasr.md
+    FUNASR_ENABLED=true
+    FUNASR_MODEL=FunAudioLLM/Fun-ASR-Nano-2512
+    FUNASR_DEVICE=cuda:0
 
-    # Optional Speech Providers
+    # Cloud TTS / live (optional)
+    GOOGLE_API_KEY=your_gemini_key
     HUME_API_KEY=your_hume_key
     ELEVENLABS_API_KEY=your_eleven_key
     ```

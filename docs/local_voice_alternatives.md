@@ -60,4 +60,4 @@ Both can serve as the brain for robot voice control. The Yahboom bridge pattern 
 
 **Ollama + Kokoro/Piper TTS** — Combine a local LLM (Ollama) with a fast local TTS engine (Piper or Kokoro) for a fully offline pipeline. No native audio model — still the traditional STT→LLM→TTS stack with its latency.
 
-None of the above are currently integrated into speech-mcp directly, but the `text_to_speech` tool's provider routing is designed to be extended.
+**FunASR** is integrated as the default STT path. GPT-SoVITS, CosyVoice, and ChatTTS remain future TTS providers; `text_to_speech` routing is designed to be extended. See [CHINESE_AI_RESEARCH.md](CHINESE_AI_RESEARCH.md).

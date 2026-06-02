@@ -4,17 +4,24 @@
 ![FastMCP: 3.2.4](https://img.shields.io/badge/FastMCP-3.2.4-blue?style=for-the-badge)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-SOTA-grade MCP server and web application for industrial voice orchestration, supporting Hume AI (EVI/Octave) and ElevenLabs.
+SOTA-grade MCP server and web application for industrial voice orchestration: **FunASR local STT (default)**, Gemini Live/TTS, Hume AI (EVI/Octave), and ElevenLabs.
 
 > [!IMPORTANT]
-> **Status: Beta (v0.6.0)**. Multi-provider speech gateway with Gemini 3.1, Hume AI, ElevenLabs TTS and voice cloning.
+> **Status: Beta (v0.6.x)**. Multi-provider speech gateway with FunASR STT, Gemini 3.1, Hume AI, ElevenLabs TTS and voice cloning.
 
 ## 🚀 Overview
 
-Speech-MCP is a federated gateway for advanced voice AI. It provides a unified MCP interface for text-to-speech, real-time empathic voice sessions, and high-fidelity voice cloning.
+Speech-MCP is a federated gateway for advanced voice AI. It provides a unified MCP interface for **speech-to-text (FunASR)**, text-to-speech, real-time empathic voice sessions, and high-fidelity voice cloning.
+
+**Humanoid thesis:** `docs/HUMANOID_VOICE.md` — **FunASR guide:** `docs/providers/funasr.md` — **Chinese FOSS landscape:** `docs/CHINESE_AI_RESEARCH.md`
 
 ## 🛠️ Key Capabilities
 
+- **FunASR (Alibaba) — default local STT**:
+    - MCP: `transcribe_audio_file`, `transcribe_stream_chunk`
+    - REST: `POST /api/v1/transcribe?provider=funasr`
+    - VAD + ASR + punctuation + diarization; SenseVoice emotion tags
+    - Native torch or OpenAI-compatible `funasr-server` sidecar (port 10910)
 - **Hume AI Integration**:
     - **EVI 2/3**: Real-time empathic voice interface with prosody-driven responses.
     - **Octave TTS**: Emotionally aware text-to-speech.
@@ -32,9 +39,13 @@ Speech-MCP is a federated gateway for advanced voice AI. It provides a unified M
 ### Environment Variables
 Create a `.env` file in the root:
 ```env
+FUNASR_ENABLED=true
+FUNASR_MODEL=FunAudioLLM/Fun-ASR-Nano-2512
+FUNASR_DEVICE=cuda:0
 HUME_API_KEY=your_hume_key
 HUME_CONFIG_ID=your_evi_config_id
 ELEVENLABS_API_KEY=your_eleven_key
+GOOGLE_API_KEY=your_google_key
 ```
 
 ### Installation
@@ -51,9 +62,12 @@ npm run dev
 
 ## 🧩 MCP Tools
 
+- `transcribe_audio_file`: Batch STT (default provider `funasr`).
+- `transcribe_stream_chunk`: Chunk/base64 STT for streaming agents.
 - `text_to_speech`: Synthesize audio across providers.
 - `start_evi_session`: Initialize real-time Hume sessions.
 - `manage_voice_clones`: Unified identity management (Create/List/Delete).
+- `configure_local_wake_word`: Offline wake; optional fleet voice delegate.
 
 ## 🗺️ Roadmap & Next Steps (v0.x)
 

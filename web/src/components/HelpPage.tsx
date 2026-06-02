@@ -18,16 +18,71 @@ const HelpPage: React.FC = () => {
           Documentation & Help
         </h2>
         <p className="text-slate-400">
-          Speech MCP: EVI, TTS, RAG, and MCP tools. Use the sections below to
-          expand details.
+          Speech MCP: FunASR local STT, cloud TTS, EVI, wake word, RAG, and MCP
+          tools. Expand sections below.
         </p>
       </header>
 
-      <Section title="Speech service providers" defaultOpen>
+      <Section title="Humanoid & embodied voice" defaultOpen>
         <p className="text-slate-400 text-sm mb-4">
-          All three providers are supported by the{" "}
-          <code className="text-accent-purple">text_to_speech</code> and stream
-          endpoints. Configure API keys in Settings.
+          Why speech-mcp prioritizes FunASR and the fleet Voice Command Bus for
+          robots and agents — full thesis, diagrams, and deployment topologies.
+        </p>
+        <a
+          href="https://github.com/sandraschi/speech-mcp/blob/main/docs/HUMANOID_VOICE.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm font-bold text-accent-purple hover:underline"
+        >
+          Read HUMANOID_VOICE.md <ExternalLink size={14} />
+        </a>
+      </Section>
+
+      <Section title="Local speech-to-text (FunASR)">
+        <p className="text-slate-400 text-sm mb-4">
+          Default STT backend. Open-weight Alibaba FunASR — no per-minute cloud
+          STT billing. Full guide:{" "}
+          <a
+            href="https://github.com/sandraschi/speech-mcp/blob/main/docs/providers/funasr.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent-blue hover:underline"
+          >
+            docs/providers/funasr.md
+          </a>
+        </p>
+        <ProviderDoc
+          name="FunASR (Alibaba)"
+          envKey="FUNASR_ENABLED"
+          docsUrl="https://github.com/modelscope/FunASR"
+          features={[
+            "MCP: transcribe_audio_file, transcribe_stream_chunk (provider=funasr)",
+            "REST: POST /api/v1/transcribe?provider=funasr",
+            "VAD + ASR + punctuation + speaker diarization in one pipeline",
+            "Models: Fun-ASR-Nano-2512, SenseVoiceSmall (via FUNASR_MODEL)",
+            "Sidecar: FUNASR_OPENAI_URL → funasr-server on port 10910",
+          ]}
+          notes="Install: uv sync --extra funasr. Set FUNASR_ENABLED=true in .env (or sidecar URL). Fleet wake commands use FunASR when FLEET_VOICE_DELEGATE=1."
+        />
+        <p className="text-slate-400 text-xs mt-2">
+          Other Chinese FOSS speech projects (CosyVoice, ChatTTS, GPT-SoVITS):{" "}
+          <a
+            href="https://github.com/sandraschi/speech-mcp/blob/main/docs/CHINESE_AI_RESEARCH.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent-blue hover:underline"
+          >
+            CHINESE_AI_RESEARCH.md
+          </a>
+        </p>
+      </Section>
+
+      <Section title="Text-to-speech providers">
+        <p className="text-slate-400 text-sm mb-4">
+          Cloud and local TTS via{" "}
+          <code className="text-accent-purple">text_to_speech</code> and{" "}
+          <code className="text-accent-purple">/ws/stream</code>. Configure API
+          keys in Settings where required.
         </p>
         <ProviderDoc
           name="Hume AI"
@@ -79,7 +134,14 @@ const HelpPage: React.FC = () => {
       <Section title="Quick start">
         <ul className="list-disc list-inside text-slate-400 text-sm space-y-1">
           <li>
-            Set API keys in Settings (Hume, ElevenLabs) if you want cloud TTS.
+            Enable FunASR:{" "}
+            <code className="text-accent-purple">FUNASR_ENABLED=true</code> and{" "}
+            <code className="text-accent-purple">uv sync --extra funasr</code>{" "}
+            on the host.
+          </li>
+          <li>
+            Set API keys in Settings (Hume, ElevenLabs, Google) if you want
+            cloud TTS.
           </li>
           <li>
             Start an EVI session from EVI Session or use Octave TTS from the TTS
@@ -103,8 +165,16 @@ const HelpPage: React.FC = () => {
           <code className="text-accent-purple">/api/v1/stats</code>,{" "}
           <code className="text-accent-purple">/api/v1/search</code>,{" "}
           <code className="text-accent-purple">POST /api/v1/tts/wav</code>,{" "}
+          <code className="text-accent-purple">POST /api/v1/transcribe</code>{" "}
+          (FunASR STT body),{" "}
           <code className="text-accent-purple">/api/v1/utility</code>,{" "}
           <code className="text-accent-purple">/api/v1/agentic</code>.
+        </p>
+        <p className="text-slate-400 text-sm mt-2">
+          MCP STT:{" "}
+          <code className="text-accent-purple">transcribe_audio_file</code>,{" "}
+          <code className="text-accent-purple">transcribe_stream_chunk</code> —
+          default <code className="text-accent-purple">provider=funasr</code>.
         </p>
         <p className="text-slate-400 text-sm">
           WebSockets: <code className="text-accent-purple">/ws/stream</code>{" "}
@@ -220,12 +290,24 @@ const HelpPage: React.FC = () => {
           />
           <FaqItem
             q="What tools are available?"
-            a="TTS (5 providers), STT, wake word, RAG search/ask, agentic workflows, voice cloning, IoT action bridge, timers/alarms, and Prefab UI dashboards. Run configure_local_wake_word action='list' for available wake words."
+            a="STT (FunASR default, Gemini/Gemma fallback), TTS (5 providers), wake word, RAG search/ask, agentic workflows, voice cloning, IoT action bridge, timers/alarms, and Prefab UI dashboards. Run configure_local_wake_word action='list' for available wake words."
+          />
+          <FaqItem
+            q="FunASR / transcribe tools not configured?"
+            a="Run uv sync --extra funasr on the backend host. Set FUNASR_ENABLED=true or FUNASR_OPENAI_URL to a running funasr-server sidecar. See docs/providers/funasr.md in the repo."
           />
         </div>
       </section>
 
       <footer className="flex justify-center gap-8 py-8 opacity-40 text-sm">
+        <a
+          href="https://github.com/sandraschi/speech-mcp/blob/main/docs/providers/funasr.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 hover:opacity-100 transition-opacity"
+        >
+          <ExternalLink size={14} /> FunASR guide
+        </a>
         <a
           href="https://github.com/sandraschi/speech-mcp"
           target="_blank"

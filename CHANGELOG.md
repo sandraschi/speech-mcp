@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2] - 2026-05-31 (beta)
+
+### Added — Humanoid voice thesis & documentation
+
+- **[docs/HUMANOID_VOICE.md](docs/HUMANOID_VOICE.md)** — product thesis: speech as load-bearing HRI for humanoids, Chinese open-weight industrial speech (FunASR default), fleet architecture (mermaid), deployment topologies, operator checklist, safety, roadmap
+- README hero + badge linking humanoid doc; expanded FunASR and Chinese FOSS tables
+- [docs/CHINESE_AI_RESEARCH.md](docs/CHINESE_AI_RESEARCH.md) rewrite with fleet map
+- Cross-links from FunASR guide, Voice Command Bus, Yahboom bridge, INSTALL, integration guide, `llms.txt` / `llms-full.txt`
+
+### Changed — Web visibility
+
+- Dashboard banner: humanoid/fleet voice + links to thesis doc, Help, STT
+- Help page: default-open Humanoid section + expanded FunASR / API / FAQ
+
+### Fixed
+
+- Health/MCP metadata version aligned to package version (`0.6.2`)
+
+**Status:** pre-1.0 beta — no Tauri desktop shell in this repo; release ships Python sdist/wheel + GitHub notes. Webapp remains Vite (10908) + FastAPI backend (10909).
+
 ## [0.6.1] - 2026-05-31 (beta)
 
 ### Added — Fleet Voice Command Bus

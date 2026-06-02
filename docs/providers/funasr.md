@@ -1,6 +1,8 @@
 # FunASR — Alibaba Tongyi Local Speech Recognition
 
 > **Why this matters:** Chinese open-weight speech AI is firing on all thrusters. FunASR ships industrial-grade ASR with open weights, arXiv-backed benchmarks, ModelScope/HuggingFace hubs, edge variants from 234M to 7.7B, and **no subscription tax**. speech-mcp integrates it as the default local STT backend.
+>
+> **Humanoids & fleet:** [HUMANOID_VOICE.md](../HUMANOID_VOICE.md) — why local STT + Voice Command Bus matter for embodied agents.
 
 ---
 

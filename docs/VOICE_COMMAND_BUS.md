@@ -1,5 +1,7 @@
 # Voice Command Bus (speech-mcp ingress)
 
+Embodied / humanoid context: [HUMANOID_VOICE.md](HUMANOID_VOICE.md)
+
 Canonical standard: **`D:\Dev\repos\mcp-central-docs\standards\VOICE_COMMAND_BUS.md`**
 
 speech-mcp owns the microphone pipeline:

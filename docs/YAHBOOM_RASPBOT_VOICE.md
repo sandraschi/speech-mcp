@@ -1,5 +1,7 @@
 # Yahboom Raspbot v2 and voice (TTS/STT) — usability with Speech-MCP
 
+Fleet / humanoid voice architecture: [HUMANOID_VOICE.md](HUMANOID_VOICE.md) · Voice Command Bus: [VOICE_COMMAND_BUS.md](VOICE_COMMAND_BUS.md)
+
 **Usable?** Yes — on the robot for local TTS/STT; with Speech-MCP only via a bridge (robot STT → Speech-MCP, Speech-MCP → robot TTS/playback). See below.
 
 ## Raspbot v2 and the voice module
