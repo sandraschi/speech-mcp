@@ -16,8 +16,8 @@ permissions:
 
 jobs:
   wheel-and-mcpb:
-    name: Python wheel + MCPB (CI)
-    runs-on: ubuntu-latest
+    name: Wheel + MCPB (Windows)
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,6 +27,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           version: "latest"
+          enable-cache: true
 
       - uses: actions/setup-python@v5
         with:
@@ -36,11 +37,13 @@ jobs:
         run: uv build
 
       - name: Build MCPB package
+        shell: pwsh
         run: |
+          $tag = "${{ github.event.inputs.tag }}"
+          if (-not $tag) { $tag = "${{ github.ref_name }}" }
           npm install -g @anthropic-ai/mcpb
-          mkdir -p dist
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          mcpb pack . "dist/speech-mcp-${TAG}.mcpb"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          mcpb pack . "dist/speech-mcp-$tag.mcpb"
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -52,5 +55,4 @@ jobs:
           prerelease: true
           fail_on_unmatched_files: false
 
-# Windows Tauri installers (~180 MB) are built locally — GitHub Actions runners not used.
-# On Windows: pwsh scripts/publish-release-local.ps1 -Tag v0.6.3
+# Tauri NSIS/MSI (~180 MB): build locally — just publish-release-local
