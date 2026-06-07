@@ -1,4 +1,4 @@
-set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+﻿set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
 set shell := ["pwsh.exe", "-NoLogo", "-Command"]
 set dotenv-load := true
 
@@ -6,7 +6,7 @@ set dotenv-load := true
 
 # Open the interactive recipe dashboard in the browser
 default:
-    @pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ../mcp-central-docs/scripts/just-dashboard.ps1 -Path .
+    @just --list
 
 # ── Dev ────────────────────────────────────────────────────────────────────────
 
@@ -287,3 +287,4 @@ voices:
 # Show TTS status
 tts-status:
     curl -s http://127.0.0.1:10909/api/v1/stats | python -c "import sys,json; d=json.load(sys.stdin); [print(f'{k}: {v}') for k,v in d.items()]"
+
