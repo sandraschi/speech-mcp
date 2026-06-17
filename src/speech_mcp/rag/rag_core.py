@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import Any
 
 import lancedb
-from fastembed import TextEmbedding
+
+from speech_mcp.rag.fastembed_gpu import create_text_embedding, repo_root_from_here
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,12 @@ class BaseVectorStore:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.db = lancedb.connect(str(self.db_path))
-        self.embedding_model = TextEmbedding(model_name=embedding_model_name)
+        cache_dir = str(self.db_path / "cache")
+        self.embedding_model, self.embed_device, self.embed_batch_size = create_text_embedding(
+            embedding_model_name,
+            cache_dir,
+            repo_root=repo_root_from_here(),
+        )
         self.table_name = table_name
 
     def add_documents(self, documents: list[dict[str, Any]], overwrite: bool = True):
@@ -31,13 +37,17 @@ class BaseVectorStore:
         if not documents:
             return
 
-        logger.info(f"Embedding {len(documents)} items into '{self.table_name}'...")
+        logger.info("Embedding %s items into '%s'...", len(documents), self.table_name)
 
         contents = [doc["content"] for doc in documents]
-        embeddings = list(self.embedding_model.embed(contents))
+        all_embeddings: list[Any] = []
+        batch = self.embed_batch_size
+        for start in range(0, len(contents), batch):
+            chunk = contents[start : start + batch]
+            all_embeddings.extend(list(self.embedding_model.embed(chunk)))
 
         data = []
-        for doc, emb in zip(documents, embeddings, strict=True):
+        for doc, emb in zip(documents, all_embeddings, strict=True):
             entry = {
                 "id": doc.get("id"),
                 "vector": emb.tolist(),
@@ -54,13 +64,13 @@ class BaseVectorStore:
             tbl = self.db.open_table(self.table_name)
             tbl.add(data)
 
-        logger.info(f"Indexed {len(data)} items into LanceDB table '{self.table_name}'.")
+        logger.info("Indexed %s items into LanceDB table '%s'.", len(data), self.table_name)
 
     def search(self, query: str, limit: int = 5, where: str | None = None) -> list[dict[str, Any]]:
         """Semantic search with optional pre-filter."""
         tables = self.db.list_tables()
         if self.table_name not in tables and (hasattr(tables, "tables") and self.table_name not in tables.tables):
-            logger.warning(f"Table '{self.table_name}' not found.")
+            logger.warning("Table '%s' not found.", self.table_name)
             return []
 
         tbl = self.db.open_table(self.table_name)

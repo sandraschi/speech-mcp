@@ -1,4 +1,5 @@
-﻿set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+import 'scripts/just/fleet.just'
 set shell := ["pwsh.exe", "-NoLogo", "-Command"]
 set dotenv-load := true
 
@@ -196,6 +197,10 @@ build-native:
     Set-Location '{{justfile_directory()}}'
     pwsh -NoLogo -File native/build.ps1
 
+# Run CUA smoke test against installed NSIS app
+cua-nsis-test:
+    C:\Windows\py.exe scripts/cua-smoke.py
+
 build-native-debug:
     Set-Location '{{justfile_directory()}}\native'
     $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
@@ -260,6 +265,16 @@ reindex-clean:
     Remove-Item -Recurse -Force data\lancedb -ErrorAction SilentlyContinue
     uv run python scripts/reindex_docs.py
 
+# GPU RAG (after rag-gpu-install; uses venv python, not uv run)
+rag-gpu:
+    @pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-gpu.ps1
+
+rag-gpu-install:
+    @pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-gpu-install.ps1
+
+rag-cpu-install:
+    @pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-cpu-install.ps1
+
 # Show installed dependency versions relevant to TTS
 versions:
     @uv run python scripts/demos/versions.py
@@ -287,4 +302,3 @@ voices:
 # Show TTS status
 tts-status:
     curl -s http://127.0.0.1:10909/api/v1/stats | python -c "import sys,json; d=json.load(sys.stdin); [print(f'{k}: {v}') for k,v in d.items()]"
-
