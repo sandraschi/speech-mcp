@@ -12,11 +12,13 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("safe_write")
 
+
 def count_structures(content: str):
     """Counts classes and functions to detect structural regression."""
     defs = len(re.findall(r"^\s*def\s+\w+", content, re.MULTILINE))
     classes = len(re.findall(r"^\s*class\s+\w+", content, re.MULTILINE))
     return defs, classes
+
 
 def safe_write(target_path: str, content: str, author: str = "Assistant", force: bool = False):
     target = Path(target_path).resolve()
@@ -33,8 +35,8 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
             "dialogic": {
                 "suggestion": "Identify if you are creating a new project or path. If this is a test (e.g. Starfleet/Coco), acknowledge the Joke path.",
                 "remediation": f"New-Item -ItemType Directory -Path '{target_dir}' -Force",
-                "is_test_or_joke": "starfleet" in str(target).lower() or "coco" in str(target).lower()
-            }
+                "is_test_or_joke": "starfleet" in str(target).lower() or "coco" in str(target).lower(),
+            },
         }
 
     # 2. Ironclad Anti-Stub Protection
@@ -54,8 +56,8 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
                 "dialogic": {
                     "suggestion": "You are attempting to replace a functional file with a trivial stub. This is a high-risk operation.",
                     "remediation": "read_file(target)",
-                    "action_required": "USE --force TO OVERWRITE"
-                }
+                    "action_required": "USE --force TO OVERWRITE",
+                },
             }
 
         # Heuristic B: Structural Regression
@@ -67,8 +69,8 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
                 "dialogic": {
                     "suggestion": "The new content is missing the majority of the existing code's logic/structure.",
                     "remediation": "Check your context. Did you actually find the file content or are you hallucinating a replacement?",
-                    "action_required": "USE --force TO OVERWRITE"
-                }
+                    "action_required": "USE --force TO OVERWRITE",
+                },
             }
 
     # 3. Local Backup (Side-car)
@@ -93,7 +95,7 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
                 "existing_size": os.path.getsize(target) if target.exists() else 0,
                 "new_size": new_size,
                 "backup_path": str(local_bak) if target.exists() else None,
-                "force_used": force
+                "force_used": force,
             }
             f.write(json.dumps(entry) + "\n")
     except Exception as e:
@@ -115,11 +117,11 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
             "success": True,
             "file": str(target),
             "size": new_size,
-            "backup": str(local_bak) if local_bak.exists() else None
+            "backup": str(local_bak) if local_bak.exists() else None,
         }
 
     except Exception as e:
-        if 'tmp_name' in locals() and os.path.exists(tmp_name):
+        if "tmp_name" in locals() and os.path.exists(tmp_name):
             os.remove(tmp_name)
 
         return {
@@ -128,9 +130,10 @@ def safe_write(target_path: str, content: str, author: str = "Assistant", force:
             "message": str(e),
             "dialogic": {
                 "suggestion": "Disk may be full or permissions denied.",
-                "remediation": "Verify disk space and file locks."
-            }
+                "remediation": "Verify disk space and file locks.",
+            },
         }
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SOTA Ironclad Safe-Write Utility")

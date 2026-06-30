@@ -14,6 +14,7 @@ def get_hardware_map():
     except Exception:
         return {"monitors": [], "microphones": [], "cameras": []}
 
+
 def move_window_to_monitor(process_name: str, monitor_index: int, monitors: list):
     if monitor_index >= len(monitors):
         return
@@ -41,11 +42,12 @@ def move_window_to_monitor(process_name: str, monitor_index: int, monitors: list
     if ($targetProc) {{
       $hwnd = $targetProc.MainWindowHandle
       if ($hwnd -ne 0) {{
-        [User32]::SetWindowPos($hwnd, 0, {target_mon['left']}, {target_mon['top']}, {target_mon['width']}, {target_mon['height']}, 0x0040)
+        [User32]::SetWindowPos($hwnd, 0, {target_mon["left"]}, {target_mon["top"]}, {target_mon["width"]}, {target_mon["height"]}, 0x0040)
       }}
     }}
     """
     subprocess.run(["powershell", "-Command", ps_cmd], capture_output=True)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Professional MCP Orchestrator")
@@ -66,12 +68,10 @@ def main():
 
     # 2. Start the Speech-MCP webapp
     print("[*] Launching Speech-MCP backend...")
-    webapp_proc = subprocess.Popen(["py", "-m", "speech_mcp.webapp"],
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
+    webapp_proc = subprocess.Popen(["py", "-m", "speech_mcp.webapp"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     print("[*] Waiting for UI to initialize...")
-    time.sleep(5) # Give it time to spawn windows
+    time.sleep(5)  # Give it time to spawn windows
 
     # 3. Position the webapp
     target_mon_idx = args.monitor
@@ -94,6 +94,7 @@ def main():
         print("[*] Shutting down...")
         webapp_proc.terminate()
         # Kill the target app if possible (process group management would be better here)
+
 
 if __name__ == "__main__":
     main()

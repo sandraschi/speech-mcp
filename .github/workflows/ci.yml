@@ -35,12 +35,12 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install Python dependencies
-        run: uv sync --extra dev
+        run: uv sync --group dev
 
       - name: Ruff check
         run: uv run ruff check src tests
 
-      - name: Ruff format
+      - name: Ruff format check
         run: uv run ruff format --check src tests
 
       - name: Lockfile check
@@ -55,4 +55,4 @@ jobs:
         working-directory: web
 
       - name: Pytest (mocks only)
-        run: uv run pytest tests/ -v -m "not live"
+        run: uv run pytest tests/ -x --tb=short -m "not live"

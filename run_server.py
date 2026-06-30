@@ -10,6 +10,12 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 
+
+# PyInstaller lazy-import traps (fleet Tauri protocol)
+import _datetime  # noqa: F401
+import _strptime  # noqa: F401
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="speech-mcp HTTP web bridge")
     parser.add_argument("--http", action="store_true", help="Run HTTP (required for Tauri)")

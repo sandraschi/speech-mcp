@@ -16,5 +16,6 @@ def test_playback(filename):
     except Exception as e:
         print(f"Playback failed: {e}")
 
+
 if __name__ == "__main__":
     test_playback("test_gemini.wav")

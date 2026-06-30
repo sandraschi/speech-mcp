@@ -5577,7 +5577,7 @@ wheels = [
 
 [[package]]
 name = "speech-mcp"
-version = "0.6.0"
+version = "0.6.3"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -5602,13 +5602,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "ruff" },
-]
 funasr = [
     { name = "fastapi" },
     { name = "funasr" },
@@ -5618,6 +5611,15 @@ funasr = [
     { name = "soundfile" },
     { name = "torchaudio" },
     { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
@@ -5640,22 +5642,26 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=15.0.0" },
     { name = "pyaudio", specifier = ">=0.2.14" },
     { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.20.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
-    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.10.0" },
     { name = "python-dotenv" },
     { name = "python-multipart", marker = "extra == 'funasr'" },
     { name = "python-osc" },
     { name = "pyttsx3" },
-    { name = "ruff", marker = "extra == 'dev'" },
     { name = "soundfile", marker = "extra == 'funasr'", specifier = ">=0.12.0" },
     { name = "torchaudio", marker = "extra == 'funasr'", specifier = ">=2.2.0" },
     { name = "uvicorn", extras = ["standard"] },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'funasr'" },
     { name = "websockets" },
 ]
-provides-extras = ["funasr", "dev"]
+provides-extras = ["funasr"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=7.0.0" },
+    { name = "pytest-asyncio", specifier = ">=0.20.0" },
+    { name = "pytest-cov", specifier = ">=4.0.0" },
+    { name = "pytest-mock", specifier = ">=3.10.0" },
+    { name = "ruff" },
+]
 
 [[package]]
 name = "sse-starlette"

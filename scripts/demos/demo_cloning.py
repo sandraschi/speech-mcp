@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-sys.path.insert(0, 'src')
+sys.path.insert(0, "src")
 from elevenlabs.client import ElevenLabs
 from hume import HumeClient
 
@@ -14,7 +14,7 @@ def run():
     print("--- Professional Voice Management Demo ---")
 
     # Check ElevenLabs
-    el_key = os.environ.get('ELEVENLABS_API_KEY')
+    el_key = os.environ.get("ELEVENLABS_API_KEY")
     if el_key and "your_elevenlabs_api_key_here" not in el_key:
         print("\n[ElevenLabs] Connection: ONLINE")
         client = ElevenLabs(api_key=el_key)
@@ -26,7 +26,7 @@ def run():
         print("\n[ElevenLabs] Connection: OFFLINE (Missing or placeholder API key)")
 
     # Check Hume
-    h_key = os.environ.get('HUME_API_KEY')
+    h_key = os.environ.get("HUME_API_KEY")
     if h_key:
         print("\n[Hume AI] Connection: ONLINE")
         h_client = HumeClient(api_key=h_key)
@@ -40,6 +40,7 @@ def run():
     print("\n--- Industrial Capability Verified ---")
     print("To clone a voice via snippet, use the 'manage_voice_clones' tool with:")
     print("  provider='elevenlabs', action='create', name='MyClone', audio_path='path/to/sample.wav'")
+
 
 if __name__ == "__main__":
     run()

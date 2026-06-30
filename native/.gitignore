@@ -1,3 +1,4 @@
 target/
 node_modules/
 binaries/*-x86_64-pc-windows-msvc.exe
+resources/

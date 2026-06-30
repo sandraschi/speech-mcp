@@ -12,25 +12,27 @@ from speech_mcp.providers.gemini import GeminiProvider
 
 load_dotenv()
 
+
 async def get_weather(city: str):
     async with httpx.AsyncClient() as client:
         try:
             # format=j1 gives raw JSON with more details
-            r = await client.get(f'https://wttr.in/{city}?format=j1')
+            r = await client.get(f"https://wttr.in/{city}?format=j1")
             r.raise_for_status()
             return r.json()
         except Exception:
             return None
 
+
 def build_weather_prompt(city: str, data: dict, is_ahvaz: bool = False):
     if not data:
         return f"I'm sorry, I couldn't reach the weather service for {city}."
 
-    current = data['current_condition'][0]
-    temp = int(current['temp_C'])
-    condition = current['weatherDesc'][0]['value'].lower()
-    humidity = current['humidity']
-    wind = current['windspeedKmph']
+    current = data["current_condition"][0]
+    temp = int(current["temp_C"])
+    condition = current["weatherDesc"][0]["value"].lower()
+    humidity = current["humidity"]
+    wind = current["windspeedKmph"]
 
     if is_ahvaz:
         return f"[sighs] Meanwhile, in Ahvaz, Iran... the heat is staggering. It is currently {temp} degrees celsius, with {humidity} percent humidity. [dramatically] It's practically a blast furnace."
@@ -47,6 +49,7 @@ def build_weather_prompt(city: str, data: dict, is_ahvaz: bool = False):
         shiver = "[shivers] Brrr! "
 
     return f"{tags}The current weather in {city} is {condition}. The temperature is {temp} degrees celsius. {shiver}Humidity stands at {humidity} percent, and winds are blowing at {wind} kilometers per hour."
+
 
 async def run_weather_demo():
     city = sys.argv[1] if len(sys.argv) > 1 else "Vienna"
@@ -69,11 +72,12 @@ async def run_weather_demo():
 
     # 2. Ahvaz Gag
     if ahvaz_data and city.lower() != "ahvaz":
-        await asyncio.sleep(1) # Dramatic pause
+        await asyncio.sleep(1)  # Dramatic pause
         gag_prompt = build_weather_prompt("Ahvaz", ahvaz_data, is_ahvaz=True)
         print(f"[Gemini] {gag_prompt}")
         wav_gag = provider.synthesize_wav(gag_prompt, voice_name="Zephyr")
         winsound.PlaySound(wav_gag, winsound.SND_MEMORY)
+
 
 if __name__ == "__main__":
     asyncio.run(run_weather_demo())

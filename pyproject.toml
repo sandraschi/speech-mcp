@@ -36,12 +36,14 @@ funasr = [
     "uvicorn[standard]",
     "python-multipart",
 ]
+
+[dependency-groups]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.20.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
-    "ruff"
+    "ruff",
 ]
 
 [project.scripts]
@@ -68,7 +70,9 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 pythonpath = ["."]
+testpaths = ["tests"]
 markers = [
     "live: marks tests requiring live API keys or hardware (deselect with '-m \"not live\"')",
 ]

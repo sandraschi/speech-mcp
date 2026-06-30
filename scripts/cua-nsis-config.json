@@ -1,0 +1,14 @@
+{
+  "product_name": "Speech MCP",
+  "install_dir": "%LOCALAPPDATA%\\Speech MCP",
+  "operator_exe": "speech-mcp-native.exe",
+  "backend_process_names": ["speech-mcp-native", "speech-mcp-backend"],
+  "backend_port": 10909,
+  "health_path": "/health",
+  "diagnostics_path": "/api/v1/diagnostics",
+  "feature_smoke_path": "/api/v1/health",
+  "window_title_re": "Speech MCP",
+  "nsis_glob": "native/target/release/bundle/nsis/Speech MCP_*_x64-setup.exe",
+  "bridge_ok_text": "speech-mcp",
+  "uninstall_registry_filter": "*Speech MCP*"
+}

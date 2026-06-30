@@ -7,7 +7,7 @@ import os
 import tempfile
 import winsound
 
-sys.path.insert(0, 'src')
+sys.path.insert(0, "src")
 from speech_mcp.providers.gemini import GeminiProvider
 
 
@@ -32,9 +32,9 @@ def run():
     """
 
     # 'Charon' is excellent for deep, dramatic readings
-    wav = p.synthesize_wav(text, voice_name='Charon')
+    wav = p.synthesize_wav(text, voice_name="Charon")
 
-    tmp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     tmp.write(wav)
     tmp.close()
 
@@ -43,6 +43,7 @@ def run():
 
     os.remove(tmp.name)
     print("OK")
+
 
 if __name__ == "__main__":
     run()

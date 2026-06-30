@@ -6,6 +6,7 @@ from speech_mcp.providers.gemini import GeminiProvider
 
 load_dotenv()
 
+
 def test_gemini_tts():
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -28,7 +29,9 @@ def test_gemini_tts():
     except Exception as e:
         print(f"Failure: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     test_gemini_tts()

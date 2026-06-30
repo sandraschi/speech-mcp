@@ -7,14 +7,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-sys.path.insert(0, 'src')
+sys.path.insert(0, "src")
 from hume import HumeClient
 from hume.tts import FormatWav, PostedUtterance
 
 
 def run():
     print("Synthesizing 'The Vincent Price Experience' with Hume AI Octave...")
-    api_key = os.environ.get('HUME_API_KEY')
+    api_key = os.environ.get("HUME_API_KEY")
     if not api_key:
         print("Error: HUME_API_KEY environment variable not set in .env.")
         sys.exit(1)
@@ -40,7 +40,7 @@ def run():
         print("Error: Received empty audio from Hume.")
         sys.exit(1)
 
-    tmp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     tmp.write(audio)
     tmp.close()
 
@@ -51,6 +51,7 @@ def run():
 
     os.remove(tmp.name)
     print("OK")
+
 
 if __name__ == "__main__":
     run()

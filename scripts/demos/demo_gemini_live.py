@@ -5,7 +5,8 @@ import anyio
 from dotenv import load_dotenv
 
 # Ensure we can import from src/
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
+
 
 async def run_demo():
     load_dotenv()
@@ -60,6 +61,7 @@ async def run_demo():
 
     except Exception as e:
         print(f"Session Error: {e}")
+
 
 if __name__ == "__main__":
     anyio.run(run_demo)
