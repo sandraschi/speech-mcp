@@ -29,7 +29,7 @@ def main() -> None:
 
     from speech_mcp.server import app, mcp
 
-    mcp_app = mcp.http_app(transport="sse")
+    mcp_app = mcp.http_app(path="/", transport="sse")
     app.mount("/mcp", mcp_app)
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
 

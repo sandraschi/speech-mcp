@@ -185,7 +185,8 @@ build-webapp:
 # MCPB bundle for Claude Desktop (drag-and-drop install)
 mcpb-pack:
     Set-Location '{{justfile_directory()}}'
-    npx -y @anthropic-ai/mcpb pack . dist/speech-mcp-v0.6.3.mcpb
+    $version = & uv run python -c "import tomllib; f=open('pyproject.toml','rb'); print(tomllib.load(f)['project']['version'])"
+    npx -y @anthropic-ai/mcpb pack mcpb/ "dist/speech-mcp-v$version.mcpb"
 
 # Full local release (wheel + mcpb + Tauri) — upload to GitHub Releases
 publish-release-local tag="v0.6.3":

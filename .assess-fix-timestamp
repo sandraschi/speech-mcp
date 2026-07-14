@@ -1,0 +1,22 @@
+Assess-Fix Run: 2026-07-14T$(Get-Date -Format 'HH:mm:ss')
+
+## Fixed Items
+
+1. **Missing `.opencode/skills/session-context/SKILL.md`** — Created session context injection file for opencode/agent skill loading per session_context_injection.md standard.
+
+2. **Missing `mcpb/assets/icon.png`** — Copied from `native/icons/icon.png` (256x256). Required by MCPB_PACKAGING_STANDARDS.md for mcpb bundle.
+
+3. **Hardcoded version in `justfile` mcpb-pack recipe** — Changed from `npx ... pack . dist/speech-mcp-v0.6.3.mcpb` to dynamic version extraction from pyproject.toml.
+
+4. **Stale `.bak` file in `mcpb/src/speech_mcp/`** — Removed orphaned `webapp.py.20260712_153827.bak`.
+
+## Pre-existing (not fixed)
+
+- **CORS config** (`server.py:190-209`): Already uses explicit origins (no `["*"]`), includes Tauri origins, and has `allow_origin_regex` — fleet standard compliant.
+- **fastmcp version**: `>=3.4.2,<4` — compliant with SOTA.
+- **Ruff**: Only 2 S310 warnings (pre-existing, min severity).
+- **All 15 required files**: All present (pyproject.toml, justfile, llms.txt, llms-full.txt, glama.json, .gitignore, .env.example, CHANGELOG.md, AGENTS.md, CLAUDE.md, start.ps1, start.bat, .mcpbignore, mcpb/manifest.json, .opencode/skills/).
+
+## Build Artifacts
+
+- `dist/speech-mcp-v0.6.3.mcpb` — 76.7KB, 34 files, shasum verified

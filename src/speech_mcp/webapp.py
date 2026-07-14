@@ -18,7 +18,7 @@ from speech_mcp.server import app, mcp
 
 if __name__ == "__main__":
     # Mount MCP SSE transport into the FastAPI app
-    mcp_app = mcp.http_app(transport="sse")
+    mcp_app = mcp.http_app(path="/", transport="sse")
     app.mount("/mcp", mcp_app)
 
     port = int(os.getenv("SPEECH_MCP_PORT", "10909"))
