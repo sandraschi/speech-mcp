@@ -4,7 +4,7 @@ version = "0.6.3"
 description = "FastMCP 3.2 speech gateway: FunASR local STT, Gemini Live/TTS, Hume, ElevenLabs, wake word, RAG. MCP + React webapp."
 requires-python = ">=3.12"
 dependencies = [
-    "fastmcp>=3.4.2,<4",
+    "fastmcp>=3.4.4,<4",
     "hume>=0.7.0",
     "elevenlabs>=0.2.0",
     "pyaudio>=0.2.14",
@@ -43,6 +43,7 @@ dev = [
     "pytest-asyncio>=0.20.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
+    "pre-commit>=4.6.1",
     "ruff",
 ]
 

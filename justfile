@@ -1,6 +1,6 @@
-set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 import 'scripts/just/fleet.just'
-set shell := ["pwsh.exe", "-NoLogo", "-Command"]
+set shell := ["powershell.exe", "-NoProfile", "-Command"]
 set dotenv-load := true
 
 # ── Dashboard ──────────────────────────────────────────────────────────────────
@@ -11,10 +11,15 @@ default:
 
 # ── Dev ────────────────────────────────────────────────────────────────────────
 
-# Install / sync all dependencies
-install:
+# Install / sync all dependencies + pre-commit + web frontend
+bootstrap:
     Set-Location '{{justfile_directory()}}'
-    uv sync
+    uv sync --group dev
+    uv run pre-commit install
+    Set-Location web; npm ci; if ($LASTEXITCODE -ne 0) { npm install }
+    Write-Host "Pre-commit hooks installed." -ForegroundColor Green
+
+install: bootstrap
 
 # Start the FastAPI webapp backend (port 10909)
 backend:
@@ -182,25 +187,15 @@ build-webapp:
     npm install
     npm run build
 
-# MCPB bundle for Claude Desktop (drag-and-drop install)
-mcpb-pack:
-    Set-Location '{{justfile_directory()}}'
-    $version = & uv run python -c "import tomllib; f=open('pyproject.toml','rb'); print(tomllib.load(f)['project']['version'])"
-    npx -y @anthropic-ai/mcpb pack mcpb/ "dist/speech-mcp-v$version.mcpb"
-
 # Full local release (wheel + mcpb + Tauri) — upload to GitHub Releases
 publish-release-local tag="v0.6.3":
     Set-Location '{{justfile_directory()}}'
-    pwsh -NoLogo -File scripts/publish-release-local.ps1 -Tag "{{tag}}"
+    powershell.exe -NoProfile -File scripts/publish-release-local.ps1 -Tag "{{tag}}"
 
 # Tauri native installer (Windows NSIS + MSI) — web + PyInstaller sidecar + bundle
 build-native:
     Set-Location '{{justfile_directory()}}'
-    pwsh -NoLogo -File native/build.ps1
-
-# Run CUA smoke test against installed NSIS app
-cua-nsis-test:
-    C:\Windows\py.exe scripts/cua-smoke.py
+    powershell.exe -NoProfile -File native/build.ps1
 
 build-native-debug:
     Set-Location '{{justfile_directory()}}\native'
@@ -268,13 +263,13 @@ reindex-clean:
 
 # GPU RAG (after rag-gpu-install; uses venv python, not uv run)
 rag-gpu:
-    @pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-gpu.ps1
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-gpu.ps1
 
 rag-gpu-install:
-    @pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-gpu-install.ps1
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-gpu-install.ps1
 
 rag-cpu-install:
-    @pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-cpu-install.ps1
+    @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-cpu-install.ps1
 
 # Show installed dependency versions relevant to TTS
 versions:
