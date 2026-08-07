@@ -33,7 +33,7 @@
     ],
     "resources": [
       "resources/speech-mcp-backend.exe",
-            "resources/.env"
+            "resources/.env.example"
     ],
     "targets": [
       "nsis"

@@ -3,13 +3,13 @@ import 'scripts/just/fleet.just'
 set shell := ["powershell.exe", "-NoProfile", "-Command"]
 set dotenv-load := true
 
-# ── Dashboard ──────────────────────────────────────────────────────────────────
+# --- Dashboard ---
 
 # Open the interactive recipe dashboard in the browser
 default:
     @just --list
 
-# ── Dev ────────────────────────────────────────────────────────────────────────
+# --- Dev ---
 
 # Install / sync all dependencies + pre-commit + web frontend
 bootstrap:
@@ -36,41 +36,41 @@ start:
     Set-Location '{{justfile_directory()}}'
     .\start.ps1
 
-# ── Demo — TTS ─────────────────────────────────────────────────────────────────
+# --- Demo  TTS ---
 
 # Quick sanity check: Windows SAPI5 speaks immediately, no API key needed
 demo-windows:
     @uv run python scripts/demos/demo_windows.py
 
-# Gemini 3.1 Flash TTS — Dramatic Shakespeare monologue (Hamlet)
+# --- Gemini 3 1 Flash TTS  Dramatic Shakespeare monologue  Hamlet ---
 demo-shakespeare:
     @uv run python scripts/demos/demo_shakespeare.py
 
-# Gemini 3.1 Flash TTS — Japanese literary reading (Neko)
+# --- Gemini 3 1 Flash TTS  Japanese literary reading  Neko ---
 demo-neko:
     @uv run python scripts/demos/demo_neko.py
 
-# Gemini 3.1 Flash TTS — plain voice, no tags (requires GOOGLE_API_KEY in .env)
+# --- Gemini 3 1 Flash TTS  plain voice no tags  requires GOOGLE_API_KEY in  env ---
 demo-gemini-plain:
     @uv run python scripts/demos/demo_gemini_plain.py
 
-# Gemini 3.1 Flash TTS — audio tags demo (excited + whisper)
+# --- Gemini 3 1 Flash TTS  audio tags demo  excited  whisper ---
 demo-gemini-tags:
     @uv run python scripts/demos/demo_gemini_tags.py
 
-# Gemini 3.1 Flash TTS — dramatic scene-direction prompt
+# --- Gemini 3 1 Flash TTS  dramatic scene-direction prompt ---
 demo-gemini-scene:
     @uv run python scripts/demos/demo_gemini_scene.py
 
-# Hume AI Octave TTS — dynamic voice with description (requires HUME_API_KEY in .env)
+# --- Hume AI Octave TTS  dynamic voice with description  requires HUME_API_KEY in  env ---
 demo-hume:
     @uv run python scripts/demos/demo_hume.py
 
-# Hume AI Octave TTS — "Vincent Price" style description
+# --- Hume AI Octave TTS  Vincent Price style description ---
 demo-price:
     @uv run python scripts/demos/demo_price.py
 
-# ElevenLabs TTS — play with a named voice (requires ELEVENLABS_API_KEY + voice ID)
+# --- ElevenLabs TTS  play with a named voice  requires ELEVENLABS_API_KEY  voice ID ---
 demo-elevenlabs voice_id="":
     Set-Location '{{justfile_directory()}}'
     uv run python -c " \
@@ -87,7 +87,7 @@ demo-elevenlabs voice_id="":
     subprocess.run(['wmplayer.exe', '/play', '/close', tmp.name]); \
     import os as _os; _os.remove(tmp.name); print('OK')"
 
-# ElevenLabs — list all voices in your account
+# --- ElevenLabs  list all voices in your account ---
 demo-el-list:
     Set-Location '{{justfile_directory()}}'
     uv run python -c " \
@@ -99,7 +99,7 @@ demo-el-list:
     print(f'{len(voices.voices)} voices:'); \
     [print(f'  {v.voice_id}  {v.name}  ({getattr(v, \"category\", \"\")}') for v in sorted(voices.voices, key=lambda v: v.name)]"
 
-# ElevenLabs IVC — instant voice clone from an audio file
+# --- ElevenLabs IVC  instant voice clone from an audio file ---
 # Usage: just demo-el-clone name="Benny" file="C:/path/to/sample.wav"
 demo-el-clone name="" file="":
     Set-Location '{{justfile_directory()}}'
@@ -114,7 +114,7 @@ demo-el-clone name="" file="":
     print(f'Cloned! voice_id={result.voice_id}  name={name}'); \
     print(f'Use: just demo-elevenlabs voice_id={result.voice_id}')"
 
-# ElevenLabs text_to_dialogue — two voices in a natural conversation
+# --- ElevenLabs text_to_dialogue  two voices in a natural conversation ---
 # Requires two voice IDs from your account
 demo-el-dialogue v1="" v2="":
     Set-Location '{{justfile_directory()}}'
@@ -141,7 +141,7 @@ demo-el-dialogue v1="" v2="":
     just demo-gemini-plain
     just demo-hume
 
-# ── Demo — Wake word ───────────────────────────────────────────────────────────
+# --- Demo  Wake word ---
 
 # List available openWakeWord keywords
 demo-wake-keywords:
@@ -165,13 +165,13 @@ demo-rag:
 demo-safety:
     @uv run python scripts/demos/demo_safety.py
 
-# ── Demo — Gemini Live ────────────────────────────────────────────────────────
+# --- Demo  Gemini Live ---
 
-# Gemini Live 3.1 — CLI-based interaction test
+# --- Gemini Live 3 CLI-based interaction test ---
 demo-live:
     @uv run python scripts/demos/demo_gemini_live.py
 
-# Gemini Live 3.1 — Instructions for high-fidelity UI demo
+# --- Gemini Live 3 Instructions for high-fidelity UI demo ---
 demo-live-ui:
     @Write-Host 'To run the Gemini Live UI Demo:' -ForegroundColor Cyan
     @Write-Host '1. Run `just start` to launch backend and frontend' -ForegroundColor White
@@ -179,7 +179,7 @@ demo-live-ui:
     @Write-Host '3. Select a voice (e.g., Kore) and click "Start Session"' -ForegroundColor White
     @Write-Host '4. Speak into your mic or inject text for low-latency barge-in.' -ForegroundColor White
 
-# ── Distribution (MCPB + Tauri) ───────────────────────────────────────────────
+# --- Distribution  MCPB  Tauri ---
 
 # Build Vite webapp only (dev proxy; Tauri sets VITE_API_BASE in build.ps1)
 build-webapp:
@@ -187,12 +187,12 @@ build-webapp:
     npm install
     npm run build
 
-# Full local release (wheel + mcpb + Tauri) — upload to GitHub Releases
+# --- Full local release  wheel  mcpb  Tauri upload to GitHub Releases ---
 publish-release-local tag="v0.6.3":
     Set-Location '{{justfile_directory()}}'
     powershell.exe -NoProfile -File scripts/publish-release-local.ps1 -Tag "{{tag}}"
 
-# Tauri native installer (Windows NSIS + MSI) — web + PyInstaller sidecar + bundle
+# --- Tauri native installer  Windows NSIS  MSI web  PyInstaller sidecar  bundle ---
 build-native:
     Set-Location '{{justfile_directory()}}'
     powershell.exe -NoProfile -File native/build.ps1
@@ -202,7 +202,7 @@ build-native-debug:
     $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
     npx @tauri-apps/cli build --debug
 
-# ── Quality ────────────────────────────────────────────────────────────────────
+# --- Quality ---
 
 # Lint everything (Python + Justfile)
 lint:
@@ -237,7 +237,7 @@ verify-speech:
     Set-Location '{{justfile_directory()}}'
     uv run pytest tests/live/ -s -v --live
 
-# ── Orchestration ─────────────────────────────────────────────────────────────
+# --- Orchestration ---
 
 # Run the hardware probe to detect monitors, microphones, and cameras
 probe:
@@ -248,7 +248,7 @@ probe:
 dual-launch app="blender" monitor="1":
     @uv run python scripts/utils/orchestrator.py --app "{{app}}" --monitor {{monitor}}
 
-# ── Maintenance ────────────────────────────────────────────────────────────────
+# --- Maintenance ---
 
 # Re-index the RAG knowledge base from docs/
 reindex:
@@ -285,7 +285,7 @@ clean:
     Get-ChildItem -Recurse -Filter 'venv' -Directory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     Write-Host 'Workspace purged of ephemeral artifacts.' -ForegroundColor Green
 
-# ── Speech ────────────────────────────────────────────────────────────────
+# --- Speech ---
 
 # Speak some text via TTS
 speak text="Hello from the fleet":
@@ -298,3 +298,5 @@ voices:
 # Show TTS status
 tts-status:
     curl -s http://127.0.0.1:10909/api/v1/stats | python -c "import sys,json; d=json.load(sys.stdin); [print(f'{k}: {v}') for k,v in d.items()]"
+
+# Bootstrap: install dev deps + pre-commit hook
