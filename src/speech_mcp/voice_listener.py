@@ -14,9 +14,16 @@ from openwakeword.model import Model
 from speech_mcp.voice_bus import (
     command_seconds,
     fleet_voice_enabled,
+    is_stop_request,
     pcm_to_wav_path,
     post_speech_intent,
+    sleep_keyword,
+    speak_reply,
+    speak_reply_enabled,
+    speak_sync,
+    spoken_reply,
     transcribe_wav,
+    wake_greeting,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,8 +48,13 @@ def _run_fleet_listener(
     cooldown = 2.0
 
     try:
-        openwakeword.utils.download_models(models=[keyword])
-        oww_model = Model(wakeword_models=[keyword], vad_threshold=0.5, inference_framework="onnx")
+        sleep_kw = sleep_keyword() or None
+        models = [keyword]
+        if sleep_kw and sleep_kw.lower() != keyword.lower():
+            models.append(sleep_kw)
+        for model in models:
+            openwakeword.utils.download_models(models=[model])
+        oww_model = Model(wakeword_models=models, vad_threshold=0.5, inference_framework="onnx")
         pa = pyaudio.PyAudio()
         stream = pa.open(
             rate=rate,
@@ -52,8 +64,9 @@ def _run_fleet_listener(
             frames_per_buffer=chunk,
         )
         logger.info(
-            "Fleet voice listener: wake='%s' command=%.1fs delegate=%s",
+            "Fleet voice listener: wake='%s' sleep='%s' command=%.1fs delegate=%s",
             keyword,
+            sleep_kw or "-",
             command_seconds(),
             fleet_voice_enabled(),
         )
@@ -65,10 +78,19 @@ def _run_fleet_listener(
             for name, score in scores.items():
                 if score < sensitivity:
                     continue
-                logger.info("Wake detected: '%s' (%.4f)", name, score)
                 oww_model.reset()
+                if sleep_kw and name == sleep_kw:
+                    logger.info("Sleep word detected: '%s' - stopping listener", name)
+                    speak_sync("Going to sleep.")
+                    _stop_event.set()
+                    return
+                logger.info("Wake detected: '%s' (%.4f)", name, score)
                 if on_wake_notify:
                     on_wake_notify(name)
+
+                greet = wake_greeting()
+                if greet:
+                    speak_sync(greet)
 
                 if not fleet_voice_enabled():
                     time.sleep(cooldown)
@@ -83,8 +105,15 @@ def _run_fleet_listener(
                 wav_path = pcm_to_wav_path(frames, rate=rate)
                 transcript = transcribe_wav(wav_path)
                 if transcript:
+                    if is_stop_request(transcript):
+                        logger.info("Stop request in transcript; going to sleep")
+                        speak_sync("Going to sleep.")
+                        _stop_event.set()
+                        return
                     result = post_speech_intent(wake=name, transcript=transcript)
                     logger.info("Fleet voice route: %s", result.get("message", result))
+                    if speak_reply_enabled():
+                        speak_reply(spoken_reply(result))
                 else:
                     logger.warning("No transcript after wake; nothing delegated")
                 time.sleep(cooldown)

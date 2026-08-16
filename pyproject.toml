@@ -1,6 +1,6 @@
 [project]
 name = "speech-mcp"
-version = "0.6.3"
+version = "0.6.4"
 description = "FastMCP 3.2 speech gateway: FunASR local STT, Gemini Live/TTS, Hume, ElevenLabs, wake word, RAG. MCP + React webapp."
 requires-python = ">=3.12"
 dependencies = [

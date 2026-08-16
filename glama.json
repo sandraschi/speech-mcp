@@ -1,6 +1,6 @@
 {
     "name": "speech-mcp",
-    "version": "0.3.0",
+    "version": "0.6.4",
     "description": "SOTA-grade MCP server for multi-provider voice orchestration (Hume AI + ElevenLabs + Windows TTS) with RAG knowledge base.",
     "homepage": "https://github.com/sandraschi/speech-mcp",
     "license": "MIT",

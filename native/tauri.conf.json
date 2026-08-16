@@ -1,6 +1,6 @@
 {
   "productName": "Speech MCP",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "identifier": "ai.fleet.speech-mcp",
   "build": {
     "frontendDist": "../web/dist",
@@ -60,5 +60,3 @@
     }
   }
 }
-
-

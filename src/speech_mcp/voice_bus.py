@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import tempfile
+import threading
 import wave
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -15,12 +16,22 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _transcribe_path: Callable[[Path], str] | None = None
+_speak_hook: Callable[[str], None] | None = None
 
 
 def set_transcribe_path_hook(fn: Callable[[Path], str]) -> None:
     """Register STT from server startup (FunASR transcribe_file, etc.)."""
     global _transcribe_path
     _transcribe_path = fn
+
+
+def set_speak_hook(fn: Callable[[str], None]) -> None:
+    """Register a provider-aware TTS for spoken replies (optional).
+
+    Without a hook, speak_reply() falls back to Windows SAPI5 (pyttsx3).
+    """
+    global _speak_hook
+    _speak_hook = fn
 
 
 def fleet_voice_enabled() -> bool:
@@ -89,14 +100,14 @@ def post_speech_intent(*, wake: str, transcript: str) -> dict[str, Any]:
     }
     url = router_url()
     body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
+    req = urllib.request.Request(  # noqa: S310  # env-controlled http:// router URL
         url,
         data=body,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310
             raw = resp.read().decode("utf-8")
             return json.loads(raw) if raw else {"success": True}
     except urllib.error.HTTPError as exc:
@@ -108,3 +119,83 @@ def post_speech_intent(*, wake: str, transcript: str) -> dict[str, Any]:
     except Exception as exc:
         logger.error("Voice intent POST failed: %s", exc)
         return {"success": False, "error": str(exc)}
+
+
+def speak_reply_enabled() -> bool:
+    """Spoken confirmation of routed results; on by default when delegating.
+
+    Set FLEET_VOICE_SPEAK_REPLY=0 to mute.
+    """
+    flag = os.environ.get("FLEET_VOICE_SPEAK_REPLY", "").strip().lower()
+    return flag not in ("0", "false", "no", "off")
+
+
+def wake_greeting() -> str:
+    """Spoken greeting after the wake word, before command capture."""
+    return os.environ.get("FLEET_VOICE_WAKE_GREETING", "Hello, mistress.").strip()
+
+
+def sleep_keyword() -> str:
+    """Second openWakeWord model that stops the listener (sleep word).
+
+    Stock placeholder until a custom 'sleepsleep' ONNX is trained — any
+    openWakeWord model name works (alexa, hey_jarvis, hey_mycroft, ...).
+    """
+    return os.environ.get("FLEET_VOICE_SLEEP_KEYWORD", "hey_mycroft").strip()
+
+
+def is_stop_request(transcript: str) -> bool:
+    """Detect a spoken stop request in the captured transcript."""
+    text = (transcript or "").lower().replace(" ", "")
+    return "sleepsleep" in text or "gotosleep" in text
+
+
+def speak_sync(text: str) -> None:
+    """Blocking TTS (SAPI5 fallback) — used by the listener thread so the
+    greeting/stop confirmation finishes before mic capture resumes."""
+    if not text.strip():
+        return
+    try:
+        import pyttsx3
+
+        engine = pyttsx3.init()
+        engine.say(text)
+        engine.runAndWait()
+    except Exception as exc:
+        logger.warning("Sync TTS failed: %s", exc)
+
+
+def spoken_reply(result: dict[str, Any]) -> str:
+    """Compose a short spoken line from a routed intent result."""
+    msg = str(result.get("message") or "").strip()
+    if result.get("success"):
+        text = f"OK. {msg}" if msg else "Done."
+    else:
+        text = f"Sorry. {msg}" if msg else "Sorry, that failed."
+    if len(text) > 300:
+        text = f"{text[:297].rstrip()}..."
+    return text
+
+
+def speak_reply(text: str) -> None:
+    """Speak the routed result aloud (best-effort, never blocks the listener)."""
+    if not text.strip():
+        return
+    if _speak_hook is not None:
+        try:
+            _speak_hook(text)
+            return
+        except Exception as exc:
+            logger.warning("Speak hook failed, falling back to SAPI5: %s", exc)
+
+    def _tts() -> None:
+        try:
+            import pyttsx3
+
+            engine = pyttsx3.init()
+            engine.say(text)
+            engine.runAndWait()
+        except Exception as exc:
+            logger.warning("TTS speak-back failed: %s", exc)
+
+    threading.Thread(target=_tts, daemon=True, name="voice-speak").start()

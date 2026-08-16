@@ -1,5 +1,5 @@
 
-## [Unreleased] — 2026-08-17
+## [0.6.4] — 2026-08-17
 
 ### Added — Voice Command Bus: hands-free dev workflow loop
 - **Auto-start listener** at backend boot when `FLEET_VOICE_DELEGATE=1` (`FLEET_VOICE_AUTOSTART=0` to disable) — NSSM/headless reboot-proof

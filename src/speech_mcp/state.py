@@ -86,6 +86,9 @@ async def run_timer(timer_id: str, seconds: int, label: str):
         await asyncio.sleep(seconds)
         # Log expiration to substrate logs
         add_log("INFO", "TIMER", f"Timer expired: {label}")
+        from speech_mcp.voice_bus import speak_reply
+
+        speak_reply(f"Timer done. {label}" if label and label != "Default" else "Timer done.")
         _timers.pop(timer_id, None)
     except asyncio.CancelledError:
         pass

@@ -179,6 +179,18 @@ async def lifespan(app: FastAPI):
 
     broadcaster = asyncio.create_task(_log_broadcaster())
     logger.info("Speech-MCP backend started on port %s", os.getenv("SPEECH_MCP_PORT", "10909"))
+
+    # ── Voice Command Bus auto-start (HTTP mode only) ─────────────────────
+    from speech_mcp.voice_bus import fleet_voice_enabled
+
+    autostart = os.environ.get("FLEET_VOICE_AUTOSTART", "1").strip().lower()
+    if fleet_voice_enabled() and autostart not in ("0", "false", "no"):
+        from speech_mcp.voice_listener import start_fleet_listener
+
+        wake_kw = os.environ.get("FLEET_VOICE_WAKE_KEYWORD", "hey_jarvis").strip() or "hey_jarvis"
+        start_fleet_listener(wake_kw, 0.5, None)
+        logger.info("Fleet voice listener auto-started (wake='%s')", wake_kw)
+
     yield
     broadcaster.cancel()
     for task in _timers.values():
