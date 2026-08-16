@@ -36,7 +36,7 @@ configure_local_wake_word(action="stop")
 wakeywakey                                  -> "Hello, mistress." (spoken ack)
 "fritz gpu status"                          -> "OK. RTX 4090: 12% load, 9 of 24 GB VRAM"
 "opencode assfix devices, run"              -> task sent to the open opencode session
-"set timer twenty minutes, then play desguello" -> timer set + Plex music, spoken confirm
+"set timer twenty minutes, then play desguello" -> timer set + Plex in VLC, spoken confirm
 sleepsleep                                  -> "Going to sleep." (listener stops)
 ```
 
@@ -80,7 +80,7 @@ Full roster: central standard §4c.
 > *hey jarvis* … *"dreame clean the kitchen"* / *"dreame go home"*
 > *hey jarvis* … *"calibre find neuromancer"* / *"calibre open dune"*
 > *hey jarvis* … *"plexy play inception"* / *"plexy pause"*
-> *hey jarvis* … *"set timer twenty minutes, then play desguello"* → timer + Plex
+> *hey jarvis* … *"set timer twenty minutes, then play desguello"* → timer + Plex (in VLC)
 
 Replies are spoken back by default (e.g. *"OK. RTX 4090: 12% load, 9 of 24 GB VRAM, 52 C"*).
 Set `FLEET_VOICE_SPEAK_REPLY=0` to mute.
