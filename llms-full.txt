@@ -48,6 +48,19 @@ ELEVENLABS_API_KEY=your_eleven_key
 GOOGLE_API_KEY=your_google_key
 ```
 
+### Voice Command Bus env (wake → STT → fleet-agent)
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `FLEET_VOICE_DELEGATE` | `1` when URL set | Enable post-wake capture + route to fleet-agent |
+| `FLEET_VOICE_ROUTER_URL` | `http://127.0.0.1:10996/api/voice/intent` | Delegation target |
+| `FLEET_VOICE_AUTOSTART` | `1` | Start the wake listener at backend boot (HTTP mode) |
+| `FLEET_VOICE_WAKE_KEYWORD` | `hey_jarvis` | openWakeWord model name (custom `wakeywakey` ONNX pending) |
+| `FLEET_VOICE_WAKE_GREETING` | `Hello, mistress.` | Spoken ack after wake, before capture (empty = silent) |
+| `FLEET_VOICE_SLEEP_KEYWORD` | `hey_mycroft` | Second model that stops the listener (custom `sleepsleep` ONNX pending) |
+| `FLEET_VOICE_COMMAND_SECONDS` | `6` | Utterance record window |
+| `FLEET_VOICE_SPEAK_REPLY` | `1` | Speak routed results back; `0` mutes |
+
 ### Installation
 ```powershell
 # Backend
@@ -67,7 +80,7 @@ npm run dev
 - `text_to_speech`: Synthesize audio across providers.
 - `start_evi_session`: Initialize real-time Hume sessions.
 - `manage_voice_clones`: Unified identity management (Create/List/Delete).
-- `configure_local_wake_word`: Offline wake; optional fleet voice delegate.
+- `configure_local_wake_word`: Offline wake; optional fleet voice delegate. Listener supports a second **sleep word** model, a spoken **wake greeting**, **spoken replies** to routed results, and **audible timer expiry** announcements.
 
 ## 🗺️ Roadmap & Next Steps (v0.x)
 
@@ -176,11 +189,11 @@ We implement the **Sampling Protocol**, allowing tools to "glom on" to the host 
 Based on recent studies (e.g., *The Role of Prosodic and Lexical Cues in Turn-Taking*), Speech-MCP leverages the following advanced "tricks":
 
 ### 1. Voice Activity Projection (VAP)
-Instead of relying on simple silent-segment detection (VAD), we implement (or simulate via Hume EVI) VAP-style turn-taking. 
+Instead of relying on simple silent-segment detection (VAD), we implement (or simulate via Hume EVI) VAP-style turn-taking.
 - **The Trick**: Scaling the synthesis delay based on the **Emotional Prosody** of the user's closing sentence. A "high-energy" unfinished thought prevents the agent from interrupting, even if lexical cues suggest a stop.
 
 ### 2. Lexical-Prosodic Fallback
-Agents should prioritize **Prosodic Cues** (emotional tone) over **Lexical content** when ambiguity exists. 
+Agents should prioritize **Prosodic Cues** (emotional tone) over **Lexical content** when ambiguity exists.
 - **The Trick**: If a user says "Stop" but with a playful, high-energy tone, the agent might interpret it as a mock-protest and continue the empathic loop (Social Mimicry).
 
 ### 3. Kinematic Prosodic Boundaries

@@ -1,4 +1,14 @@
 
+## [Unreleased] — 2026-08-17
+
+### Added — Voice Command Bus: hands-free dev workflow loop
+- **Auto-start listener** at backend boot when `FLEET_VOICE_DELEGATE=1` (`FLEET_VOICE_AUTOSTART=0` to disable) — NSSM/headless reboot-proof
+- **Wake greeting** — spoken ack after the wake word (`FLEET_VOICE_WAKE_GREETING`, default "Hello, mistress."), played before command capture
+- **Sleep word** — second openWakeWord model stops the listener (`FLEET_VOICE_SLEEP_KEYWORD`, stock `hey_mycroft` placeholder until a custom `sleepsleep` ONNX); saying "{wake word}, sleepsleep" in the transcript also stops it
+- **Spoken replies** — routed results are spoken back (`FLEET_VOICE_SPEAK_REPLY`, default on); `set_speak_hook` for provider-aware TTS
+- **Timer announcements** — `run_timer` speaks "Timer done. <label>" on expiry
+- Receivers/registry: fritz, opencode, boomy, dreame, calibre, plexy, alexa — standard: mcp-central-docs `standards/VOICE_COMMAND_BUS.md`
+
 ## [Unreleased] — 2026-06-14
 
 ### Added
@@ -229,4 +239,3 @@ All notable changes to this project will be documented in this file.
 - FastMCP server with `text_to_speech`, `start_evi_session`, `manage_voice_clones`
 - Webapp baseline
 - Git repository and GitHub remote setup
-

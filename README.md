@@ -42,7 +42,7 @@ Chinese open-weight speech stacks are ahead on **industrial ASR**: open weights 
 | **Edge** | PyTorch (`cuda`/`cpu`/`mps`), ONNX INT8, Windows runtime SDK, OpenAI-compatible sidecar on **10910** |
 | **MCP tools** | `transcribe_audio_file`, `transcribe_stream_chunk` (default `provider=funasr`) |
 | **REST** | `POST /api/v1/transcribe?provider=funasr` |
-| **Fleet voice bus** | Post-wake utterance STT when `FLEET_VOICE_DELEGATE=1` ([VOICE_COMMAND_BUS.md](docs/VOICE_COMMAND_BUS.md)) |
+| **Fleet voice bus** | Post-wake utterance STT when `FLEET_VOICE_DELEGATE=1` — auto-start listener, spoken wake greeting, sleep word, spoken replies, audible timer announcements ([VOICE_COMMAND_BUS.md](docs/VOICE_COMMAND_BUS.md)) |
 | **Papers** | [Fun-ASR (2509.12508)](https://arxiv.org/abs/2509.12508), [FunAudioLLM (2407.04051)](https://arxiv.org/abs/2407.04051), [SenseVoice (2401.04251)](https://arxiv.org/abs/2401.04251) |
 | **Upstream** | [modelscope/FunASR](https://github.com/modelscope/FunASR) |
 
