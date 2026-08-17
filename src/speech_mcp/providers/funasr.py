@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class FunASRConfig:
     """Runtime configuration for FunASR (env vars resolved in server.py)."""
 
-    model: str = "FunAudioLLM/Fun-ASR-Nano-2512"
+    model: str = "FunAudioLLM/Fun-ASR-MLT-Nano-2512"
     device: str = "cuda:0"
     hub: str = "hf"
     vad_model: str | None = "fsmn-vad"

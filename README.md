@@ -37,7 +37,7 @@ Chinese open-weight speech stacks are ahead on **industrial ASR**: open weights 
 | What you get | Detail |
 |---|---|
 | **Speed** | Up to ~170× realtime on GPU, ~17× on CPU (vs ~13× for Whisper-large-v3 in published tables) |
-| **Models** | [Fun-ASR-Nano-2512](https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-2512), [SenseVoiceSmall](https://github.com/FunAudioLLM/SenseVoice), Paraformer family |
+| **Models** | [Fun-ASR-MLT-Nano-2512](https://huggingface.co/FunAudioLLM/Fun-ASR-MLT-Nano-2512) (multilingual, 31 langs incl. EN/JA/DE), [SenseVoiceSmall](https://github.com/FunAudioLLM/SenseVoice), Paraformer family |
 | **Structured output** | Timestamps, speaker labels; emotion/event tags via SenseVoice |
 | **Edge** | PyTorch (`cuda`/`cpu`/`mps`), ONNX INT8, Windows runtime SDK, OpenAI-compatible sidecar on **10914** |
 | **MCP tools** | `transcribe_audio_file`, `transcribe_stream_chunk` (default `provider=funasr`) |
@@ -53,7 +53,7 @@ uv sync --extra funasr
 Copy-Item .env.example .env
 # In .env:
 # FUNASR_ENABLED=true
-# FUNASR_MODEL=FunAudioLLM/Fun-ASR-Nano-2512
+# FUNASR_MODEL=FunAudioLLM/Fun-ASR-MLT-Nano-2512
 # FUNASR_DEVICE=cuda:0
 ```
 
@@ -107,7 +107,7 @@ speech-mcp is a **gateway**: cloud TTS/live voice plus **local STT via FunASR**.
 
 ## Key Features
 
-**FunASR Local STT** — Alibaba Tongyi Fun-ASR-Nano / SenseVoice integrated natively. Structured transcripts with speakers and timestamps. OpenAI-compatible sidecar on port 10914. See [FunASR guide](docs/providers/funasr.md).
+**FunASR Local STT** — Alibaba Fun-ASR-MLT-Nano integrated natively (multilingual: EN/JA/DE + 28 more). Structured transcripts with speakers and timestamps. OpenAI-compatible sidecar on port 10914. **Streaming STT with barge-in** (ja/en/de, CPU) via sherpa-onnx: [docs/STREAMING_ASR.md](docs/STREAMING_ASR.md). See [FunASR guide](docs/providers/funasr.md).
 
 **Gemma 4 Native Multimodal** — SOTA 2026 local engine integration. Features native audio/vision encoders for low-latency conversational reasoning. Supports prosody-aware interaction and local-first Zero-STT fallback. Optimized for A4B throughput (100+ t/s).
 

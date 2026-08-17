@@ -33,6 +33,29 @@ _listener_thread: threading.Thread | None = None
 _stop_event: threading.Event = threading.Event()
 _listener_lock = threading.Lock()
 
+# Optional sherpa-onnx streaming ASR (ja/en/de) for VAD-driven command capture.
+_sherpa_asr = None
+
+
+def set_sherpa_streaming(sherpa_asr) -> None:
+    """Attach the sherpa-onnx streaming ASR provider (called at server startup)."""
+    global _sherpa_asr
+    _sherpa_asr = sherpa_asr
+
+
+def _capture_sherpa_utterance(barge, stream, chunk: int, rate: int, timeout_s: float = 10.0) -> str:
+    """Stream the mic through VAD until the user finishes one utterance."""
+    deadline = time.time() + timeout_s
+    text = ""
+    while time.time() < deadline and not _stop_event.is_set():
+        pcm_bytes = stream.read(chunk, exception_on_overflow=False)
+        pcm = np.frombuffer(pcm_bytes, dtype=np.int16)
+        for utterance in barge.feed(pcm):
+            text = utterance
+        if text:
+            break
+    return text.strip()
+
 
 def _run_fleet_listener(
     keyword: str,
@@ -94,6 +117,39 @@ def _run_fleet_listener(
                     speak_sync(greet)
 
                 if not fleet_voice_enabled():
+                    time.sleep(cooldown)
+                    break
+
+                sherpa = _sherpa_asr
+                if sherpa is not None and getattr(sherpa, "_barge_in", None) is not None:
+                    # sherpa-onnx streaming mode: VAD-segmented live transcription
+                    logger.info("Fleet voice listener: sherpa-onnx streaming STT (lang=%s)", sherpa.lang)
+                    barge = sherpa._barge_in
+                    transcript = _capture_sherpa_utterance(barge, stream, chunk, rate)
+                    if transcript and is_stop_request(transcript):
+                        logger.info("Stop request in transcript; going to sleep")
+                        speak_sync("Going to sleep.")
+                        _stop_event.set()
+                        return
+                    if transcript:
+                        result = post_speech_intent(wake=name, transcript=transcript)
+                        logger.info("Fleet voice route: %s", result.get("message", result))
+                        if speak_reply_enabled():
+                            speak_reply(spoken_reply(result))
+                        # Follow-up turn: keep listening for the next command
+                        barge.reset()
+                        follow = _capture_sherpa_utterance(barge, stream, chunk, rate, timeout_s=6.0)
+                        if follow:
+                            if is_stop_request(follow):
+                                speak_sync("Going to sleep.")
+                                _stop_event.set()
+                                return
+                            result2 = post_speech_intent(wake=name, transcript=follow)
+                            logger.info("Fleet voice follow-up route: %s", result2.get("message", result2))
+                            if speak_reply_enabled():
+                                speak_reply(spoken_reply(result2))
+                    else:
+                        logger.warning("No utterance detected after wake; nothing delegated")
                     time.sleep(cooldown)
                     break
 

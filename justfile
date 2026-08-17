@@ -262,6 +262,16 @@ reindex-clean:
 rag-gpu:
     @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-gpu.ps1
 
+# --- Sherpa-onnx streaming STT (ja/en/de, barge-in) ---
+
+# Download streaming ASR models (en, ja, de)
+sherpa-download:
+    @uv run python scripts/download_sherpa_models.py
+
+# Download just one language model (e.g. just sherpa-download-lang de)
+sherpa-download-lang lang="en":
+    @uv run python scripts/download_sherpa_models.py "{{lang}}"
+
 rag-gpu-install:
     @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-gpu-install.ps1
 

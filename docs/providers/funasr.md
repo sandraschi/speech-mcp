@@ -35,8 +35,7 @@ Key claim from the Fun-ASR report: open benchmarks can mislead — models that l
 
 | Model | Params | Hub ID | Best for |
 |---|---|---|---|
-| **Fun-ASR-Nano-2512** | ~800M | `FunAudioLLM/Fun-ASR-Nano-2512` | Default — 31 languages, dialects, low latency, diarization pipeline |
-| **Fun-ASR-MLT-Nano** | ~800M | `FunAudioLLM/Fun-ASR-MLT-Nano-2512` | Explicit 31-language multilingual variant |
+| **Fun-ASR-MLT-Nano-2512** | ~800M | `FunAudioLLM/Fun-ASR-MLT-Nano-2512` | **Default** — 31 languages incl. EN/JA/DE, streaming, low latency, diarization pipeline |
 | **Fun-ASR** (full) | ~7.7B | `FunAudioLLM/Fun-ASR` | Maximum accuracy when VRAM allows |
 | **SenseVoiceSmall** | 234M | `iic/SenseVoiceSmall` | Edge / CPU-friendly — ASR + **emotion tags** + audio event detection |
 
@@ -136,7 +135,7 @@ uv sync --extra funasr
 
 ```env
 FUNASR_ENABLED=true
-FUNASR_MODEL=FunAudioLLM/Fun-ASR-Nano-2512
+FUNASR_MODEL=FunAudioLLM/Fun-ASR-MLT-Nano-2512
 FUNASR_DEVICE=cuda:0
 FUNASR_HUB=hf
 ```
@@ -146,7 +145,7 @@ FUNASR_HUB=hf
 ```powershell
 uv sync --extra funasr
 uv run python scripts/start_funasr_sidecar.py
-# or: funasr-server --model FunAudioLLM/Fun-ASR-Nano-2512 --device cuda:0 --port 10914
+# or: funasr-server --model FunAudioLLM/Fun-ASR-MLT-Nano-2512 --device cuda:0 --port 10914
 ```
 
 `.env`:
@@ -204,7 +203,7 @@ Content-Type: application/octet-stream
 |---|---|---|
 | `FUNASR_ENABLED` | `false` | Native in-process inference |
 | `FUNASR_OPENAI_URL` | — | Sidecar base URL (e.g. `http://127.0.0.1:10914/v1`) |
-| `FUNASR_MODEL` | `FunAudioLLM/Fun-ASR-Nano-2512` | Hub model ID |
+| `FUNASR_MODEL` | `FunAudioLLM/Fun-ASR-MLT-Nano-2512` | Hub model ID (multilingual, EN/JA/DE) |
 | `FUNASR_DEVICE` | `cuda:0` | `cuda:0`, `cpu`, `mps` |
 | `FUNASR_HUB` | `hf` | `hf` (HuggingFace) or `ms` (ModelScope) |
 | `FUNASR_VAD_MODEL` | `fsmn-vad` | VAD sub-model |
@@ -225,7 +224,7 @@ Set `FUNASR_SPK_MODEL=` empty to disable diarization and save VRAM.
 | FunAudioLLM demos | https://funaudiollm.github.io/ |
 | Agent integration guide | https://modelscope.github.io/FunASR/agent.html |
 | OpenAI API example | https://github.com/modelscope/FunASR/tree/main/examples/openai_api |
-| ModelScope hub | https://modelscope.cn/models/FunAudioLLM/Fun-ASR-Nano-2512 |
+| ModelScope hub | https://modelscope.cn/models/FunAudioLLM/Fun-ASR-MLT-Nano-2512 |
 
 ---
 

@@ -42,6 +42,7 @@ from speech_mcp.tools.monitoring import register_monitoring_tools
 from speech_mcp.tools.rag import register_rag_tools
 from speech_mcp.tools.safety import register_safety_tools
 from speech_mcp.tools.speech import register_speech_tools
+from speech_mcp.tools.streaming_asr import register_streaming_asr_tools
 from speech_mcp.tools.stt import register_stt_tools
 from speech_mcp.tools.ui import register_ui_tools
 from speech_mcp.tools.utility import register_utility_tools
@@ -68,12 +69,20 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 # --- FunASR local STT ---
 FUNASR_ENABLED = os.getenv("FUNASR_ENABLED", "").lower() in ("1", "true", "yes")
 FUNASR_OPENAI_URL = os.getenv("FUNASR_OPENAI_URL", "").strip() or None
-FUNASR_MODEL = os.getenv("FUNASR_MODEL", "FunAudioLLM/Fun-ASR-Nano-2512")
+FUNASR_MODEL = os.getenv("FUNASR_MODEL", "FunAudioLLM/Fun-ASR-MLT-Nano-2512")
 FUNASR_DEVICE = os.getenv("FUNASR_DEVICE", "cuda:0")
 FUNASR_HUB = os.getenv("FUNASR_HUB", "hf")
 FUNASR_VAD_MODEL = os.getenv("FUNASR_VAD_MODEL", "fsmn-vad")
 FUNASR_PUNC_MODEL = os.getenv("FUNASR_PUNC_MODEL", "ct-punc")
 FUNASR_SPK_MODEL = os.getenv("FUNASR_SPK_MODEL", "cam++")
+
+# --- sherpa-onnx streaming STT (ja/en/de, CPU, barge-in) ---
+SHERPA_ASR_ENABLED = os.getenv("SHERPA_ASR_ENABLED", "").lower() in ("1", "true", "yes")
+SHERPA_ASR_LANG = os.getenv("SHERPA_ASR_LANG", "en").strip().lower()
+SHERPA_MODEL_DIR = os.getenv("SHERPA_MODEL_DIR", "").strip() or None
+SHERPA_NUM_THREADS = int(os.getenv("SHERPA_NUM_THREADS", "2"))
+SHERPA_PROVIDER = os.getenv("SHERPA_PROVIDER", "").strip() or None
+SHERPA_BARGE_IN = os.getenv("SHERPA_BARGE_IN", "").lower() in ("1", "true", "yes")
 
 # --- Log broadcast infrastructure ---
 _log_clients: set[WebSocket] = set()
@@ -282,6 +291,29 @@ if FUNASR_ENABLED or FUNASR_OPENAI_URL:
         )
     )
 
+# --- sherpa-onnx streaming STT (optional; auto-downloads model on first enable) ---
+sherpa_asr = None
+if SHERPA_ASR_ENABLED:
+    try:
+        from speech_mcp.providers.sherpa_onnx import SherpaBargeIn, SherpaStreamingASR, ensure_model
+
+        model_dir = ensure_model(SHERPA_ASR_LANG, SHERPA_MODEL_DIR)
+        sherpa_asr = SherpaStreamingASR(
+            lang=SHERPA_ASR_LANG,
+            model_dir=model_dir,
+            num_threads=SHERPA_NUM_THREADS,
+            provider=SHERPA_PROVIDER,
+        )
+        if SHERPA_BARGE_IN:
+            sherpa_asr._barge_in = SherpaBargeIn(sherpa_asr)
+        from speech_mcp.voice_listener import set_sherpa_streaming
+
+        set_sherpa_streaming(sherpa_asr)
+        logger.info("sherpa-onnx streaming ASR enabled (lang=%s, model=%s)", SHERPA_ASR_LANG, model_dir)
+    except Exception as e:
+        logger.warning("sherpa-onnx streaming ASR disabled: %s", e)
+        sherpa_asr = None
+
 register_speech_tools(mcp, hume_client, eleven_client, gemini_client, gemma_client)
 register_stt_tools(mcp, funasr_provider, gemini_client, gemma_client)
 register_agentic_tools(mcp, hume_client)
@@ -299,6 +331,7 @@ register_ui_tools(
         "funasr": bool(funasr_provider),
     },
 )
+register_streaming_asr_tools(mcp, sherpa_asr)
 register_demo_tools(mcp)
 register_wake_word_tools(mcp)
 
@@ -427,6 +460,7 @@ async def health_check():
             "gemma": True,  # Local engine always assumed available
             "funasr": bool(funasr_provider),
             "windows": True,
+            "sherpa_streaming": bool(sherpa_asr),
         },
         "funasr": await funasr_provider.health_probe() if funasr_provider else {"available": False},
     }
@@ -449,8 +483,9 @@ async def api_capabilities():
         "protocols": ["MCP SSE", "REST", "WebSocket"],
         "features": {
             "tts": ["windows", "gemini", "hume", "elevenlabs", "gemma"],
-            "stt": ["funasr", "gemini", "gemma"],
-            "streaming": ["hume_evi", "gemini_live"],
+            "stt": ["funasr", "gemini", "gemma", "sherpa_streaming"],
+            "streaming": ["hume_evi", "gemini_live", "sherpa_streaming"],
+            "barge_in": bool(getattr(sherpa_asr, "_barge_in", None)),
             "rag": True,
             "voice_cloning": True,
             "wake_word": True,
