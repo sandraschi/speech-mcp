@@ -121,9 +121,18 @@ const HealthPage: React.FC = () => {
             Cloud Providers
           </h3>
           <div className="space-y-3">
-            <StatusPill active={providers?.gemini ?? false} label="Google Gemini" />
-            <StatusPill active={providers?.hume ?? false} label="Hume AI (EVI)" />
-            <StatusPill active={providers?.elevenlabs ?? false} label="ElevenLabs" />
+            <StatusPill
+              active={providers?.gemini ?? false}
+              label="Google Gemini"
+            />
+            <StatusPill
+              active={providers?.hume ?? false}
+              label="Hume AI (EVI)"
+            />
+            <StatusPill
+              active={providers?.elevenlabs ?? false}
+              label="ElevenLabs"
+            />
             <StatusPill active={true} label="Local Windows SAPI" />
           </div>
         </div>
@@ -134,8 +143,14 @@ const HealthPage: React.FC = () => {
             API Authorization
           </h3>
           <div className="space-y-4">
-            <TokenStatus valid={tokens?.google_api_key ?? false} label="Google Cloud" />
-            <TokenStatus valid={tokens?.hume_api_key ?? false} label="Hume Platform" />
+            <TokenStatus
+              valid={tokens?.google_api_key ?? false}
+              label="Google Cloud"
+            />
+            <TokenStatus
+              valid={tokens?.hume_api_key ?? false}
+              label="Hume Platform"
+            />
             <TokenStatus
               valid={tokens?.elevenlabs_api_key ?? false}
               label="ElevenLabs Engine"

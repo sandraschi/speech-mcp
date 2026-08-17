@@ -1,13 +1,4 @@
-import {
-  Activity,
-  AlertCircle,
-  Cpu,
-  GitBranch,
-  Play,
-  Shield,
-  Target,
-  Zap,
-} from "lucide-react";
+import { Activity, AlertCircle, Play, Target } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 
@@ -22,8 +13,12 @@ interface TraceStep {
 interface OrchestrationResult {
   goal: string;
   status: string;
-  message: string;
-  trace: TraceStep[];
+  message?: string;
+  error?: string;
+  error_type?: string;
+  success?: boolean;
+  suggestions?: string[];
+  trace?: TraceStep[];
 }
 
 const AgenticWorkflow: React.FC = () => {
@@ -76,8 +71,8 @@ const AgenticWorkflow: React.FC = () => {
           <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-text-secondary">
             FastMCP 3.x
           </div>
-          <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-500 animate-pulse">
-            Sampling Ready
+          <div className="px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-black uppercase tracking-widest text-amber-500">
+            REST dispatch requires MCP client
           </div>
         </div>
       </header>
@@ -115,19 +110,19 @@ const AgenticWorkflow: React.FC = () => {
             <WorkflowStep
               index={1}
               title="Emotion Detection"
-              status={result ? "completed" : "pending"}
+              status={result?.success === true ? "completed" : "pending"}
               tool="agentic_conversation_workflow"
             />
             <WorkflowStep
               index={2}
               title="Context Retrieval"
-              status={result ? "completed" : "pending"}
+              status={result?.success === true ? "completed" : "pending"}
               tool="search_docs"
             />
             <WorkflowStep
               index={3}
               title="Prosodic Synthesis"
-              status={result ? "completed" : "pending"}
+              status={result?.success === true ? "completed" : "pending"}
               tool="text_to_speech"
             />
           </div>
@@ -157,36 +152,8 @@ const AgenticWorkflow: React.FC = () => {
           </button>
         </div>
 
-        {/* Result / Metrics */}
+        {/* Result / Status */}
         <div className="space-y-8">
-          <div className="glass-card p-8">
-            <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-6">
-              Substrate Metrics
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <MetricBox
-                icon={<Cpu size={16} />}
-                label="Sampling Rate"
-                value="14.2 ops/s"
-              />
-              <MetricBox
-                icon={<Zap size={16} />}
-                label="Chain Latency"
-                value="240ms"
-              />
-              <MetricBox
-                icon={<GitBranch size={16} />}
-                label="Branch Depth"
-                value="4 Levels"
-              />
-              <MetricBox
-                icon={<Shield size={16} />}
-                label="Safety Gate"
-                value="Active"
-              />
-            </div>
-          </div>
-
           <div className="glass-card p-8 bg-accent-blue/5 overflow-hidden relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-accent-blue/10 blur-[100px] rounded-full -mr-16 -mt-16" />
             <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-6">
@@ -205,8 +172,28 @@ const AgenticWorkflow: React.FC = () => {
                     <span className="text-accent-blue font-black w-12 shrink-0">
                       STATUS
                     </span>
-                    <span className="text-white/80">{result.status}</span>
+                    <span className="text-white/80">
+                      {result.success
+                        ? "dispatched"
+                        : (result.status ?? "unavailable")}
+                    </span>
                   </div>
+                  {result.error && (
+                    <div className="flex gap-3">
+                      <span className="text-rose-500 font-black w-12 shrink-0">
+                        ERROR
+                      </span>
+                      <span className="text-rose-400">{result.error}</span>
+                    </div>
+                  )}
+                  {result.suggestions?.map((s) => (
+                    <div key={s} className="flex gap-3">
+                      <span className="text-text-secondary opacity-40 w-12 shrink-0">
+                        NEXT
+                      </span>
+                      <span className="text-white/50">{s}</span>
+                    </div>
+                  ))}
                   {result.trace?.map((step) => (
                     <div key={step.step} className="flex gap-3">
                       <span className="text-accent-purple font-black w-12 shrink-0">
@@ -220,14 +207,16 @@ const AgenticWorkflow: React.FC = () => {
                       </span>
                     </div>
                   ))}
-                  <div className="flex gap-3 mt-2 pt-2 border-t border-white/10">
-                    <span className="text-text-secondary opacity-40 w-12 shrink-0">
-                      MSG
-                    </span>
-                    <span className="text-white/50 italic">
-                      {result.message}
-                    </span>
-                  </div>
+                  {result.message && (
+                    <div className="flex gap-3 mt-2 pt-2 border-t border-white/10">
+                      <span className="text-text-secondary opacity-40 w-12 shrink-0">
+                        MSG
+                      </span>
+                      <span className="text-white/50 italic">
+                        {result.message}
+                      </span>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -295,28 +284,6 @@ const WorkflowStep = ({
       <div className="text-[9px] font-mono text-text-secondary uppercase tracking-[0.2em] opacity-40">
         {tool}
       </div>
-    </div>
-  </div>
-);
-
-const MetricBox = ({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) => (
-  <div className="bg-white/5 p-4 rounded-xl border border-white/5 flex items-center gap-4 group">
-    <div className="text-accent-blue opacity-40 group-hover:opacity-100 transition-opacity p-2 bg-white/5 rounded-lg">
-      {icon}
-    </div>
-    <div>
-      <div className="text-[9px] font-black text-text-secondary uppercase tracking-[0.1em] opacity-40">
-        {label}
-      </div>
-      <div className="text-sm font-black text-white">{value}</div>
     </div>
   </div>
 );

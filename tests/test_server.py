@@ -75,17 +75,48 @@ def test_search_endpoint():
 
 
 def test_agentic_post():
-    """Verify agentic endpoint returns dispatched trace."""
+    """Verify agentic endpoint honestly reports REST dispatch as unavailable."""
     response = client.post(
         "/api/v1/agentic",
         json={"goal": "test goal"},
     )
     assert response.status_code == 200
     data = response.json()
-    assert data.get("success") is True
+    assert data.get("success") is False
     assert data.get("goal") == "test goal"
-    assert "trace" in data
-    assert isinstance(data["trace"], list)
+    assert data.get("error_type") == "not_implemented"
+    assert "suggestions" in data
+
+
+def test_tools_endpoint():
+    """Verify /api/tools lists registered MCP tools dynamically."""
+    response = client.get("/api/tools")
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("success") is True
+    assert data.get("count", 0) >= 5
+    names = [t["name"] for t in data["tools"]]
+    assert "text_to_speech" in names
+
+
+def test_diagnostics_endpoint():
+    """Verify /api/v1/diagnostics exposes tool list + system info (CUA-NSIS)."""
+    response = client.get("/api/v1/diagnostics")
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("status") == "ok"
+    assert data.get("tool_count", 0) >= 5
+    assert "tools" in data
+    assert "system" in data
+    assert "errors" in data
+
+
+def test_shutdown_requires_confirm():
+    """Verify shutdown endpoint refuses without confirm=True."""
+    response = client.post("/api/v1/shutdown", json={"confirm": False})
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("success") is False
 
 
 def test_utility_post_timer_set():

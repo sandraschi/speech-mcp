@@ -2,9 +2,12 @@ import asyncio
 import json
 import logging
 import os
+import platform
 import shutil
 import subprocess
 import tempfile
+import threading
+import time
 import uuid
 from contextlib import asynccontextmanager
 from time import localtime, strftime
@@ -75,7 +78,26 @@ FUNASR_SPK_MODEL = os.getenv("FUNASR_SPK_MODEL", "cam++")
 
 # --- Log broadcast infrastructure ---
 _log_clients: set[WebSocket] = set()
-_log_queue: asyncio.Queue = None
+_log_queue: asyncio.Queue | None = None
+_START_TS: float = time.time()
+
+
+def _server_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("speech-mcp")
+    except Exception:
+        return "0.6.4"
+
+
+def _fastmcp_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("fastmcp")
+    except Exception:
+        return "3.4.x"
 
 
 async def _broadcast_log(msg: dict):
@@ -199,22 +221,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Speech MCP Stream Gateway", lifespan=lifespan)
 
-# Modern CORS for local fleet dev + Tauri desktop
-_tauri_desktop = os.environ.get("SPEECH_TAURI", "").lower() in ("1", "true", "yes")
+# Modern CORS for local fleet dev + Tauri desktop (unconditional regex per CORS_STANDARD)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:10908",
         "http://127.0.0.1:10908",
-        "http://goliath:10908",
         "http://localhost:10947",
         "http://127.0.0.1:10947",
-        "http://goliath:10947",
         "http://tauri.localhost",
         "https://tauri.localhost",
         "tauri://localhost",
     ],
-    allow_origin_regex=r"https?://tauri\.localhost(:\d+)?" if _tauri_desktop else None,
+    allow_origin_regex=r"https?://(?:[a-zA-Z0-9-]+\.ts\.net|.*?\.tail-[a-f0-9]+\.ts\.net|tauri\.localhost|localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|100\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?$|^tauri://localhost$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -344,8 +363,8 @@ async def api_stop():
     try:
         # Purge all winsound buffers immediately
         winsound.PlaySound(None, winsound.SND_PURGE)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("winsound purge unavailable: %s", e)
 
     # Cancel all active timers
     cancelled_count = 0
@@ -362,8 +381,8 @@ async def api_stop():
 
     try:
         await configure_local_wake_word(ctx=Context(), action="stop")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Wake word stop during emergency stop failed: %s", e)
 
     logger.warning(f"!!! EMERGENCY STOP TRIGGERED: Cancelled {cancelled_count} timers !!!")
     return {"success": True, "cancelled_timers": cancelled_count, "audio_purged": True}
@@ -377,7 +396,7 @@ async def health_check():
 
     return {
         "status": "healthy",
-        "version": "0.6.3",
+        "version": _server_version(),
         "mcp_server": "online",
         "rag_sources": get_store().list_sources(),
         "active_timers": len(_timers),
@@ -405,15 +424,15 @@ async def health_check():
 @app.get("/api/status")
 @app.get("/")
 async def fleet_health_check():
-    return {"status": "ok", "version": "0.6.3"}
+    return {"status": "ok", "version": _server_version()}
 
 
 @app.get("/api/capabilities")
 async def api_capabilities():
     return {
         "server": "speech-mcp",
-        "version": "0.6.3",
-        "fastmcp": "3.2.0+",
+        "version": _server_version(),
+        "fastmcp": _fastmcp_version(),
         "protocols": ["MCP SSE", "REST", "WebSocket"],
         "features": {
             "tts": ["windows", "gemini", "hume", "elevenlabs", "gemma"],
@@ -436,6 +455,58 @@ async def api_capabilities():
             "logs": "/ws/logs",
         },
     }
+
+
+@app.get("/api/tools")
+async def api_tools():
+    """List registered MCP tools (dynamic, for the webapp Tools page)."""
+    tools: list[dict] = []
+    try:
+        for t in await mcp.list_tools():
+            tools.append({"name": t.name, "description": getattr(t, "description", "") or ""})
+    except Exception as e:
+        logger.warning("tool list failed: %s", e)
+    return {"success": True, "tools": tools, "count": len(tools)}
+
+
+@app.get("/api/skills")
+async def api_skills():
+    """List registered skill resources. Honest empty list - no skills registered yet."""
+    return {"success": True, "skills": [], "count": 0}
+
+
+@app.get("/api/v1/diagnostics")
+async def api_diagnostics():
+    """Full diagnostics for CUA-NSIS smoke testing: tool list, system info, errors."""
+    tools: list[dict] = []
+    try:
+        for t in await mcp.list_tools():
+            tools.append({"name": t.name})
+    except Exception as e:
+        logger.warning("diagnostics tool list failed: %s", e)
+    return {
+        "status": "ok",
+        "server": "speech-mcp",
+        "version": _server_version(),
+        "uptime_seconds": int(time.time() - _START_TS),
+        "tool_count": len(tools),
+        "tools": tools,
+        "system": {"platform": platform.platform(), "python": platform.python_version()},
+        "errors": [],
+    }
+
+
+class ShutdownRequest(BaseModel):
+    confirm: bool = False
+
+
+@app.post("/api/v1/shutdown")
+async def api_shutdown(req: ShutdownRequest):
+    """Graceful self-termination for the HTTP daemon (confirm=True required)."""
+    if not req.confirm:
+        return {"success": False, "error": "confirm=True required"}
+    threading.Timer(1.0, os._exit, args=(0,)).start()
+    return {"success": True, "message": "Server shutting down in ~1s"}
 
 
 @app.get("/api/v1/hardware")
@@ -582,8 +653,8 @@ async def api_voices_clone(request: Request):
         if tmp_path and os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug("temp file cleanup failed for %s: %s", tmp_path, e)
 
 
 @app.get("/api/v1/history")
@@ -770,7 +841,19 @@ async def api_run_demo(req: DemoRequest):
 
 @app.post("/api/v1/agentic")
 async def api_agentic(req: AgenticRequest):
-    return {"success": True, "goal": req.goal, "status": "dispatched", "trace": ["Industrial dispatcher trace active."]}
+    """REST mirror of the agentic workflow. Honest failure: real orchestration
+    requires MCP sampling (ctx.sample), which REST cannot provide."""
+    return {
+        "success": False,
+        "goal": req.goal,
+        "status": "unavailable",
+        "error": "REST orchestration dispatch is not available - sampling requires an MCP client",
+        "error_type": "not_implemented",
+        "suggestions": [
+            "Call the MCP tool agentic_conversation_workflow from a sampling-capable client",
+            "Use the Voice Chat page for live conversational interaction",
+        ],
+    }
 
 
 @app.post("/api/v1/utility")
@@ -793,14 +876,17 @@ async def api_utility(req: UtilityRequest):
 @app.post("/api/v1/action")
 async def api_action(req: ActionRequest):
     params = req.params or {}
-    if req.action_type in ("light_on", "light_off"):
-        room = params.get("room", "living_room")
-        state = "on" if "on" in req.action_type else "off"
-        from speech_mcp.state import add_history
-
-        add_history("iot", f"Light {state} in {room}", "Tapo Smarthome")
-        return {"success": True, "device": "Tapo Smart Bulb", "room": room, "state": state}
-    return {"success": True, "status": "triggered"}
+    return {
+        "success": False,
+        "error": "IoT actions require the devices-mcp bridge, which is not wired in this server",
+        "error_type": "requires_bridge",
+        "action_type": req.action_type,
+        "params": params,
+        "suggestions": [
+            "Call the MCP tool trigger_action for orchestrated handling",
+            "Configure devices-mcp and wire a real bridge",
+        ],
+    }
 
 
 @app.websocket("/ws/stream")

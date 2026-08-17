@@ -7,53 +7,7 @@ import { BACKEND } from "../api";
 interface Tool {
   name: string;
   description: string;
-  status: "active" | "inactive";
 }
-
-const TOOLS: Tool[] = [
-  {
-    name: "text_to_speech",
-    description:
-      "Generate expressive speech via Hume Octave TTS / Windows SAPI / ElevenLabs.",
-    status: "active",
-  },
-  {
-    name: "start_evi_session",
-    description:
-      "Initialize real-time WebSocket Empathic Voice Interface session (v2/v3).",
-    status: "active",
-  },
-  {
-    name: "manage_voice_clones",
-    description: "Create, list, or delete high-fidelity voice clones.",
-    status: "active",
-  },
-  {
-    name: "search_docs",
-    description: "Semantic retrieval from LanceDB RAG knowledge store.",
-    status: "active",
-  },
-  {
-    name: "agentic_workflow",
-    description: "Autonomous multi-step orchestration via FastMCP sampling.",
-    status: "active",
-  },
-  {
-    name: "set_timer",
-    description: "Domestic timer utility with countdown widgets.",
-    status: "active",
-  },
-  {
-    name: "osc_lip_sync",
-    description: "Send OSC viseme packets to Resonite/VRChat avatar.",
-    status: "active",
-  },
-  {
-    name: "safety_check",
-    description: "Social engineering and prompt injection detection layer.",
-    status: "active",
-  },
-];
 
 interface HealthData {
   status: string;
@@ -62,11 +16,26 @@ interface HealthData {
   active_timers: number;
 }
 
+interface ToolsResponse {
+  success: boolean;
+  tools: Tool[];
+  count: number;
+}
+
 const ToolsPage: React.FC = () => {
+  const [tools, setTools] = useState<Tool[] | null>(null);
+  const [toolsError, setToolsError] = useState(false);
   const [health, setHealth] = useState<HealthData | null>(null);
   const [healthError, setHealthError] = useState(false);
 
   useEffect(() => {
+    fetch(`${BACKEND}/api/tools`)
+      .then((r) => r.json())
+      .then((data: ToolsResponse) => {
+        if (data.success) setTools(data.tools);
+        else setToolsError(true);
+      })
+      .catch(() => setToolsError(true));
     fetch(`${BACKEND}/api/v1/health`)
       .then((r) => r.json())
       .then(setHealth)
@@ -74,50 +43,63 @@ const ToolsPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="tools-page">
       <header>
         <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
           Neural Instrumentation
         </h1>
         <p className="text-sm text-white/50 uppercase tracking-widest mt-1">
-          MCP tool registry & substrate performance
+          MCP tool registry &amp; substrate performance
         </p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tool list — 2/3 width */}
-        <div className="lg:col-span-2 glass-card p-6 space-y-3">
+        <div
+          className="lg:col-span-2 glass-card p-6 space-y-3"
+          data-testid="tool-list"
+        >
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
               🛠️ Available Tools
             </h2>
             <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-widest">
-              {TOOLS.filter((t) => t.status === "active").length} Active
+              {tools ? `${tools.length} Registered` : "—"}
             </span>
           </div>
 
-          {TOOLS.map((tool) => (
-            <div
-              key={tool.name}
-              className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-all group"
-            >
-              <div
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${tool.status === "active" ? "bg-emerald-500 animate-pulse" : "bg-white/20"}`}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="font-mono font-bold text-sm text-white truncate">
-                  {tool.name}
-                </div>
-                <div className="text-xs text-white/50 mt-0.5 leading-snug">
-                  {tool.description}
-                </div>
-              </div>
-              <ChevronRight
-                size={14}
-                className="text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors"
-              />
+          {toolsError ? (
+            <div className="text-xs text-rose-400 font-bold">
+              Tool registry unreachable — backend offline or /api/tools missing.
             </div>
-          ))}
+          ) : tools === null ? (
+            <div className="text-xs text-white/30 animate-pulse">
+              Loading tool registry…
+            </div>
+          ) : tools.length === 0 ? (
+            <div className="text-xs text-white/30">No tools registered.</div>
+          ) : (
+            tools.map((tool) => (
+              <div
+                key={tool.name}
+                className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.05] transition-all group"
+              >
+                <div className="w-2 h-2 rounded-full flex-shrink-0 bg-emerald-500" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono font-bold text-sm text-white truncate">
+                    {tool.name}
+                  </div>
+                  <div className="text-xs text-white/50 mt-0.5 leading-snug">
+                    {tool.description || "No description"}
+                  </div>
+                </div>
+                <ChevronRight
+                  size={14}
+                  className="text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors"
+                />
+              </div>
+            ))
+          )}
         </div>
 
         {/* Sidebar — 1/3 */}
@@ -177,70 +159,33 @@ const ToolsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Perf */}
+          {/* Perf — honest: no telemetry endpoint exposed */}
           <div className="glass-card p-5 space-y-4">
             <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
               <Zap size={13} className="text-amber-400" /> Performance
             </h3>
-            {[
-              {
-                label: "CPU",
-                value: "14%",
-                width: "w-[14%]",
-                color: "bg-violet-500",
-              },
-              {
-                label: "RAM",
-                value: "420 MB",
-                width: "w-[35%]",
-                color: "bg-blue-500",
-              },
-              {
-                label: "Latency",
-                value: "45 ms",
-                width: "w-[10%]",
-                color: "bg-emerald-500",
-              },
-            ].map((item) => (
-              <div key={item.label}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-white/50">{item.label}</span>
-                  <span className="text-white font-mono font-bold">
-                    {item.value}
-                  </span>
-                </div>
-                <div className="h-1 bg-white/5 rounded-full">
-                  <div
-                    className={`h-full ${item.width} ${item.color} rounded-full`}
-                  />
-                </div>
-              </div>
-            ))}
+            <div className="text-xs text-white/40 leading-relaxed">
+              Telemetry is not exposed by the backend. Live metrics are not
+              available — see System Health for connectivity status.
+            </div>
           </div>
 
-          {/* Registry */}
+          {/* Registry — honest: derived from live tool list */}
           <div className="glass-card p-5 space-y-3">
             <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
               <Cpu size={13} className="text-blue-400" /> Registry
             </h3>
-            {[
-              { icon: "🌐", label: "Global Hub", sub: "Connected" },
-              { icon: "🔒", label: "Security Layers", sub: "E2E active" },
-              { icon: "⚡", label: "RTX 4090 CUDA", sub: "Tensor active" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5"
-              >
-                <span className="text-xl">{item.icon}</span>
-                <div>
-                  <div className="text-xs font-bold text-white">
-                    {item.label}
-                  </div>
-                  <div className="text-[10px] text-white/40">{item.sub}</div>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+              <span className="text-xl">🛠️</span>
+              <div>
+                <div className="text-xs font-bold text-white">MCP Tools</div>
+                <div className="text-[10px] text-white/40">
+                  {tools === null
+                    ? "loading…"
+                    : `${tools.length} registered via /api/tools`}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>

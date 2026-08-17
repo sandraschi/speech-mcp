@@ -127,19 +127,26 @@ const InteractionLab: React.FC = () => {
           }),
         });
         const data = await res.json();
-        addTrace(
-          "observation",
-          `${data.location}: ${data.temp}, ${data.condition}`,
-        );
-        setWidgets((prev) => [
-          ...prev.filter((w) => w.type !== "weather"),
-          {
-            id: "weather-vienna",
-            type: "weather",
-            label: data.location,
-            value: `${data.temp} / ${data.condition}`,
-          },
-        ]);
+        if (data.success) {
+          addTrace(
+            "observation",
+            `${data.location}: ${data.temp}, ${data.condition}`,
+          );
+          setWidgets((prev) => [
+            ...prev.filter((w) => w.type !== "weather"),
+            {
+              id: "weather-vienna",
+              type: "weather",
+              label: data.location,
+              value: `${data.temp} / ${data.condition}`,
+            },
+          ]);
+        } else {
+          addTrace(
+            "error",
+            `Weather query unavailable: ${data.error || "not implemented"}`,
+          );
+        }
       } else if (userText.includes("light")) {
         const state = userText.includes("off") ? "off" : "on";
         addTrace("thought", `Classified intent: light control → ${state}`);
@@ -157,24 +164,31 @@ const InteractionLab: React.FC = () => {
           }),
         });
         const data = await res.json();
-        addTrace(
-          "observation",
-          `${data.room} light → ${data.state} (${data.device})`,
-        );
-        setWidgets((prev) => {
-          const filtered = prev.filter((w) => w.type !== "iot");
-          return state === "on"
-            ? [
-                ...filtered,
-                {
-                  id: "iot-light",
-                  type: "iot",
-                  label: "Living Room",
-                  value: "ON",
-                },
-              ]
-            : filtered;
-        });
+        if (data.success) {
+          addTrace(
+            "observation",
+            `${data.room} light → ${data.state} (${data.device})`,
+          );
+          setWidgets((prev) => {
+            const filtered = prev.filter((w) => w.type !== "iot");
+            return state === "on"
+              ? [
+                  ...filtered,
+                  {
+                    id: "iot-light",
+                    type: "iot",
+                    label: "Living Room",
+                    value: "ON",
+                  },
+                ]
+              : filtered;
+          });
+        } else {
+          addTrace(
+            "error",
+            `Light control unavailable: ${data.error || "no bridge"}`,
+          );
+        }
       } else {
         addTrace(
           "thought",
@@ -220,9 +234,9 @@ const InteractionLab: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs font-black uppercase tracking-widest text-emerald-500 flex items-center gap-2">
+          <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-black uppercase tracking-widest text-text-secondary flex items-center gap-2">
             <ShieldCheck size={12} />
-            Protocol SEP-1577 Active
+            Local utilities · IoT needs bridge
           </div>
         </div>
       </header>
@@ -424,14 +438,10 @@ const InteractionLab: React.FC = () => {
             </h3>
             <div className="space-y-4">
               {[
-                {
-                  label: "Backend",
-                  value: "localhost:10909",
-                  status: "online",
-                },
-                { label: "Stream", value: "/ws/stream", status: "ready" },
-                { label: "Logs", value: "/ws/logs", status: "nominal" },
-                { label: "Wake Word", value: "Enabled", status: "online" },
+                { label: "Backend", value: "localhost:10909" },
+                { label: "Stream", value: "/ws/stream" },
+                { label: "Logs", value: "/ws/logs" },
+                { label: "Wake Word", value: "STT page" },
               ].map((spec) => (
                 <div
                   key={spec.label}
