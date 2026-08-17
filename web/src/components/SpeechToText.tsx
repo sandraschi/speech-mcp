@@ -18,6 +18,7 @@ export const SpeechToText: React.FC = () => {
   const [isPending, setIsPending] = useState(false);
   const [keyword, setKeyword] = useState("hey_jarvis");
   const [sensitivity, setSensitivity] = useState(0.5);
+  const [sttSensitivity, setSttSensitivity] = useState(0.5);
   const [logs, setLogs] = useState<
     {
       id: string;
@@ -156,7 +157,7 @@ export const SpeechToText: React.FC = () => {
     }
   };
 
-  const thresholdPct = sensitivity * 100;
+  const thresholdPct = sttSensitivity * 100;
   const aboveThreshold = micLevel >= thresholdPct;
 
   // Browser can report the same mic multiple times (per format/session) -
@@ -324,7 +325,7 @@ export const SpeechToText: React.FC = () => {
                     htmlFor="sensitivity-slider"
                     className="text-xs font-black uppercase tracking-widest text-text-secondary"
                   >
-                    Detection sensitivity
+                    Wake-word detection sensitivity
                   </label>
                   <span className="text-sm font-mono font-bold text-accent-purple">
                     {(sensitivity * 100).toFixed(0)}%
@@ -344,6 +345,10 @@ export const SpeechToText: React.FC = () => {
                   <span>Less sensitive</span>
                   <span>More sensitive</span>
                 </div>
+                <p className="text-[11px] text-text-secondary opacity-70 leading-relaxed">
+                  Applies to the wake-word listener on your system default
+                  microphone (no mic selection here — it uses the default).
+                </p>
               </div>
 
               <div className="bg-white/[0.03] rounded-2xl p-6 border border-white/5 space-y-3">
@@ -439,6 +444,36 @@ export const SpeechToText: React.FC = () => {
                       : "Below threshold"
                     : "Not testing"}
                 </span>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <div className="flex justify-between items-center">
+                  <label
+                    htmlFor="stt-sensitivity-slider"
+                    className="text-xs font-black uppercase tracking-widest text-text-secondary"
+                  >
+                    STT detection sensitivity
+                  </label>
+                  <span className="text-sm font-mono font-bold text-accent-purple">
+                    {(sttSensitivity * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <input
+                  id="stt-sensitivity-slider"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={sttSensitivity}
+                  onChange={(e) =>
+                    setSttSensitivity(parseFloat(e.target.value))
+                  }
+                  className="w-full accent-accent-purple"
+                />
+                <p className="text-[11px] text-text-secondary opacity-70 leading-relaxed">
+                  Sets the threshold for this mic test (the amber line). Move it
+                  up to only count louder speech.
+                </p>
               </div>
               {micError && (
                 <div className="text-xs text-rose-400 font-bold">
