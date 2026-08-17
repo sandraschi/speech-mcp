@@ -1,6 +1,6 @@
 {
-  "commit": "eb6759fb759a5de3b224ed7a51f27f290c28d9ea",
-  "notes": "repaired from text format",
+  "timestamp": "2026-08-17T18:50:03.2604312+02:00",
+  "commit": "ccc8a7f08ec99a33bd656a2d750baa96baa703cb",
   "host": "GOLIATH",
-  "timestamp": "2026-07-16T02:17:34.0532982+02:00"
+  "notes": "assfix 2026-08-17: gaslights removed, native build repaired, CUA config fixed, ports moved, gates green (ruff/format/pytest 29/tsc/biome)"
 }
