@@ -34,6 +34,7 @@ from pydantic import BaseModel
 from speech_mcp.providers.funasr import FunASRConfig, FunASRProvider
 from speech_mcp.providers.gemini import GeminiProvider
 from speech_mcp.providers.gemma import gemma_provider
+from speech_mcp.skills import get_skill, list_skills, register_skill_resources
 from speech_mcp.state import _timers, get_store
 from speech_mcp.streaming import handle_websocket_stream
 from speech_mcp.tools.agentic import register_agentic_tools
@@ -252,6 +253,9 @@ app.add_middleware(
 )
 
 mcp = FastMCP("speech-mcp")
+
+# Skill resources: skill://{name} -> SKILL.md (also served via /api/skills)
+register_skill_resources(mcp)
 
 # ── MCP Bridge (ProxyProvider) ────────────────────────────────────────────
 _bridge_proxies: list[str] = []
@@ -515,6 +519,21 @@ async def api_tools():
     except Exception as e:
         logger.warning("tool list failed: %s", e)
     return {"success": True, "tools": tools, "count": len(tools)}
+
+
+@app.get("/api/skills")
+async def api_skills():
+    """List installed skills (from the skills/ directory)."""
+    skills = list_skills()
+    return {"success": True, "skills": skills, "count": len(skills)}
+
+
+@app.get("/api/skills/{skill_name}")
+async def api_skill_content(skill_name: str):
+    content = get_skill(skill_name)
+    if content is None:
+        raise HTTPException(status_code=404, detail=f"Unknown skill: {skill_name}")
+    return {"success": True, "name": skill_name, "content": content}
 
 
 @app.get("/api/v1/diagnostics")

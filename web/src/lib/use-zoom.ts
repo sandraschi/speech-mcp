@@ -15,8 +15,8 @@ function useZoom() {
   const applyZoom = useCallback(async (level: number) => {
     localStorage.setItem("tauri-zoom", String(level));
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().setZoom(level);
+      const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+      await getCurrentWebview().setZoom(level);
       return;
     } catch {
       /* dev browser - fall through to CSS zoom */

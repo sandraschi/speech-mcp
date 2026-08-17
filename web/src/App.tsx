@@ -12,6 +12,7 @@ import HistoryPage from "./components/HistoryPage";
 import InteractionLab from "./components/InteractionLab";
 import SemanticSearch from "./components/SemanticSearch";
 import ServiceLinkage from "./components/ServiceLinkage";
+import SkillsPage from "./components/SkillsPage";
 import { SpeechToText } from "./components/SpeechToText";
 import SystemLogs from "./components/SystemLogs";
 import ToolsPage from "./components/ToolsPage";
@@ -216,6 +217,8 @@ function App() {
           <CreativeLabs />
         ) : activePage === "tools" ? (
           <ToolsPage />
+        ) : activePage === "skills" ? (
+          <SkillsPage />
         ) : activePage === "services" ? (
           <ServiceLinkage />
         ) : activePage === "stt" ? (

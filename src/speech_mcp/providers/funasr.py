@@ -176,7 +176,11 @@ class FunASRProvider:
         when the model supports them (e.g. SenseVoiceSmall).
         """
         if not os.path.isfile(file_path):
-            return {"success": False, "error": f"File not found: {file_path}"}
+            return {
+                "success": False,
+                "error": f"File not found: {file_path}",
+                "recovery": "Provide an existing WAV/MP3/FLAC path, or use transcribe_stream_chunk with raw audio.",
+            }
 
         try:
             raw = await asyncio.to_thread(lambda: self._generate_sync(file_path, language))

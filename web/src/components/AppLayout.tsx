@@ -220,6 +220,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               setMobileOpen(false);
             }}
           />
+          <NavItem
+            icon="📚"
+            label="Skills"
+            active={activePage === "skills"}
+            collapsed={isCollapsed}
+            onClick={() => {
+              onNavigate("skills");
+              setMobileOpen(false);
+            }}
+          />
           <div
             style={{
               height: 1,
@@ -471,6 +481,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             collapsed={false}
             onClick={() => {
               onNavigate("tools");
+              setMobileOpen(false);
+            }}
+          />
+          <NavItem
+            icon="📚"
+            label="Skills"
+            active={activePage === "skills"}
+            collapsed={false}
+            onClick={() => {
+              onNavigate("skills");
               setMobileOpen(false);
             }}
           />
