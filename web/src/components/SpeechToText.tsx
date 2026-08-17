@@ -40,13 +40,13 @@ export const SpeechToText: React.FC = () => {
   const handleToggle = async () => {
     setIsPending(true);
     const action = isActive ? "stop" : "start";
-    addLog(`Requesting wake-word ${action}...`, "info");
+    addLog(`Requesting wake word ${action}...`, "info");
 
     try {
       const res = await controlWakeWord(action, keyword, sensitivity);
       if (res.success) {
         addLog(
-          `Wake-word listener ${res.status === "listening" ? "started" : "stopped"}.`,
+          `Wake word listener ${res.status === "listening" ? "started" : "stopped"}.`,
           "success",
         );
       } else {
@@ -62,9 +62,9 @@ export const SpeechToText: React.FC = () => {
   // Sync log on backend status change
   useEffect(() => {
     if (isActive) {
-      addLog("System Status: Wake-word listener active.", "success");
+      addLog("Wake word listener is running.", "success");
     } else {
-      addLog("System Status: Wake-word listener standby.", "info");
+      addLog("Wake word listener is on standby.", "info");
     }
   }, [isActive, addLog]);
 
@@ -83,11 +83,11 @@ export const SpeechToText: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h2 className="text-4xl font-black tracking-tighter text-white mb-2">
-            SPEECH SYSTEM
+            Speech to Text
           </h2>
           <p className="text-text-secondary font-medium tracking-wide flex items-center gap-2">
             <ShieldCheck size={16} className="text-accent-purple" />
-            V4.0 Wake-Word Detection
+            Wake word listener — runs fully offline on your PC
           </p>
         </div>
 
@@ -186,7 +186,7 @@ export const SpeechToText: React.FC = () => {
           <div className="flex items-center gap-3 mb-8">
             <Settings2 size={18} className="text-accent-purple" />
             <h3 className="text-lg font-black tracking-tight text-white uppercase">
-              Engine Parameters
+              Settings
             </h3>
           </div>
 
@@ -196,7 +196,7 @@ export const SpeechToText: React.FC = () => {
                 htmlFor="wake-keyword-selector"
                 className="text-xs font-black uppercase tracking-widest text-text-secondary flex justify-between"
               >
-                Wake Keyword
+                Wake word
                 <span className="text-accent-purple font-mono lowercase">
                   openWakeWord
                 </span>
@@ -229,7 +229,7 @@ export const SpeechToText: React.FC = () => {
                     htmlFor="sensitivity-slider"
                     className="text-xs font-black uppercase tracking-widest text-text-secondary"
                   >
-                    Sensitivity
+                    Detection sensitivity
                   </label>
                   <span className="text-sm font-mono font-bold text-accent-purple">
                     {(sensitivity * 100).toFixed(0)}%
@@ -246,21 +246,20 @@ export const SpeechToText: React.FC = () => {
                   className="w-full accent-accent-purple"
                 />
                 <div className="flex justify-between text-[10px] font-black tracking-widest text-text-secondary opacity-50">
-                  <span>LO-CAL</span>
-                  <span>HIGH-SENS</span>
+                  <span>Less sensitive</span>
+                  <span>More sensitive</span>
                 </div>
               </div>
 
               <div className="bg-white/[0.03] rounded-2xl p-6 border border-white/5 space-y-3">
                 <div className="flex items-center gap-3 text-xs font-black text-white/70 uppercase tracking-widest">
                   <Zap size={14} className="text-amber-400" />
-                  Performance Note
+                  How sensitivity works
                 </div>
                 <p className="text-xs text-text-secondary leading-relaxed">
-                  The local engine runs with{" "}
-                  <span className="text-white font-bold">&lt;15ms</span>{" "}
-                  latency. Increasing sensitivity improves recall but may
-                  increase false positives in noisy environments.
+                  Higher sensitivity catches the wake word more reliably, but it
+                  can also react to background noise. The listener runs entirely
+                  on your PC — no audio leaves the machine.
                 </p>
               </div>
             </div>
@@ -290,7 +289,7 @@ export const SpeechToText: React.FC = () => {
               <div className="h-full flex flex-col items-center justify-center opacity-20">
                 <Activity size={32} className="mb-4" />
                 <p className="font-black tracking-widest uppercase text-center">
-                  Awaiting Events
+                  No activity yet
                 </p>
               </div>
             ) : (
