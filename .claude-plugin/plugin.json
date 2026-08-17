@@ -1,0 +1,6 @@
+{
+  "name": "speech-mcp",
+  "version": "0.6.4",
+  "description": "Fleet voice layer - TTS, STT, wake word, RAG, voice command bus",
+  "hooks": "../hooks/hooks.json"
+}

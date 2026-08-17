@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.2",
   "name": "speech-mcp",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "FastMCP speech gateway: FunASR local STT, Gemini Live/TTS, Hume, ElevenLabs, wake word, fleet Voice Command Bus, RAG",
   "long_description": "Multi-provider speech MCP server with React cockpit (10908/10909), optional FunASR industrial STT, fleet voice bus to fleet-agent, and humanoid/fleet documentation.",
   "author": {

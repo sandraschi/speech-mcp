@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "text",
+            "text": "## Session Context (Speech MCP)\n\nYou have access to the fleet voice gateway: TTS (windows/gemini/hume/elevenlabs/gemma), local STT (FunASR), offline wake word, RAG over speech docs, and a Voice Command Bus into fleet-agent.\n\n**Before starting work:**\n1. Check provider availability: fleet_health_overview()\n2. Find speech docs: search_docs(query=\"FunASR or wake word\")\n\n**At end of work, save insights:**\n- Ingest useful speech findings into the RAG knowledge base"
+          }
+        ]
+      }
+    ]
+  }
+}
