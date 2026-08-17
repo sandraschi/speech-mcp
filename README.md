@@ -7,8 +7,9 @@
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
   <a href="https://biomejs.dev"><img src="https://img.shields.io/badge/Biome-2.4-60a5fa?style=flat-square" alt="Biome"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
-  <a href="https://github.com/PrefectHQ/fastmcp"><img src="https://img.shields.io/badge/FastMCP-3.2-7c5cfc?style=flat-square" alt="FastMCP"></a>
+  <a href="https://github.com/PrefectHQ/fastmcp"><img src="https://img.shields.io/badge/FastMCP-3.4-7c5cfc?style=flat-square" alt="FastMCP"></a>
   <a href="docs/providers/funasr.md"><img src="https://img.shields.io/badge/FunASR-local_STT-orange?style=flat-square" alt="FunASR"></a>
+  <a href="docs/STREAMING_ASR.md"><img src="https://img.shields.io/badge/sherpa--onnx-streaming+barge--in-8b5cf6?style=flat-square" alt="sherpa-onnx streaming + barge-in"></a>
   <a href="docs/HUMANOID_VOICE.md"><img src="https://img.shields.io/badge/Humanoid_voice-thesis-8b5cf6?style=flat-square" alt="Humanoid voice thesis"></a>
 </p>
 
