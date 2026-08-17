@@ -109,6 +109,42 @@ def _fastmcp_version() -> str:
         return "3.4.x"
 
 
+def _gpu_info() -> dict:
+    """Real GPU / VRAM state from torch (if installed and CUDA available)."""
+    try:
+        import torch
+
+        if not torch.cuda.is_available():
+            return {"available": False, "device": "cpu", "torch": torch.__version__}
+        props = torch.cuda.get_device_properties(0)
+        free_bytes, _total = torch.cuda.mem_get_info(0)
+        return {
+            "available": True,
+            "device": "cuda:0",
+            "name": props.name,
+            "vram_total_gb": round(props.total_memory / 1e9, 1),
+            "vram_free_gb": round(free_bytes / 1e9, 1),
+            "torch": torch.__version__,
+        }
+    except Exception as e:
+        return {"available": False, "device": "cpu", "error": str(e)}
+
+
+def _sherpa_device() -> str:
+    if SHERPA_PROVIDER:
+        return SHERPA_PROVIDER
+    return "cpu (onnxruntime default)"
+
+
+def _ort_providers() -> list[str]:
+    try:
+        import onnxruntime as ort
+
+        return list(ort.get_available_providers())
+    except Exception:
+        return []
+
+
 async def _broadcast_log(msg: dict):
     dead = set()
     for ws in _log_clients:
@@ -443,6 +479,7 @@ async def health_check():
     from speech_mcp.tools.wake_word import _listener_thread
 
     wake_active = _listener_thread is not None and _listener_thread.is_alive()
+    gpu = _gpu_info()
 
     return {
         "status": "healthy",
@@ -465,6 +502,22 @@ async def health_check():
             "funasr": bool(funasr_provider),
             "windows": True,
             "sherpa_streaming": bool(sherpa_asr),
+        },
+        "gpu": gpu,
+        "devices": {
+            "funasr": {
+                "configured": bool(funasr_provider),
+                "device": FUNASR_DEVICE,
+                "cuda_available": gpu.get("available", False),
+                "loaded": bool(funasr_provider and getattr(funasr_provider, "_model", None) is not None),
+            },
+            "sherpa_streaming": {
+                "configured": bool(sherpa_asr),
+                "device": _sherpa_device(),
+                "lang": SHERPA_ASR_LANG if sherpa_asr else None,
+                "onnxruntime_providers": _ort_providers(),
+                "barge_in": bool(getattr(sherpa_asr, "_barge_in", None)),
+            },
         },
         "funasr": await funasr_provider.health_probe() if funasr_provider else {"available": False},
     }
@@ -553,6 +606,22 @@ async def api_diagnostics():
         "tool_count": len(tools),
         "tools": tools,
         "system": {"platform": platform.platform(), "python": platform.python_version()},
+        "gpu": _gpu_info(),
+        "devices": {
+            "funasr": {
+                "configured": bool(funasr_provider),
+                "device": FUNASR_DEVICE,
+                "cuda_available": _gpu_info().get("available", False),
+                "loaded": bool(funasr_provider and getattr(funasr_provider, "_model", None) is not None),
+            },
+            "sherpa_streaming": {
+                "configured": bool(sherpa_asr),
+                "device": _sherpa_device(),
+                "lang": SHERPA_ASR_LANG if sherpa_asr else None,
+                "onnxruntime_providers": _ort_providers(),
+                "barge_in": bool(getattr(sherpa_asr, "_barge_in", None)),
+            },
+        },
         "errors": [],
     }
 
@@ -584,6 +653,7 @@ async def api_hardware():
 class WakeWordRequest(BaseModel):
     action: str
     keyword: str = "computer"
+    sleep_keyword: str | None = None
     sensitivity: float = 0.5
 
 
@@ -592,7 +662,13 @@ async def api_wake_word(req: WakeWordRequest):
     """Bridge to the configure_local_wake_word tool (REST has no MCP context)."""
     from speech_mcp.tools.wake_word import wake_word_configure
 
-    return await wake_word_configure(ctx=None, keyword=req.keyword, sensitivity=req.sensitivity, action=req.action)
+    return await wake_word_configure(
+        ctx=None,
+        keyword=req.keyword,
+        sleep_keyword=req.sleep_keyword,
+        sensitivity=req.sensitivity,
+        action=req.action,
+    )
 
 
 @app.get("/api/v1/stats")
