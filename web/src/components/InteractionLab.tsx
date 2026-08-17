@@ -273,7 +273,7 @@ const InteractionLab: React.FC = () => {
               </div>
               <div className="space-y-3">
                 <p className="text-3xl font-black text-white tracking-tighter uppercase">
-                  Substrate Active
+                  Command Ready
                 </p>
                 <p className="text-text-secondary text-lg max-w-sm mx-auto font-bold opacity-60 uppercase tracking-wide">
                   Try "Set 60s timer", "Weather", "Lights on"
@@ -313,7 +313,7 @@ const InteractionLab: React.FC = () => {
             <div className="bg-white/5 p-4 border-b border-white/5 flex items-center justify-between text-xs font-black text-text-secondary uppercase tracking-[0.2em] opacity-40">
               <div className="flex items-center gap-3">
                 <Terminal size={14} />
-                <span>Cognitive Forensic Trace</span>
+                <span>Interaction Trace</span>
               </div>
             </div>
 
@@ -323,7 +323,7 @@ const InteractionLab: React.FC = () => {
             >
               {trace.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-white/10 uppercase tracking-[0.5em] font-black italic">
-                  Awaiting Telemetry
+                  Awaiting commands
                 </div>
               ) : (
                 trace.map((log) => (
@@ -387,7 +387,7 @@ const InteractionLab: React.FC = () => {
                 <div className="bg-white/[0.02] border border-dashed border-white/5 rounded-2xl p-12 text-center">
                   <Activity className="w-8 h-8 text-white/5 mx-auto mb-4" />
                   <p className="text-text-secondary text-xs font-black uppercase tracking-widest opacity-30">
-                    Substrate Idle
+                    No active widgets
                   </p>
                 </div>
               ) : (
@@ -434,7 +434,7 @@ const InteractionLab: React.FC = () => {
           <div className="glass-card p-8 bg-accent-blue/5 border-accent-blue/10 relative overflow-hidden shadow-2xl">
             <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
               <Activity size={14} className="text-accent-blue" />
-              Cognitive Bus
+              Service Endpoints
             </h3>
             <div className="space-y-4">
               {[

@@ -46,10 +46,10 @@ const ToolsPage: React.FC = () => {
     <div className="space-y-6" data-testid="tools-page">
       <header>
         <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
-          Neural Instrumentation
+          Tools
         </h1>
         <p className="text-sm text-white/50 uppercase tracking-widest mt-1">
-          MCP tool registry &amp; substrate performance
+          MCP tool registry
         </p>
       </header>
 

@@ -63,7 +63,7 @@ const AgenticWorkflow: React.FC = () => {
               Agentic Orchestration
             </h1>
             <p className="text-text-secondary text-sm font-bold uppercase tracking-widest opacity-60">
-              SEP-1577 Autonomous Substrate Flow
+              Agentic workflow via MCP sampling
             </p>
           </div>
         </div>
@@ -109,7 +109,7 @@ const AgenticWorkflow: React.FC = () => {
             <div className="absolute left-6 top-8 bottom-8 w-px bg-white/10" />
             <WorkflowStep
               index={1}
-              title="Emotion Detection"
+              title="Goal Interpretation"
               status={result?.success === true ? "completed" : "pending"}
               tool="agentic_conversation_workflow"
             />

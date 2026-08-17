@@ -61,8 +61,7 @@ const VoicesPage: React.FC = () => {
     if (isLoading) return;
     setIsLoading(voice.id);
     setTtsError("");
-    const text =
-      "This is a neural synthesis preview from the Speech MCP Gateway.";
+    const text = "This is a synthesis preview from the Speech MCP Gateway.";
     try {
       const res = await fetch(
         `${BACKEND}/api/v1/tts/wav?text=${encodeURIComponent(text)}&provider=${voice.provider}&voice_id=${encodeURIComponent(voice.id)}`,
@@ -137,10 +136,10 @@ const VoicesPage: React.FC = () => {
       <header className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
-            Voice Architecture
+            Voice Library
           </h1>
           <p className="text-sm text-white/50 uppercase tracking-widest mt-1">
-            Neural identity library — {voices.length} Identity segments
+            {voices.length} voices
           </p>
         </div>
         {isFetching && (
@@ -202,7 +201,7 @@ const VoicesPage: React.FC = () => {
                 ))
             ) : filtered.length === 0 ? (
               <div className="py-12 md:col-span-2 text-center text-white/20 text-sm uppercase font-black tracking-[0.2em]">
-                No active voices for this substrate
+                No voices available
               </div>
             ) : (
               filtered.map((voice) => (

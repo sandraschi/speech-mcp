@@ -97,7 +97,7 @@ const SettingsPage: React.FC = () => {
             System Configuration
           </h1>
           <p className="text-text-secondary text-sm font-bold uppercase tracking-widest opacity-60">
-            Substrate Tuning & Neural Linkage
+            Local & Cloud Settings
           </p>
         </div>
         <button
@@ -125,7 +125,7 @@ const SettingsPage: React.FC = () => {
                 Local Intelligence
               </h3>
               <p className="text-xs font-bold text-text-secondary uppercase tracking-widest opacity-40">
-                On-premise inference cluster
+                Local LLM providers
               </p>
             </div>
           </div>
@@ -359,7 +359,7 @@ const SettingsPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Substrate Integration */}
+        {/* System Diagnostics */}
         <section className="glass-card p-8 lg:col-span-2">
           <div className="flex items-center gap-4 mb-10">
             <div className="bg-accent-purple/10 p-4 rounded-2xl border border-accent-purple/20 text-accent-purple">
@@ -367,10 +367,10 @@ const SettingsPage: React.FC = () => {
             </div>
             <div>
               <h3 className="text-xl font-black text-white uppercase tracking-tighter">
-                Substrate Diagnostics
+                System Diagnostics
               </h3>
               <p className="text-xs font-bold text-text-secondary uppercase tracking-widest opacity-40">
-                Protocol bridge & vector status
+                Backend and RAG status
               </p>
             </div>
           </div>

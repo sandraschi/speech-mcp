@@ -368,7 +368,7 @@ const SemanticSearch: React.FC = () => {
 
             <footer className="p-6 border-t border-white/5 bg-white/[0.02] flex items-center justify-between">
               <div className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">
-                Substrate Logic Vector Retrieval
+                Semantic Retrieval
               </div>
               <button
                 type="button"

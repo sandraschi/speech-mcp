@@ -401,7 +401,7 @@ const CreativeLabs: React.FC = () => {
             Creative Labs
           </h1>
           <p className="text-sm font-bold uppercase tracking-widest text-slate-400">
-            Neural Prosody & Translation
+            Prosody & Translation
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -729,7 +729,7 @@ const CreativeLabs: React.FC = () => {
                 <div className="absolute bottom-4 left-8 animate-pulse flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
                   <span className="text-[10px] font-black text-violet-400 uppercase tracking-widest">
-                    Warming up neural stream...
+                    Connecting to TTS...
                   </span>
                 </div>
               )}
@@ -831,7 +831,7 @@ const CreativeLabs: React.FC = () => {
                 },
                 {
                   label: "Stability",
-                  value: "Neural v5",
+                  value: "v5",
                   color: "text-violet-400",
                 },
                 {

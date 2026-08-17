@@ -105,7 +105,7 @@ const HelpPage: React.FC = () => {
             "Dozens of supported languages (Kiswahili, Hindi, etc.)",
             "Native Barge-in (Server-side VAD)",
           ]}
-          notes="Recommended for emotional performance. Wipes the floor with competition in prosody. Get API key at aistudio.google.com."
+          notes="Recommended for expressive TTS. Get API key at aistudio.google.com."
         />
         <ProviderDoc
           name="ElevenLabs"
@@ -266,7 +266,7 @@ const HelpPage: React.FC = () => {
         <div className="space-y-4">
           <FaqItem
             q="Why is the EVI session returning 'simulated'?"
-            a="Check HUME_API_KEY and HUME_CONFIG_ID in Settings. If missing or invalid, the substrate falls back to simulation."
+            a="Check HUME_API_KEY and HUME_CONFIG_ID in Settings. If missing or invalid, voice generation falls back to local modes."
           />
           <FaqItem
             q="How do I use local LLMs like Ollama?"

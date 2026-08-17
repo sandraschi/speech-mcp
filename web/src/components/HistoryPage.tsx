@@ -42,23 +42,23 @@ const HistoryPage: React.FC = () => {
           </div>
           <div>
             <h1 className="text-4xl font-black text-white tracking-tighter">
-              Cognitive History
+              Interaction History
             </h1>
             <p className="text-slate-400 mt-1 font-medium text-lg">
-              Archived Neural Interactions & Forensic Trace
+              Past TTS, STT and agent interactions
             </p>
           </div>
         </div>
 
         <div className="relative w-full md:w-96">
-          <label htmlFor="forensic-search" className="sr-only">
-            Search forensic logs
+          <label htmlFor="interaction-search" className="sr-only">
+            Search interaction logs
           </label>
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
           <input
-            id="forensic-search"
+            id="interaction-search"
             type="text"
-            placeholder="Search forensic logs..."
+            placeholder="Search interaction logs..."
             className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-4 py-4 text-white focus:border-indigo-500/50 focus:ring-0 transition-all placeholder-slate-600"
           />
         </div>
@@ -73,7 +73,7 @@ const HistoryPage: React.FC = () => {
                 Event
               </th>
               <th className="px-8 py-5 text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">
-                Cognitive Content
+                Content
               </th>
               <th className="px-8 py-5 text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">
                 Metadata
@@ -92,9 +92,7 @@ const HistoryPage: React.FC = () => {
                 <td colSpan={5} className="px-8 py-20 text-center">
                   <div className="flex flex-col items-center justify-center opacity-20 uppercase tracking-[0.3em] font-black text-lg">
                     <Clock size={40} className="mb-4" />
-                    {loading
-                      ? "Synchronizing Substrate..."
-                      : "Archival Trace Empty"}
+                    {loading ? "Loading history..." : "Archival Trace Empty"}
                   </div>
                 </td>
               </tr>

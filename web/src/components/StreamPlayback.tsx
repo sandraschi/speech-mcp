@@ -173,17 +173,17 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
             <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5">
               {provider} •{" "}
               {status === "connecting"
-                ? "Warming up neurons..."
+                ? "Connecting..."
                 : status === "streaming"
                   ? "Handshaking..."
                   : status === "playing"
-                    ? "Neural stream active"
+                    ? "Stream active"
                     : status}
             </div>
             <div className="text-sm font-bold text-white/90 truncate max-w-[200px]">
               {status === "connecting"
                 ? "Preparing synthetic voice..."
-                : text || "Aggregating flux..."}
+                : text || "Waiting for audio..."}
             </div>
           </div>
         </div>
