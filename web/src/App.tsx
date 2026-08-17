@@ -31,16 +31,19 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
     >
       <section className="glass-card lg:col-span-3 p-8 border border-accent-purple/20 bg-accent-purple/[0.04]">
         <h2 className="text-xs font-black uppercase tracking-[0.2em] text-accent-purple mb-3">
-          Humanoid &amp; fleet voice
+          Talk to your PC — it listens and speaks back
         </h2>
         <p className="text-sm text-text-secondary leading-relaxed max-w-3xl mb-4">
-          Speech perception and reply are load-bearing for embodied agents:
-          hands-free commands, noisy environments, structured transcripts for
-          planners, and local STT without per-minute cloud tax. speech-mcp
-          defaults to <span className="text-white font-semibold">FunASR</span>{" "}
-          and the{" "}
-          <span className="text-white font-semibold">Voice Command Bus</span>{" "}
-          into fleet-agent (wake → STT → mission).
+          Speech-MCP lets you control your computer with your voice and hear it
+          reply — without sending your audio to the cloud.{" "}
+          <span className="text-white font-semibold">FunASR</span> is the
+          built-in speech recognizer: it runs entirely on your own machine,
+          turns your voice into text, works offline, and costs nothing per
+          minute. A{" "}
+          <span className="text-white font-semibold">voice command bus</span>{" "}
+          then turns what you say into actions in other apps: say a wake word,
+          then your command. It understands English, Japanese, German, and 28
+          other languages.
         </p>
         <div className="flex flex-wrap gap-3">
           <a
@@ -49,21 +52,21 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-sm font-bold text-accent-purple hover:underline"
           >
-            HUMANOID_VOICE.md <ExternalLink size={14} />
+            Why local speech? <ExternalLink size={14} />
           </a>
           <button
             type="button"
             className="text-sm font-bold text-white/70 hover:text-white"
             onClick={() => onNavigate("help")}
           >
-            Help → FunASR &amp; bus
+            Help → Voice &amp; commands
           </button>
           <button
             type="button"
             className="text-sm font-bold text-white/70 hover:text-white"
             onClick={() => onNavigate("stt")}
           >
-            Wake word / STT
+            Wake word &amp; speech-to-text
           </button>
         </div>
       </section>
