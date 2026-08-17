@@ -17,38 +17,58 @@ import SystemLogs from "./components/SystemLogs";
 import ToolsPage from "./components/ToolsPage";
 import VoiceChat from "./components/VoiceChat";
 import VoicesPage from "./components/VoicesPage";
+import useZoom from "./lib/use-zoom";
 
 const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
   onNavigate,
 }) => {
-  const { health, stats, error } = useBackend();
+  const { health, stats, error, restartBackend } = useBackend();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div
+      className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+      data-testid="dashboard"
+    >
       <section className="glass-card lg:col-span-2 p-8 min-h-[200px] flex flex-col justify-between">
         <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-secondary opacity-50 mb-2">
           Backend Status
         </h2>
         {error || !health ? (
           <div className="flex items-center gap-3">
-            <span className="w-3 h-3 rounded-full bg-rose-500 animate-pulse" />
+            <span
+              className="w-3 h-3 rounded-full bg-rose-500 animate-pulse"
+              data-testid="backend-dot"
+            />
             <span className="text-base font-bold text-rose-400 uppercase">
               Unreachable
             </span>
             <span className="text-sm text-text-secondary">
               (check backend port)
             </span>
+            <button
+              type="button"
+              onClick={() => restartBackend()}
+              className="ml-4 text-xs font-bold text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Restart Backend
+            </button>
           </div>
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                <span
+                  className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"
+                  data-testid="backend-dot"
+                />
                 <span className="text-base font-black text-emerald-400 uppercase">
                   {health.status}
                 </span>
               </div>
-              <span className="text-sm text-text-secondary font-mono">
+              <span
+                className="text-sm text-text-secondary font-mono"
+                data-testid="kpi-server"
+              >
                 v{health.version}
               </span>
               <span className="text-sm text-text-secondary">
@@ -57,7 +77,10 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
             </div>
             {stats !== null && (
               <div className="flex items-center gap-4 mt-4 text-sm text-text-secondary">
-                <span className="flex items-center gap-1.5">
+                <span
+                  className="flex items-center gap-1.5"
+                  data-testid="kpi-rag"
+                >
                   <Database size={14} />
                   RAG: {stats.row_count} rows, {stats.sources?.length ?? 0}{" "}
                   sources
@@ -171,6 +194,7 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
 
 function App() {
   const [activePage, setActivePage] = useState("dashboard");
+  useZoom();
 
   return (
     <BackendProvider>

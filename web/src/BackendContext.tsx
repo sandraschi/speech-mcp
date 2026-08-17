@@ -1,5 +1,11 @@
 import type React from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import {
   fetchHealth,
   fetchStats,
@@ -16,6 +22,7 @@ export type BackendContextValue = {
   error: boolean;
   request: (path: string, options?: RequestInit) => Promise<any>;
   emergencyStop: () => Promise<void>;
+  restartBackend: () => Promise<void>;
 };
 const BackendContext = createContext<BackendContextValue>({
   health: null,
@@ -23,6 +30,7 @@ const BackendContext = createContext<BackendContextValue>({
   error: true,
   request: async () => {},
   emergencyStop: async () => {},
+  restartBackend: async () => {},
 });
 
 export function useBackend() {
@@ -34,29 +42,65 @@ export function BackendProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [error, setError] = useState(true);
 
+  const poll = useCallback(async () => {
+    const [h, s] = await Promise.all([fetchHealth(), fetchStats()]);
+    setHealth(h);
+    setStats(s);
+    setError(h === null);
+  }, []);
+
   useEffect(() => {
-    const poll = async () => {
-      const [h, s] = await Promise.all([fetchHealth(), fetchStats()]);
-      setHealth(h);
-      setStats(s);
-      setError(h === null);
-    };
     poll();
     const id = setInterval(poll, POLL_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [poll]);
 
-  const emergencyStop = async () => {
+  // Tauri "backend-status" event (instant refresh inside the NSIS WebView);
+  // HTTP polling above is the fallback in a plain browser.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        unlisten = await listen<string>("backend-status", (event) => {
+          if (event.payload === "ready") {
+            poll();
+          } else if (
+            typeof event.payload === "string" &&
+            event.payload.startsWith("error:")
+          ) {
+            setError(true);
+          }
+        });
+      } catch {
+        // Not inside Tauri - HTTP polling handles it
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [poll]);
+
+  const emergencyStop = useCallback(async () => {
     try {
       await request("/api/v1/stop", { method: "POST" });
     } catch (err) {
       console.error("Emergency stop failed:", err);
     }
-  };
+  }, []);
+
+  const restartBackend = useCallback(async () => {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("start_backend");
+    } catch {
+      // Not inside Tauri - the HTTP poll will refresh on its own
+    }
+  }, []);
 
   return (
     <BackendContext.Provider
-      value={{ health, stats, error, request, emergencyStop }}
+      value={{ health, stats, error, request, emergencyStop, restartBackend }}
     >
       {children}
     </BackendContext.Provider>
