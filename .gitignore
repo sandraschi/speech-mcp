@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -28,51 +28,9 @@ venv/
 ENV/
 env/
 
-# UV
-uv.lock
-.uv/
-
 # Environment Variables
 .env
 .env.local
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual Environment
-.venv/
-venv/
-ENV/
-env/
-
-# UV
-uv.lock
-.uv/
-
-# Environment Variables
-.env
-.env.local
-.env.*
 
 # IDEs
 .vscode/
@@ -91,7 +49,10 @@ models/
 .coverage
 .coverage.*
 htmlcov/
-.pytest_cache/
+
+# Reports (regenerable audit snapshots)
+reports/
+cua-reports/
 
 # Node/Web
 web/node_modules/
@@ -107,6 +68,7 @@ server_advanced.py_tmp
 # Rust / Tauri
 target/
 native/target/
+native/gen/
 native/node_modules/
 native/binaries/*-x86_64-pc-windows-msvc.exe
 speech-mcp-backend.exe
