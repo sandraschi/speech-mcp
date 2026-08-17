@@ -25,5 +25,15 @@ if (-not (Test-Path .mcpbignore)) {
     $lines | Set-Content .mcpbignore -Encoding utf8
     Write-Host "  Generated .mcpbignore" -ForegroundColor Yellow
 }
+
+# MCPB fresh stage: wipe + recopy src and assets so the bundle never ships stale code
+if (Test-Path "mcpb\src") { Remove-Item "mcpb\src" -Recurse -Force }
+Copy-Item "src" "mcpb\src" -Recurse -Force
+if (Test-Path "assets") {
+    if (Test-Path "mcpb\assets") { Remove-Item "mcpb\assets" -Recurse -Force }
+    Copy-Item "assets" "mcpb\assets" -Recurse -Force
+}
+Write-Host "  Staged fresh src/ + assets/ into mcpb/" -ForegroundColor Yellow
+
 npx --yes @anthropic-ai/mcpb pack $RepoRoot "$RepoRoot/dist/$name-v$ver.mcpb"
 Write-Host "Bundle: $RepoRoot/dist/$name-v$ver.mcpb"

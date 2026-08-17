@@ -33,15 +33,31 @@
     "tools": [
         {
             "name": "text_to_speech",
-            "description": "Synthesize speech via Hume AI, ElevenLabs, or Windows Local TTS. Returns a WebSocket stream URL for audio consumption."
+            "description": "Synthesize speech and play it on the PC speaker. Providers: windows (SAPI5, no key), hume, gemini, gemma (local), elevenlabs."
+        },
+        {
+            "name": "text_to_dialogue",
+            "description": "Multi-voice dialogue synthesis via ElevenLabs, played on the PC speaker."
+        },
+        {
+            "name": "transcribe_audio_file",
+            "description": "Transcribe a local audio file with speaker labels, timestamps, and punctuation. FunASR default, Gemini/Gemma optional."
+        },
+        {
+            "name": "transcribe_stream_chunk",
+            "description": "Stateless transcription of a single audio fragment from a stream bridge."
+        },
+        {
+            "name": "start_evi_session",
+            "description": "Initialize a real-time Empathic Voice Interface (Hume EVI) WebSocket session."
         },
         {
             "name": "manage_domestic_utility",
-            "description": "Alexa-style domestic utility gateway: set/cancel/query timers, query weather, and schedule alarms."
+            "description": "Domestic utility gateway: set/cancel/query timers, query weather, schedule alarms."
         },
         {
             "name": "trigger_action",
-            "description": "Elicit physical effects via IoT bridge (Tapo smart lights) or trigger UI notifications."
+            "description": "Declared IoT bridge stub: light_on/light_off/notify return pending_orchestration with next steps (no fake success)."
         },
         {
             "name": "search_docs",
@@ -54,6 +70,62 @@
         {
             "name": "manage_voice_clones",
             "description": "Lifecycle management for voice clones (list, create, delete) across supported providers."
+        },
+        {
+            "name": "configure_local_wake_word",
+            "description": "Start or stop the offline openWakeWord listener."
+        },
+        {
+            "name": "detect_wake_word",
+            "description": "Arm Gemini Multimodal Live VAD for voice activity detection."
+        },
+        {
+            "name": "run_speech_demo",
+            "description": "Execute a hardware-specific speech or capability demo script."
+        },
+        {
+            "name": "play_audio_file",
+            "description": "Diagnostic tool: play an arbitrary audio file on the system speaker."
+        },
+        {
+            "name": "agentic_conversation_workflow",
+            "description": "SEP-1577 autonomous conversation mission via ctx.sample + ctx.elicit."
+        },
+        {
+            "name": "orchestrate_alexa_pattern",
+            "description": "Alexa-style proactive mission orchestration with adaptive responding."
+        },
+        {
+            "name": "safety_validate_intent",
+            "description": "Validate speech text against social engineering patterns."
+        },
+        {
+            "name": "safety_verify_auth",
+            "description": "Verify a Speech-MCP auth token against SPEECH_MCP_AUTH_TOKEN."
+        },
+        {
+            "name": "safety_log_audit",
+            "description": "Log a permanent audit trail for high-intensity emotional speech."
+        },
+        {
+            "name": "prosody_dashboard",
+            "description": "Real-time prosody and emotional status dashboard (Prefab card)."
+        },
+        {
+            "name": "speech_activity_chart",
+            "description": "Speech activity bar chart showing token usage across recent sessions (Prefab card)."
+        },
+        {
+            "name": "fleet_health_overview",
+            "description": "Comprehensive fleet health overview for all speech providers (Prefab card)."
+        },
+        {
+            "name": "provider_capability_matrix",
+            "description": "Provider function matrix showing support for advanced speech features (Prefab card)."
+        },
+        {
+            "name": "latency_benchmark_view",
+            "description": "Comparative latency (TTFB) metrics for high-fidelity speech engines (Prefab card)."
         }
     ],
     "runtime": "python>=3.11",
