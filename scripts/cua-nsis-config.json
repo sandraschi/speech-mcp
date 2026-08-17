@@ -10,5 +10,20 @@
   "window_title_re": "Speech MCP",
   "nsis_glob": "native/target/release/bundle/nsis/Speech MCP_*_x64-setup.exe",
   "bridge_ok_text": "speech-mcp",
+  "nav_routes": [
+    ["Dashboard", "Backend Status"],
+    ["EVI Session", "Interaction Lab"],
+    ["Voice Chat", "Voice Chat"],
+    ["Octave TTS", "Creative Labs"],
+    ["Voice Clones", "Voice Clones"],
+    ["Apps Hub", "Apps Hub"],
+    ["STT Control", "Speech to Text"],
+    ["Tools", "Neural Instrumentation"],
+    ["Semantic", "Semantic"],
+    ["Agentic", "Agentic Orchestration"],
+    ["History", "History"],
+    ["Device Settings", "Device Settings"],
+    ["System Health", "System Health"]
+  ],
   "uninstall_registry_filter": "*Speech MCP*"
 }

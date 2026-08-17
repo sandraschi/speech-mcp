@@ -2,14 +2,14 @@
 
 mod backend;
 use backend::{BackendProcess, spawn_backend};
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, RunEvent};
 
 #[tauri::command]
 async fn start_backend(
     app: tauri::AppHandle,
     state: tauri::State<'_, BackendProcess>,
 ) -> Result<String, String> {
-    spawn_backend(app, state)
+    spawn_backend(app, state.inner())
 }
 
 fn main() {
@@ -37,8 +37,8 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error building tauri application")
         .run(|app, event| {
-            if let tauri::RunEvent::Exit = event {
-                if let Some(child) = app.state::<BackendProcess>().0.lock().unwrap().take() {
+            if let RunEvent::Exit = event {
+                if let Some(mut child) = app.state::<BackendProcess>().inner().0.lock().unwrap().take() {
                     let _ = child.kill();
                 }
             }
