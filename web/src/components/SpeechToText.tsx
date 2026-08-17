@@ -5,10 +5,11 @@ import {
   MicOff,
   Settings2,
   ShieldCheck,
+  Volume2,
   Zap,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { controlWakeWord } from "../api";
 import { useBackend } from "../BackendContext";
 
@@ -25,6 +26,18 @@ export const SpeechToText: React.FC = () => {
       type: "info" | "success" | "error";
     }[]
   >([]);
+
+  // Microphone test state
+  const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
+  const [micId, setMicId] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const [micError, setMicError] = useState<string | null>(null);
+  const [micReady, setMicReady] = useState(false);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const isActive = health?.wake_word_active ?? false;
 
@@ -76,6 +89,82 @@ export const SpeechToText: React.FC = () => {
     "timers",
     "weather",
   ];
+
+  // ---- Microphone test ----
+  useEffect(() => {
+    const list = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        setMics(devices.filter((d) => d.kind === "audioinput"));
+      } catch {
+        setMicError("Microphone access is not available in this browser.");
+      }
+    };
+    list();
+  }, []);
+
+  const stopTest = useCallback(() => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => {
+      t.stop();
+    });
+    streamRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+    setTesting(false);
+    setMicLevel(0);
+  }, []);
+
+  useEffect(() => {
+    return () => stopTest();
+  }, [stopTest]);
+
+  const startTest = async () => {
+    setMicError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: micId
+          ? { deviceId: { exact: micId }, echoCancellation: false }
+          : { echoCancellation: false },
+      });
+      streamRef.current = stream;
+      const ctx = new AudioContext();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      src.connect(analyser);
+      audioCtxRef.current = ctx;
+      analyserRef.current = analyser;
+      setTesting(true);
+      setMicReady(true);
+
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const loop = () => {
+        const an = analyserRef.current;
+        if (!an) return;
+        an.getByteFrequencyData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+        const rms = Math.sqrt(sum / data.length) / 255;
+        setMicLevel(Math.min(100, Math.round(rms * 240)));
+        rafRef.current = requestAnimationFrame(loop);
+      };
+      loop();
+    } catch (err) {
+      setTesting(false);
+      setMicReady(false);
+      setMicError(
+        err instanceof Error && err.name === "NotAllowedError"
+          ? "Microphone access was denied. Allow mic permission in your browser and try again."
+          : `Could not start microphone: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
+
+  const thresholdPct = sensitivity * 100;
+  const aboveThreshold = micLevel >= thresholdPct;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -262,6 +351,110 @@ export const SpeechToText: React.FC = () => {
                   on your PC — no audio leaves the machine.
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Microphone test */}
+        <div className="lg:col-span-3 glass-card p-8" data-testid="mic-test">
+          <div className="flex items-center gap-3 mb-6">
+            <Volume2 size={18} className="text-accent-purple" />
+            <h3 className="text-lg font-black tracking-tight text-white uppercase">
+              Microphone test
+            </h3>
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50">
+              press test, speak, watch the meter
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-3">
+              <label
+                htmlFor="mic-select"
+                className="text-xs font-black uppercase tracking-widest text-text-secondary"
+              >
+                Microphone
+              </label>
+              <select
+                id="mic-select"
+                value={micId}
+                onChange={(e) => setMicId(e.target.value)}
+                disabled={testing}
+                data-testid="mic-select"
+                className="w-full bg-white/[0.03] border border-white/5 rounded-xl p-3 text-white focus:border-accent-purple/50 outline-none font-mono text-sm cursor-pointer disabled:opacity-50"
+              >
+                <option value="">Default microphone</option>
+                {mics.map((m, i) => (
+                  <option key={m.deviceId} value={m.deviceId}>
+                    {m.label || `Microphone ${i + 1}`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-text-secondary opacity-70 leading-relaxed">
+                This test uses the browser mic you pick. The wake word listener
+                runs on your PC and uses the system default microphone.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-black uppercase tracking-widest text-text-secondary">
+                  Volume
+                </span>
+                <span className="text-sm font-mono font-bold text-accent-purple">
+                  {micLevel}%
+                </span>
+              </div>
+              <div
+                className="relative h-8 rounded-xl bg-white/[0.04] border border-white/5 overflow-hidden"
+                data-testid="mic-volume"
+              >
+                <div
+                  className="h-full transition-[width] duration-75"
+                  style={{
+                    width: `${micLevel}%`,
+                    background: aboveThreshold ? "#ef4444" : "#34d399",
+                  }}
+                />
+                <div
+                  className="absolute inset-y-0 w-0.5 bg-amber-400"
+                  style={{ left: `${thresholdPct}%` }}
+                  title={`Wake word threshold at ${thresholdPct}%`}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                <span>{micLevel}% input</span>
+                <span
+                  className={aboveThreshold ? "text-rose-400" : "text-white/30"}
+                >
+                  {testing
+                    ? aboveThreshold
+                      ? "Wake word would trigger"
+                      : "Below threshold"
+                    : "Not testing"}
+                </span>
+              </div>
+              {micError && (
+                <div className="text-xs text-rose-400 font-bold">
+                  {micError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={testing ? stopTest : startTest}
+                disabled={!testing && !micReady && mics.length === 0}
+                data-testid="mic-toggle"
+                className={`w-full px-6 py-3 rounded-xl font-black tracking-widest uppercase transition-all ${
+                  testing
+                    ? "bg-rose-500 text-white hover:bg-rose-600"
+                    : "bg-accent-purple text-white hover:bg-accent-purple-hover"
+                }`}
+              >
+                {testing ? "Stop test" : "Start test"}
+              </button>
             </div>
           </div>
         </div>
