@@ -81,14 +81,7 @@ export const SpeechToText: React.FC = () => {
     }
   }, [isActive, addLog]);
 
-  const KEYWORDS = [
-    "alexa",
-    "hey_jarvis",
-    "hey_mycroft",
-    "hey_rhasspy",
-    "timers",
-    "weather",
-  ];
+  const KEYWORDS = ["hey_jarvis", "hey_mycroft"];
 
   // ---- Microphone test ----
   useEffect(() => {
@@ -165,6 +158,12 @@ export const SpeechToText: React.FC = () => {
 
   const thresholdPct = sensitivity * 100;
   const aboveThreshold = micLevel >= thresholdPct;
+
+  // Browser can report the same mic multiple times (per format/session) -
+  // show unique labels only.
+  const uniqueMics = mics.filter(
+    (m, i, arr) => !m.label || arr.findIndex((x) => x.label === m.label) === i,
+  );
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -309,6 +308,13 @@ export const SpeechToText: React.FC = () => {
                   </button>
                 ))}
               </div>
+              <p className="text-[11px] text-text-secondary opacity-70 leading-relaxed">
+                <span className="text-white/70">hey_jarvis</span> starts the
+                listener, <span className="text-white/70">hey_mycroft</span>{" "}
+                stops it. openWakeWord also ships pre-trained alexa, timers,
+                weather and hey_rhasspy models, but a fully custom wake word
+                requires training your own model — a separate workflow.
+              </p>
             </div>
 
             <div className="space-y-8">
@@ -384,7 +390,7 @@ export const SpeechToText: React.FC = () => {
                 className="w-full bg-white/[0.03] border border-white/5 rounded-xl p-3 text-white focus:border-accent-purple/50 outline-none font-mono text-sm cursor-pointer disabled:opacity-50"
               >
                 <option value="">Default microphone</option>
-                {mics.map((m, i) => (
+                {uniqueMics.map((m, i) => (
                   <option key={m.deviceId} value={m.deviceId}>
                     {m.label || `Microphone ${i + 1}`}
                   </option>
