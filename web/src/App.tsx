@@ -20,6 +20,16 @@ import VoiceChat from "./components/VoiceChat";
 import VoicesPage from "./components/VoicesPage";
 import useZoom from "./lib/use-zoom";
 
+const PROVIDER_LABELS: Record<string, string> = {
+  hume: "Hume AI",
+  elevenlabs: "ElevenLabs",
+  gemini: "Gemini",
+  gemma: "Gemma (local)",
+  funasr: "FunASR (local STT)",
+  windows: "Windows SAPI",
+  sherpa_streaming: "Sherpa streaming (local)",
+};
+
 const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
   onNavigate,
 }) => {
@@ -152,7 +162,9 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
           <div className="space-y-4 mt-6">
             {Object.entries(health.providers).map(([name, available]) => (
               <div key={name} className="flex justify-between items-center">
-                <span className="text-sm text-white capitalize">{name}</span>
+                <span className="text-sm text-white">
+                  {PROVIDER_LABELS[name] ?? name}
+                </span>
                 <span
                   className={`text-xs font-black uppercase ${available ? "text-emerald-500" : "text-white/30"}`}
                 >
