@@ -9,7 +9,7 @@ Multi-provider speech gateway (MCP server + React webapp): **FunASR local STT**
 (ja/en/de, CPU), Gemini Live/TTS, Hume AI (EVI/Octave), ElevenLabs TTS + voice
 cloning, offline wake word, RAG over speech docs, and a fleet voice command bus.
 
-> Version 0.6.4. Deep docs: `docs/` (STT, streaming, configuration,
+> Version 0.6.5. Deep docs: `docs/` (STT, streaming, configuration,
 > troubleshooting, humanoid/fleet architecture).
 
 ## Architecture

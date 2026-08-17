@@ -1,5 +1,5 @@
 
-## [0.6.4] — 2026-08-17
+## [0.6.5] — 2026-08-17
 
 ### Added — Streaming STT & barge-in (sherpa-onnx) + assfix
 - **Streaming STT (ja/en/de, CPU)** via sherpa-onnx: `streaming_stt` MCP tool (partials + endpoint), `barge_in_feed` (barge-in). Models: en zipformer, ja multilingual zipformer, de-kroko. `just sherpa-download` + `SHERPA_ASR_ENABLED`, `SHERPA_ASR_LANG`, `SHERPA_BARGE_IN`.
@@ -7,6 +7,9 @@
 - **FunASR default model** -> `Fun-ASR-MLT-Nano-2512` (multilingual, EN/JA/DE); `funasr>=1.4.1`. Sidecar port 10914 (was 10910, rtorrent collision).
 - **Honesty pass**: removed webapp gaslights (fake tool registry, fabricated metrics, fake dispatch endpoints), replaced stubs (Gemma TTS/STT, weather fallback, Prefab cards now real data), fixed REST `Context()` crash, `pyright 0 errors`.
 - New REST: `/api/tools`, `/api/v1/diagnostics`, `/api/v1/shutdown`; honest `/api/v1/agentic`, `/api/v1/action`.
+- Native build repaired (backend.rs compile, build.ps1 frontend scan, size gate); CUA config nav_routes; docs sync; GitHub topics + badges.
+
+## [0.6.4] — 2026-08-17
 
 ### Added — Voice Command Bus: hands-free dev workflow loop
 - **Auto-start listener** at backend boot when `FLEET_VOICE_DELEGATE=1` (`FLEET_VOICE_AUTOSTART=0` to disable) — NSSM/headless reboot-proof

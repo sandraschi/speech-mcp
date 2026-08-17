@@ -5776,7 +5776,7 @@ wheels = [
 
 [[package]]
 name = "speech-mcp"
-version = "0.6.4"
+version = "0.6.5"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
