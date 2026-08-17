@@ -137,9 +137,6 @@ demo-el-dialogue v1="" v2="":
     print(f'Dialogue: {len(audio)} bytes, {len(inputs)} lines, playing...'); \
     subprocess.run(['wmplayer.exe', '/play', '/close', tmp.name]); \
     import os as _os; _os.remove(tmp.name); print('OK')"
-    just demo-windows
-    just demo-gemini-plain
-    just demo-hume
 
 # --- Demo  Wake word ---
 

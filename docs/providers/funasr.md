@@ -102,7 +102,7 @@ Different hardware → different artifact, **same API surface**:
 | **C++ low-latency** | ONNX runtime | `funasr-onnx-offline-rtf` binaries | Industrial batch |
 | **Windows SDK** | CPU ONNX | FunASR runtime SDK 2.0+ | Offline Mandarin/English file + realtime |
 | **Mobile / ARM** | sherpa-onnx INT8 | Pre-built SenseVoice / Nano ONNX | Android APK patterns exist |
-| **Sidecar service** | HTTP | `funasr-server --port 10910` | OpenAI `/v1/audio/transcriptions` drop-in |
+| **Sidecar service** | HTTP | `funasr-server --port 10914` | OpenAI `/v1/audio/transcriptions` drop-in |
 | **Docker** | CPU/GPU images | `funasr-runtime-sdk-cpu` / `-gpu` | Ports 10095–10098 |
 
 Community ONNX exports: [csukuangfj/FunASR-nano-onnx](https://huggingface.co/csukuangfj/FunASR-nano-onnx) (encoder + LLM split, INT8 variants).
@@ -146,16 +146,16 @@ FUNASR_HUB=hf
 ```powershell
 uv sync --extra funasr
 uv run python scripts/start_funasr_sidecar.py
-# or: funasr-server --model FunAudioLLM/Fun-ASR-Nano-2512 --device cuda:0 --port 10910
+# or: funasr-server --model FunAudioLLM/Fun-ASR-Nano-2512 --device cuda:0 --port 10914
 ```
 
 `.env`:
 
 ```env
-FUNASR_OPENAI_URL=http://127.0.0.1:10910/v1
+FUNASR_OPENAI_URL=http://127.0.0.1:10914/v1
 ```
 
-Port **10910** is fleet-safe (avoids forbidden 8000).
+Port **10914** is fleet-registered for the speech-mcp FunASR sidecar (moved from 10910 on 2026-08-17 — 10910 belongs to rtorrent-mcp).
 
 ### MCP tools
 
@@ -203,7 +203,7 @@ Content-Type: application/octet-stream
 | Variable | Default | Description |
 |---|---|---|
 | `FUNASR_ENABLED` | `false` | Native in-process inference |
-| `FUNASR_OPENAI_URL` | — | Sidecar base URL (e.g. `http://127.0.0.1:10910/v1`) |
+| `FUNASR_OPENAI_URL` | — | Sidecar base URL (e.g. `http://127.0.0.1:10914/v1`) |
 | `FUNASR_MODEL` | `FunAudioLLM/Fun-ASR-Nano-2512` | Hub model ID |
 | `FUNASR_DEVICE` | `cuda:0` | `cuda:0`, `cpu`, `mps` |
 | `FUNASR_HUB` | `hf` | `hf` (HuggingFace) or `ms` (ModelScope) |

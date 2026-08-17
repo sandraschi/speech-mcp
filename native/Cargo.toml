@@ -1,6 +1,6 @@
 [package]
 name = "speech-mcp-native"
-version = "0.6.3"
+version = "0.6.4"
 description = "Tauri 2.0 desktop app for speech-mcp"
 edition = "2021"
 

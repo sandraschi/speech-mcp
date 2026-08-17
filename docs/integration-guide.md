@@ -82,7 +82,7 @@ Dependencies install into `.venv/`. On first FunASR run, hub models download fro
 | Variable | Required | Where to get |
 |---|---|---|
 | `FUNASR_ENABLED` | No (recommended) | `true` after `uv sync --extra funasr` — [funasr.md](providers/funasr.md) |
-| `FUNASR_OPENAI_URL` | No | Sidecar e.g. `http://127.0.0.1:10910/v1` instead of native torch |
+| `FUNASR_OPENAI_URL` | No | Sidecar e.g. `http://127.0.0.1:10914/v1` instead of native torch |
 | `FUNASR_MODEL` | No | Default `FunAudioLLM/Fun-ASR-Nano-2512` |
 | `FUNASR_DEVICE` | No | `cuda:0`, `cpu`, or `mps` |
 | `GOOGLE_API_KEY` | No | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — free |

@@ -60,7 +60,7 @@ Optional **sidecar** (keeps torch out of the main MCP process):
 
 ```powershell
 uv run python scripts/start_funasr_sidecar.py
-# .env: FUNASR_OPENAI_URL=http://127.0.0.1:10910/v1
+# .env: FUNASR_OPENAI_URL=http://127.0.0.1:10914/v1
 ```
 
 MCP tools: `transcribe_audio_file`, `transcribe_stream_chunk`. Full guide: [docs/providers/funasr.md](docs/providers/funasr.md). Chinese FOSS landscape: [docs/CHINESE_AI_RESEARCH.md](docs/CHINESE_AI_RESEARCH.md). **Humanoid / fleet thesis:** [docs/HUMANOID_VOICE.md](docs/HUMANOID_VOICE.md).

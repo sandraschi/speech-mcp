@@ -45,6 +45,7 @@ dev = [
     "pytest-mock>=3.10.0",
     "pre-commit>=4.6.1",
     "ruff>=0.16.0,<0.17",
+    "pyright>=1.1.390",
 ]
 
 [project.scripts]
@@ -63,8 +64,8 @@ line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "S", "UP", "RUF"]
-ignore = ["S101", "B008", "S101", "B008", "S110", "S106", "S112", "S101", "B008", "S101", "B008", "S110", "S106", "S112", "RUF012", "S603", "S607", "S324", "E402", "E501"]
+select = ["E", "F", "W", "I", "B", "S", "UP", "RUF", "T20"]
+ignore = ["S101", "B008", "S110", "S106", "S112", "RUF012", "S603", "S607", "S324", "E402", "E501"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -79,4 +80,6 @@ markers = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/*" = ["B007", "S310", "S603", "S607"]
+"scripts/*" = ["B007", "S310", "S603", "S607", "T201"]
+"tests/*" = ["T201"]
+"tests/live/*" = ["T201"]

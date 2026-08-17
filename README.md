@@ -39,7 +39,7 @@ Chinese open-weight speech stacks are ahead on **industrial ASR**: open weights 
 | **Speed** | Up to ~170× realtime on GPU, ~17× on CPU (vs ~13× for Whisper-large-v3 in published tables) |
 | **Models** | [Fun-ASR-Nano-2512](https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-2512), [SenseVoiceSmall](https://github.com/FunAudioLLM/SenseVoice), Paraformer family |
 | **Structured output** | Timestamps, speaker labels; emotion/event tags via SenseVoice |
-| **Edge** | PyTorch (`cuda`/`cpu`/`mps`), ONNX INT8, Windows runtime SDK, OpenAI-compatible sidecar on **10910** |
+| **Edge** | PyTorch (`cuda`/`cpu`/`mps`), ONNX INT8, Windows runtime SDK, OpenAI-compatible sidecar on **10914** |
 | **MCP tools** | `transcribe_audio_file`, `transcribe_stream_chunk` (default `provider=funasr`) |
 | **REST** | `POST /api/v1/transcribe?provider=funasr` |
 | **Fleet voice bus** | Post-wake utterance STT when `FLEET_VOICE_DELEGATE=1` — auto-start listener, spoken wake greeting, sleep word, spoken replies, audible timer announcements ([VOICE_COMMAND_BUS.md](docs/VOICE_COMMAND_BUS.md)) |
@@ -62,7 +62,7 @@ Copy-Item .env.example .env
 ```powershell
 uv sync --extra funasr
 uv run python scripts/start_funasr_sidecar.py
-# .env: FUNASR_OPENAI_URL=http://127.0.0.1:10910/v1
+# .env: FUNASR_OPENAI_URL=http://127.0.0.1:10914/v1
 ```
 
 **Full guide (env matrix, benchmarks, licensing, sidecar API):** [**docs/providers/funasr.md**](docs/providers/funasr.md)
@@ -107,7 +107,7 @@ speech-mcp is a **gateway**: cloud TTS/live voice plus **local STT via FunASR**.
 
 ## Key Features
 
-**FunASR Local STT** — Alibaba Tongyi Fun-ASR-Nano / SenseVoice integrated natively. Structured transcripts with speakers and timestamps. OpenAI-compatible sidecar on port 10910. See [FunASR guide](docs/providers/funasr.md).
+**FunASR Local STT** — Alibaba Tongyi Fun-ASR-Nano / SenseVoice integrated natively. Structured transcripts with speakers and timestamps. OpenAI-compatible sidecar on port 10914. See [FunASR guide](docs/providers/funasr.md).
 
 **Gemma 4 Native Multimodal** — SOTA 2026 local engine integration. Features native audio/vision encoders for low-latency conversational reasoning. Supports prosody-aware interaction and local-first Zero-STT fallback. Optimized for A4B throughput (100+ t/s).
 

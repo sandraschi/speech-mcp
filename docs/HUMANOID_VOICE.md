@@ -175,7 +175,7 @@ Windows **Speech MCP** installer (Tauri 2 + PyInstaller sidecar) bundles the coc
 |---------|------|------|
 | speech-mcp webapp | 10908 | Dashboard, Voice Chat UI |
 | speech-mcp backend | 10909 | MCP SSE, REST, WebSocket, wake listener |
-| FunASR sidecar (optional) | 10910 | OpenAI-compatible STT HTTP |
+| FunASR sidecar (optional) | 10914 | OpenAI-compatible STT HTTP |
 | fleet-agent-mcp | 10996 | SpeechIntent routing |
 | kyutai-mcp (optional) | 10924–10926 | Offline duplex Moshi — parallel, not replacement |
 
@@ -235,12 +235,12 @@ Details: [YAHBOOM_RASPBOT_VOICE.md](YAHBOOM_RASPBOT_VOICE.md).
 ### 5.2 Sidecar GPU (recommended for dev fleets)
 
 ```
-[Human] → [PC or robot mic] → [speech-mcp] → HTTP → [10910 funasr-server] → [fleet-agent]
+[Human] → [PC or robot mic] → [speech-mcp] → HTTP → [10914 funasr-server] → [fleet-agent]
 ```
 
 - **Pros:** speech-mcp process stays small; share one GPU STT box across services.
 - **Cons:** Network hop; secure localhost binding.
-- **Env:** `FUNASR_OPENAI_URL=http://127.0.0.1:10910/v1`
+- **Env:** `FUNASR_OPENAI_URL=http://127.0.0.1:10914/v1`
 
 Start: `uv run python scripts/start_funasr_sidecar.py`
 

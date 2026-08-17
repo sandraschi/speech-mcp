@@ -1,15 +1,17 @@
-Param([switch]$Headless)
+# Fleet unified launcher - delegates to web/start.ps1 (webapp stack).
+# Keep the fleet switches here so `just start` / cua-webapp-test work identically.
+param(
+    [switch]$Headless,
+    [switch]$BackendOnly,
+    [switch]$FrontendOnly,
+    [switch]$NoBrowser,
+    [switch]$ReuseIfRunning
+)
 
-# --- SOTA Headless Standard ---
-if ($Headless -and ($Host.UI.RawUI.WindowTitle -notmatch 'Hidden')) {
-    Start-Process pwsh -ArgumentList '-NoProfile', '-File', $PSCommandPath, '-Headless' -WindowStyle Hidden
-    exit
+$webStart = Join-Path $PSScriptRoot 'web\start.ps1'
+if (-not (Test-Path -LiteralPath $webStart)) {
+    Write-Host "ERROR: web launcher missing: $webStart" -ForegroundColor Red
+    exit 1
 }
-$WindowStyle = if ($Headless) { 'Hidden' } else { 'Normal' }
-# ------------------------------
-
-$env:FASTMCP_LOG_LEVEL = 'WARNING'
-# speech-mcp Start - Standards-Compliant SOTA
-Write-Host 'Starting speech-mcp...' -ForegroundColor Cyan
-
-uv run -m speech_mcp
+& $webStart @PSBoundParameters
+exit $LASTEXITCODE

@@ -5,7 +5,7 @@
     BackendPort  = 10909
     FrontendPort = 10908
     HealthPath   = '/'
-    WebRoot      = 'D:\Dev\repos\speech-mcp\web'
+    WebRoot      = (Join-Path $PSScriptRoot 'web')
     Backend = @{
         Kind          = 'uvicorn'
         UvicornTarget = 'speech_mcp.server:app'
