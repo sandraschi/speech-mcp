@@ -114,6 +114,10 @@ uv run pytest tests/ -v -m "not live"
 | `src/speech_mcp/tools/ui.py` | Prefab UI dashboards |
 | `src/speech_mcp/tools/monitoring.py` | IoT action bridge |
 | `src/speech_mcp/providers/gemini.py` | Gemini TTS/STT provider |
+| `src/speech_mcp/providers/sherpa_onnx.py` | Streaming STT (sherpa-onnx, ja/en/de) + barge-in |
+| `src/speech_mcp/tools/streaming_asr.py` | streaming_stt / barge_in_feed MCP tools |
+| `src/speech_mcp/tools/stt.py` | Batch/chunk STT tools (funasr/gemini/gemma) |
+| `src/speech_mcp/voice_listener.py` | Wake -> streaming/batch STT -> fleet-agent loop |
 | `web/src/api.ts` | Backend URL + API client |
 | `web/start.ps1` | Webapp launcher |
 

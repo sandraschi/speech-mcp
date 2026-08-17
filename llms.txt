@@ -1,35 +1,38 @@
 # Speech-MCP
 
-> FastMCP 3.2 multi-provider speech gateway: **FunASR local STT (default)**, Gemini Live/TTS, Hume, ElevenLabs, wake word, RAG, fleet voice command bus.
+> FastMCP 3.4 multi-provider speech gateway: **FunASR local STT (multilingual, EN/JA/DE)**,
+> **sherpa-onnx streaming STT + barge-in (ja/en/de)**, Gemini Live/TTS, Hume, ElevenLabs,
+> wake word, RAG, fleet voice command bus.
 
 ## Core documentation
 
+- [FunASR local STT (full guide)](docs/providers/funasr.md) — MLT-Nano model, env, sidecar (10914), MCP tools, benchmarks
+- [Streaming ASR & barge-in (sherpa-onnx)](docs/STREAMING_ASR.md) — ja/en/de, CPU, partials + endpoint
 - [Humanoid voice — thesis & architecture](docs/HUMANOID_VOICE.md) — embodied agents, Chinese open speech, fleet bus
-- [FunASR local STT (full guide)](docs/providers/funasr.md) — default STT, env, sidecar, MCP tools, benchmarks
-- [Chinese FOSS speech landscape](docs/CHINESE_AI_RESEARCH.md) — FunASR, SenseVoice, CosyVoice, ChatTTS, GPT-SoVITS, others
-- [Tools reference](docs/tools-reference.md) — transcribe_audio_file, transcribe_stream_chunk, TTS, RAG
-- [Configuration](docs/configuration.md) — FUNASR_* and provider env vars
+- [Chinese FOSS speech landscape](docs/CHINESE_AI_RESEARCH.md) — FunASR, SenseVoice, CosyVoice, ChatTTS, GPT-SoVITS
+- [Tools reference](docs/tools-reference.md) — all 26 MCP tools
+- [Configuration](docs/configuration.md) — FUNASR_*, SHERPA_*, provider env vars
+- [Troubleshooting](docs/TROUBLESHOOTING.md) — ports, native build, CUA smoke
 - [Installation](INSTALL.md) — uv sync --extra funasr, just bootstrap
-- [Voice command bus](docs/VOICE_COMMAND_BUS.md) — wake → FunASR → fleet-agent
-- [Agentic orchestration](docs/AGENTIC_ORCHESTRATION.md) — FastMCP sampling, dialogic returns
+- [Voice command bus](docs/VOICE_COMMAND_BUS.md) — wake → STT → fleet-agent
 - [CHANGELOG](CHANGELOG.md)
 
-## STT (FunASR)
+## STT
 
-- MCP: `transcribe_audio_file`, `transcribe_stream_chunk` (default provider `funasr`)
-- REST: `POST /api/v1/transcribe?provider=funasr`
-- Enable: `FUNASR_ENABLED=true` + `uv sync --extra funasr`, or `FUNASR_OPENAI_URL` sidecar on 10910
+- **FunASR** (batch): MCP `transcribe_audio_file`, `transcribe_stream_chunk`; REST `POST /api/v1/transcribe?provider=funasr`. Enable `FUNASR_ENABLED=true` + `uv sync --extra funasr`, or sidecar `FUNASR_OPENAI_URL` on 10914.
+- **sherpa-onnx** (streaming, ja/en/de): MCP `streaming_stt`, `barge_in_feed`. Enable `SHERPA_ASR_ENABLED=true` + `SHERPA_BARGE_IN=true` + `uv sync --extra sherpa`.
 
 ## Features
 
-- FunASR: VAD + ASR + punctuation + diarization; SenseVoice emotion tags
-- Cloud TTS/live: Gemini, Hume, ElevenLabs; Windows SAPI5 fallback
+- Local STT: FunASR (VAD + ASR + punctuation + diarization) + streaming sherpa-onnx with barge-in
+- Cloud TTS/live: Gemini, Hume, ElevenLabs; Windows SAPI5 fallback; Gemma local
 - Wake word (openWakeWord); fleet voice delegate to fleet-agent
 - RAG: LanceDB + `search_docs` / `ask_docs`
-- Dialogic tool returns; SEP-1577 sampling via `ctx.sample()`
+- Prefab UI cards (real provider status); dialogic returns; sampling via `ctx.sample()`
 
 ## Links
 
 - [GitHub](https://github.com/sandraschi/speech-mcp)
 - [FunASR upstream](https://github.com/modelscope/FunASR)
+- [sherpa-onnx (k2-fsa)](https://github.com/k2-fsa/sherpa-onnx)
 - [FastMCP](https://github.com/jlowin/fastmcp)

@@ -1,219 +1,130 @@
 # Speech-MCP (Multi-Provider Speech Gateway)
 
-![Status: Beta](https://img.shields.io/badge/Status-Beta-orange?style=for-the-badge)
-![FastMCP: 3.2.4](https://img.shields.io/badge/FastMCP-3.2.4-blue?style=for-the-badge)
+![Status: Active](https://img.shields.io/badge/Status-Active-green?style=for-the-badge)
+![FastMCP: 3.4](https://img.shields.io/badge/FastMCP-3.4-blue?style=for-the-badge)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-SOTA-grade MCP server and web application for industrial voice orchestration: **FunASR local STT (default)**, Gemini Live/TTS, Hume AI (EVI/Octave), and ElevenLabs.
+Multi-provider speech gateway (MCP server + React webapp): **FunASR local STT**
+(multilingual, incl. EN/JA/DE), **sherpa-onnx streaming STT with barge-in**
+(ja/en/de, CPU), Gemini Live/TTS, Hume AI (EVI/Octave), ElevenLabs TTS + voice
+cloning, offline wake word, RAG over speech docs, and a fleet voice command bus.
 
-> [!IMPORTANT]
-> **Status: Beta (v0.6.x)**. Multi-provider speech gateway with FunASR STT, Gemini 3.1, Hume AI, ElevenLabs TTS and voice cloning.
+> Version 0.6.4. Deep docs: `docs/` (STT, streaming, configuration,
+> troubleshooting, humanoid/fleet architecture).
 
-## 🚀 Overview
+## Architecture
 
-Speech-MCP is a federated gateway for advanced voice AI. It provides a unified MCP interface for **speech-to-text (FunASR)**, text-to-speech, real-time empathic voice sessions, and high-fidelity voice cloning.
-
-**Humanoid thesis:** `docs/HUMANOID_VOICE.md` — **FunASR guide:** `docs/providers/funasr.md` — **Chinese FOSS landscape:** `docs/CHINESE_AI_RESEARCH.md`
-
-## 🛠️ Key Capabilities
-
-- **FunASR (Alibaba) — default local STT**:
-    - MCP: `transcribe_audio_file`, `transcribe_stream_chunk`
-    - REST: `POST /api/v1/transcribe?provider=funasr`
-    - VAD + ASR + punctuation + diarization; SenseVoice emotion tags
-    - Native torch or OpenAI-compatible `funasr-server` sidecar (port 10910)
-- **Hume AI Integration**:
-    - **EVI 2/3**: Real-time empathic voice interface with prosody-driven responses.
-    - **Octave TTS**: Emotionally aware text-to-speech.
-- **ElevenLabs Integration** (Stable):
-    - **Professional Voice Cloning (PVC)**: State-of-the-art neural cloning.
-    - **Multilingual TTS**: Support for 32+ languages with emotional nuances.
-- **SOTA Webapp**: A premium dark-mode interface with glassmorphism, emotion visualizers, and neural dynamic tracking.
-
-## 📦 Deployment & Setup
-
-### Ports
-- **Backend (MCP)**: `10909`
-- **Frontend (Web)**: `10908`
-
-### Environment Variables
-Create a `.env` file in the root:
-```env
-FUNASR_ENABLED=true
-FUNASR_MODEL=FunAudioLLM/Fun-ASR-Nano-2512
-FUNASR_DEVICE=cuda:0
-HUME_API_KEY=your_hume_key
-HUME_CONFIG_ID=your_evi_config_id
-ELEVENLABS_API_KEY=your_eleven_key
-GOOGLE_API_KEY=your_google_key
+```
+FastMCP stdio server  <-->  Claude Desktop / MCP clients
+       |
+FastAPI REST :10909  <-->  React/Vite frontend :10908
+       |
+MCP SSE :10909/mcp   <-->  Bridge target for ProxyProvider
+       |
+Providers (via .env)
+  |- FunASR MLT-Nano-2512  local STT (torch, GPU/CPU) or sidecar :10914
+  |- sherpa-onnx            streaming STT + barge-in (ja/en/de, CPU)
+  |- Gemini 3.1             TTS + STT + Live (GOOGLE_API_KEY)
+  |- Hume AI                EVI + Octave (HUME_API_KEY)
+  |- ElevenLabs             TTS + cloning (ELEVENLABS_API_KEY)
+  |- Gemma 4                local (SAPI5 fallback)
+  |- Windows SAPI5          always-available TTS
+       |
+LanceDB (RAG)  <-  data/lancedb/
+openWakeWord   <-  offline wake word
 ```
 
-### Voice Command Bus env (wake → STT → fleet-agent)
+## Ports
+
+| Port | Service |
+|------|---------|
+| 10908 | Frontend (Vite dev) |
+| 10909 | Backend (FastAPI + MCP SSE `/mcp`, WebSocket `/ws/stream`, `/ws/stt`, `/ws/logs`) |
+| 10914 | FunASR OpenAI-compatible sidecar (optional, `scripts/start_funasr_sidecar.py`) |
+
+## MCP Tools (26)
+
+| Tool | Purpose |
+|------|---------|
+| `text_to_speech` | TTS across windows / gemini / hume / elevenlabs / gemma |
+| `text_to_dialogue` | Multi-voice dialogue (ElevenLabs) |
+| `manage_voice_clones` | List / clone / delete ElevenLabs voices |
+| `transcribe_audio_file` | Batch STT (default `funasr`) |
+| `transcribe_stream_chunk` | Stateless chunk/base64 STT |
+| `streaming_stt` | Streaming STT (sherpa-onnx, ja/en/de): feed PCM, partials + endpoint |
+| `barge_in_feed` | Feed mic audio; returns completed utterances = barge-in signal |
+| `start_evi_session` | Hume EVI realtime session |
+| `detect_wake_word` | Gemini Live VAD arming |
+| `configure_local_wake_word` | openWakeWord start/stop/status (offline) |
+| `agentic_conversation_workflow` | Agentic mission via ctx.sample/elicit |
+| `orchestrate_alexa_pattern` | Alexa-style proactive loop |
+| `manage_domestic_utility` | Timers / weather (wttr.in) / alarms |
+| `trigger_action` | Declared IoT bridge stub (no fake success) |
+| `search_docs` / `ask_docs` | LanceDB RAG search + grounded Q&A |
+| `safety_validate_intent` / `safety_verify_auth` / `safety_log_audit` | Safety layer |
+| `prosody_dashboard` / `speech_activity_chart` / `fleet_health_overview` / `provider_capability_matrix` / `latency_benchmark_view` | Prefab UI cards (real data) |
+| `play_audio_file` / `run_speech_demo` | Diagnostics |
+
+REST surface: `/api/v1/health`, `/api/v1/status`, `/api/health`, `/api/capabilities`,
+`/api/tools`, `/api/v1/diagnostics`, `/api/v1/tts`, `/api/v1/tts/wav`,
+`/api/v1/voices`, `/api/v1/voices/clone`, `/api/v1/transcribe`,
+`/api/v1/wake_word`, `/api/v1/utility`, `/api/v1/agentic`, `/api/v1/action`,
+`/api/v1/stop`, `/api/v1/shutdown`, `/api/v1/history`, `/api/v1/search`,
+`/api/v1/stats`, `/api/v1/local/models`, `/api/v1/hardware`, `/api/v1/demos/run`.
+
+## Environment Variables
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `FLEET_VOICE_DELEGATE` | `1` when URL set | Enable post-wake capture + route to fleet-agent |
-| `FLEET_VOICE_ROUTER_URL` | `http://127.0.0.1:10996/api/voice/intent` | Delegation target |
-| `FLEET_VOICE_AUTOSTART` | `1` | Start the wake listener at backend boot (HTTP mode) |
-| `FLEET_VOICE_WAKE_KEYWORD` | `hey_jarvis` | openWakeWord model name (custom `wakeywakey` ONNX pending) |
-| `FLEET_VOICE_WAKE_GREETING` | `Hello, mistress.` | Spoken ack after wake, before capture (empty = silent) |
-| `FLEET_VOICE_SLEEP_KEYWORD` | `hey_mycroft` | Second model that stops the listener (custom `sleepsleep` ONNX pending) |
-| `FLEET_VOICE_COMMAND_SECONDS` | `6` | Utterance record window |
-| `FLEET_VOICE_SPEAK_REPLY` | `1` | Speak routed results back; `0` mutes |
+| `SPEECH_MCP_AUTH_TOKEN` | — | Optional bearer token for REST (`X-Speech-MCP-Auth`) |
+| `SPEECH_MCP_PORT` | 10909 | Backend port |
+| `FUNASR_ENABLED` | false | Enable native FunASR (`uv sync --extra funasr`) |
+| `FUNASR_MODEL` | `FunAudioLLM/Fun-ASR-MLT-Nano-2512` | Hub model (multilingual, EN/JA/DE) |
+| `FUNASR_DEVICE` | cuda:0 | cuda:0 or cpu |
+| `FUNASR_HUB` | hf | hf or ms (ModelScope) |
+| `FUNASR_OPENAI_URL` | — | Use OpenAI-compatible sidecar instead of native torch |
+| `SHERPA_ASR_ENABLED` | false | Enable sherpa-onnx streaming STT (`uv sync --extra sherpa`) |
+| `SHERPA_ASR_LANG` | en | en \| ja \| de (streaming model) |
+| `SHERPA_BARGE_IN` | false | Endpoint-based barge-in (interrupt while assistant speaks) |
+| `SHERPA_MODEL_DIR` | models/sherpa-onnx | Local model download dir |
+| `SHERPA_NUM_THREADS` | 2 | onnxruntime threads |
+| `GOOGLE_API_KEY` | — | Gemini TTS/STT/Live |
+| `HUME_API_KEY` | — | Hume EVI / Octave |
+| `HUME_CONFIG_ID` | — | Default EVI config |
+| `ELEVENLABS_API_KEY` | — | ElevenLabs TTS / cloning |
+| `FLEET_VOICE_DELEGATE` / `FLEET_VOICE_ROUTER_URL` / `FLEET_VOICE_WAKE_KEYWORD` / `FLEET_VOICE_AUTOSTART` / `FLEET_VOICE_COMMAND_SECONDS` / `FLEET_VOICE_SPEAK_REPLY` / `FLEET_VOICE_WAKE_GREETING` / `FLEET_VOICE_SLEEP_KEYWORD` | — | Fleet voice command bus (wake -> STT -> fleet-agent) |
+| `MCP_BRIDGE_URLS` | — | Comma-separated SSE URLs to proxy as MCP tools |
+| `SPEECH_TAURI` | — | Tauri desktop flag (CORS) |
 
-### Installation
+## Setup
+
 ```powershell
-# Backend
-pip install -e .
-python -m speech_mcp.server
-
-# Frontend
-cd web
-npm install
-npm run dev
+git clone https://github.com/sandraschi/speech-mcp
+cd speech-mcp
+uv sync --extra funasr            # local STT
+uv run python scripts/download_sherpa_models.py   # streaming STT (en/ja/de)
+Copy-Item .env.example .env       # fill keys
+just start                        # backend 10909 + frontend 10908
 ```
 
-## 🧩 MCP Tools
+For Claude Desktop MCP: see `docs/configuration.md`. Windows app: `just build-native`
+(Tauri/NSIS). Claude Desktop bundle: `just mcpb-pack`.
 
-- `transcribe_audio_file`: Batch STT (default provider `funasr`).
-- `transcribe_stream_chunk`: Chunk/base64 STT for streaming agents.
-- `text_to_speech`: Synthesize audio across providers.
-- `start_evi_session`: Initialize real-time Hume sessions.
-- `manage_voice_clones`: Unified identity management (Create/List/Delete).
-- `configure_local_wake_word`: Offline wake; optional fleet voice delegate. Listener supports a second **sleep word** model, a spoken **wake greeting**, **spoken replies** to routed results, and **audible timer expiry** announcements.
+## Streaming STT & barge-in (sherpa-onnx)
 
-## 🗺️ Roadmap & Next Steps (v0.x)
+- Streaming online ASR (ja/en/de) on CPU with partial results + endpoint detection.
+- Barge-in: feed mic via `barge_in_feed`; a completed utterance = interrupt signal.
+- Voice listener `SHERPA_ASR_ENABLED=1` uses streaming capture (no fixed command
+  window) with a follow-up turn loop.
+- Full guide + model table: `docs/STREAMING_ASR.md`.
 
-As a **Beta** release, we have identified several orchestration frontiers and technical debt targets:
+## Docs
 
-### Current Shortcomings
-- **Emotion Visualization**: ElevenLabs currently lacks the deep prosody-to-visual mapping available for Hume EVI.
-- **Frontend State Persistence**: Audio stream settings do not currently persist across hard refreshes.
-- **Agentic Loop Latency**: Iterative sampling (SEP-1577) adds a cognitive overhead of ~2-3 seconds per mission phase.
-
-### Completed Milestones
-- [x] **v0.2.0**: ElevenLabs integration and emotion mapping.
-- [x] **v0.3.0**: Local-first persistence layer (LanceDB RAG).
-- [x] **v0.5.0**: Gemini 3.1 Flash TTS, voice cloning, webapp dashboard.
-- [ ] **v1.0.0 (H2 2026)**: Production-ready industrial stability.
-
----
-
-## ⚖️ Standards & Compliance
-
-- **FastMCP 3.2.4**: Full adherence to modern agentic standards.
-- **Dialogic Response Patterns**: All tools return structured metadata (`next_steps`, `recovery_options`, `quality_metrics`) for high-fidelity AI dialogue.
-- **Portmanteau Pattern**: Consolidated tool schema to prevent tool explosion.
-- **Networking**: Dual-server substrate on port **10909** (FastAPI + MCP SSE).
-
-## 🧠 Agentic Features
-
-### 1. SEP-1577 Sampling
-This server supports **Iterative AI Sampling**. When performing complex speech orchestration, tools can request the host LLM to "sample" and suggest cognitive strategies or refine prompts.
-
-**Workflow Example**:
-1. Client calls `agentic_conversation_workflow`.
-2. Server uses `ctx.sample()` to ask the LLM: *"Suggest a conversational strategy for: [User Goal]"*.
-3. Server adopts the suggested strategy and returns a `requires_sampling: true` signal to the agent.
-
-### 2. Dialogic Returns
-Tools provide "Dialogue Guidance" to the calling agent.
-```json
-{
-  "success": true,
-  "status": "ready_for_dispatch",
-  "next_steps": ["Connect to stream_url", "Begin audio playback"],
-  "recovery_options": ["Check .env file", "Use windows fallback"]
-}
-```
-
-### 3. Agentic Workflow Tool
-The `agentic_conversation_workflow` tool is a **Mission Orchestrator**. It doesn't just synthesize text; it reasons about the conversation's goal and adjusts provide parameters autonomously.
-
-## 📦 Deployment & Setup
-
-### Launchers (SOTA)
-- **`start.bat`**: Professional double-click launcher.
-- **`start.ps1`**: PowerShell script that kills zombie processes and spawns the dual-server environment.
-
-### Release Orchestration (SOTA)
-For professional deployments, use the `release.ps1` script:
-```powershell
-# Bump version and tag (patch, minor, or major)
-.\release.ps1 -Type patch -Message "feat: add neural dynamic tracking"
-```
-
-### CI/CD Pipeline
-- **Continuous Integration**: GitHub Actions runs `ruff` and `uv` sync checks on every push.
-- **Automated Releases**: Pushing tags (e.g., `v0.6.0`) triggers a GitHub Release with automated binary builds and release notes.
-
-### Installation & Environment
-This project is **UV-compatible**.
-```powershell
-# Install and lock environment
-uv sync
-uv lock
-
-# Launch
-.\start.bat
-```
-# Agentic Orchestration Guide (FastMCP 3.2.4)
-
-This document details the advanced cognitive orchestration layer of Speech-MCP, leveraging the **FastMCP 3.2.4** standards.
-
-> [!IMPORTANT]
-> **Antigravity Native**: Currently, the **Antigravity IDE** is the only orchestration environment capable of fully understanding and iteratively closing the cognitive loops defined in this specification.
-
-## 🧠 Core Agentic Standards
-
-### 1. Dialogic Tool Returns
-Tools in Speech-MCP do not return flat data. They return **Dialogic Structures** designed to guide the calling agent toward the mission goal.
-
-**Key Metadata**:
-- `status`: Categorical state (e.g., `ready`, `waiting_on_input`).
-- `next_steps`: Actionable follow-up suggestions for the agent.
-- `recovery_options`: Self-healing paths in case of failure.
-- `quality_metrics`: Empirical data about the synthesis/session quality.
-
-### 2. SEP-1577 Sampling
-We implement the **Sampling Protocol**, allowing tools to "glom on" to the host LLM's reasoning power.
-
-**Workflow**:
-1. Agent calls a tool (e.g., `agentic_conversation_workflow`).
-2. The tool uses `ctx.sample()` to ask the host LLM for strategy refinement.
-3. The tool executes based on the sampled intelligence.
-4. The tool returns `requires_sampling: true`, signaling to Antigravity that an iterative cognitive cycle is in progress.
-
-## 🔬 SOTA Dialogic Patterns (ArXiv Research 2026)
-
-Based on recent studies (e.g., *The Role of Prosodic and Lexical Cues in Turn-Taking*), Speech-MCP leverages the following advanced "tricks":
-
-### 1. Voice Activity Projection (VAP)
-Instead of relying on simple silent-segment detection (VAD), we implement (or simulate via Hume EVI) VAP-style turn-taking.
-- **The Trick**: Scaling the synthesis delay based on the **Emotional Prosody** of the user's closing sentence. A "high-energy" unfinished thought prevents the agent from interrupting, even if lexical cues suggest a stop.
-
-### 2. Lexical-Prosodic Fallback
-Agents should prioritize **Prosodic Cues** (emotional tone) over **Lexical content** when ambiguity exists.
-- **The Trick**: If a user says "Stop" but with a playful, high-energy tone, the agent might interpret it as a mock-protest and continue the empathic loop (Social Mimicry).
-
-### 3. Kinematic Prosodic Boundaries
-Predicting the end of a turn by analyzing the **micro-latency** and **pitch-bend** at sentence terminals.
-
----
-
-## 💻 Integration Examples
-
-### Python Agentic Client
-[agentic_client.py](file:///D:/Dev/repos/speech-mcp/examples/agentic_client.py)
-> Demonstrates how a Python agent can consume Dialogic returns and orchestrate a multi-turn mission using the `stdio` transport.
-
-### Webapp Consumption (TypeScript)
-[webapp_consumption.ts](file:///D:/Dev/repos/speech-mcp/examples/webapp_consumption.ts)
-> Illustrates the "Proactive Orchestration" pattern for SOTA web interfaces on port 10908.
-
----
-
-## 📈 Roadmap (v0.3.0+)
-- **Alexa 2.0 Pattern**: Interleaved VAD-driven listening and responding with near-zero latency.
-- **Cognitive Persistence**: Cross-session memory for agentic speech missions.
-- **Local LLM Glomming**: Direct orchestration with Ollama-hosted models for sub-100ms reasoning.
+- [FunASR guide](docs/providers/funasr.md) — models, env, sidecar, benchmarks
+- [Streaming ASR & barge-in](docs/STREAMING_ASR.md)
+- [Configuration](docs/configuration.md)
+- [Tools reference](docs/tools-reference.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Humanoid voice / fleet architecture](docs/HUMANOID_VOICE.md)
+- [Voice command bus](docs/VOICE_COMMAND_BUS.md)
+- [Chinese FOSS speech landscape](docs/CHINESE_AI_RESEARCH.md)

@@ -48,6 +48,14 @@
             "description": "Stateless transcription of a single audio fragment from a stream bridge."
         },
         {
+            "name": "streaming_stt",
+            "description": "Streaming STT (sherpa-onnx, ja/en/de, CPU): feed int16 PCM chunks, returns partial transcript + endpoint flag."
+        },
+        {
+            "name": "barge_in_feed",
+            "description": "Feed mic audio for barge-in detection; returns completed utterances (non-empty = user spoke, interrupt the assistant)."
+        },
+        {
             "name": "start_evi_session",
             "description": "Initialize a real-time Empathic Voice Interface (Hume EVI) WebSocket session."
         },
