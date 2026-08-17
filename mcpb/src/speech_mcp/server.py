@@ -744,7 +744,7 @@ async def api_run_demo(req: DemoRequest):
     try:
         uv_path = shutil.which("uv") or "uv"
         result = await anyio.to_thread.run_sync(
-            lambda: subprocess.run(  # noqa: S603
+            lambda: subprocess.run(
                 [uv_path, "run", "python", script_path],
                 capture_output=True,
                 text=True,

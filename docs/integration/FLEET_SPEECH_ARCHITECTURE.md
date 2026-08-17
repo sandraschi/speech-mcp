@@ -16,7 +16,7 @@ graph TD
         A
         D
     end
-    
+
     subgraph "Speech-MCP (Hub)"
         B1[Batch Transcribe]
         B2[Live Listener]
@@ -37,7 +37,7 @@ graph TD
 
 ### Phase C: Text-to-Speech & Delivery (Generative)
 - **Role**: Delivering responses with clinical-grade prosody and emotional nuance.
-- **Providers**: 
+- **Providers**:
     - **Hume AI**: For 100% emotional alignment.
     - **Gemini Flash**: For native multimodal performance and scene-direction.
     - **ElevenLabs**: For cinematic-grade character cloning.

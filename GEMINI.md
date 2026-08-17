@@ -5,7 +5,7 @@ This document provides grounding for the AI agent. Refer to this before performi
 ## 🛠 Tech Stack
 - **Backend**: Python 3.12 + [FastMCP](https://github.com/jlowin/fastmcp) + FastAPI
 - **Frontend**: React + Vite + Tailwind v4 + Biome (Linting)
-- **Data Layer**: 
+- **Data Layer**:
     - **RAG**: LanceDB + FastEmbed (`bge-small-en-v1.5`)
     - **Storage**: JSON-based state in `data/`
 - **Voice Stack**:

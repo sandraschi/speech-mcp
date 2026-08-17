@@ -22,22 +22,22 @@ References: [Yahboom Voice Module ASR-TTS](https://www.yahboom.net/study/Voice_M
 
 **Short answer:** The module is **usable on the robot** for local wake word + commands and onboard TTS. **Direct** use with Speech-MCP is not built-in; it becomes usable with Speech-MCP only via a **bridge** that connects the two.
 
-- **Robot-side (as-is)**  
+- **Robot-side (as-is)**
   The module gives you **on-device** STT (transcribed text / command IDs) and TTS (play audio from text). That is independent of Speech-MCP and works with the Raspbot’s ROS2/Serial stack.
 
-- **Speech-MCP (cloud/PC)**  
+- **Speech-MCP (cloud/PC)**
   Speech-MCP provides Hume EVI, Hume/ElevenLabs/Windows TTS, RAG, and MCP tools. It runs as a service (e.g. on a PC or server), not on the robot.
 
-- **Making them work together**  
+- **Making them work together**
   To use the robot’s TTS/STT *with* Speech-MCP you need a small integration layer that:
 
-  1. **STT → Speech-MCP**  
-     - Robot STT (or ROS2 node that wraps the module) produces text or command.  
-     - A bridge (e.g. on the Pi or on a PC) sends that text to Speech-MCP (e.g. as EVI input or as a query for TTS/RAG).  
-  2. **Speech-MCP → TTS on robot**  
-     - Speech-MCP returns text (and optionally audio from Hume/ElevenLabs).  
-     - The bridge either:  
-       - Sends **text** to the robot (e.g. via ROS2 topic or HTTP), and the **Yahboom TTS module** does the synthesis on the robot, or  
+  1. **STT → Speech-MCP**
+     - Robot STT (or ROS2 node that wraps the module) produces text or command.
+     - A bridge (e.g. on the Pi or on a PC) sends that text to Speech-MCP (e.g. as EVI input or as a query for TTS/RAG).
+  2. **Speech-MCP → TTS on robot**
+     - Speech-MCP returns text (and optionally audio from Hume/ElevenLabs).
+     - The bridge either:
+       - Sends **text** to the robot (e.g. via ROS2 topic or HTTP), and the **Yahboom TTS module** does the synthesis on the robot, or
        - Sends **audio** to the robot for playback (if the robot stack supports raw audio and the module or another player can play it).
 
 So: **yes, the Yahboom TTS/STT module is usable**; with a bridge, the same pipeline can also drive or be driven by Speech-MCP (EVI, cloud TTS, RAG). The bridge can live in **yahboom-mcp** (e.g. a node that subscribes to robot STT and calls Speech-MCP, and publishes TTS text or audio to the robot) or in a small standalone service.

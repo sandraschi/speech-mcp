@@ -1,6 +1,6 @@
 # speech-mcp Integration Guide: OpenClaw and DeepFang
 
-**Status**: Design / Partial Implementation  
+**Status**: Design / Partial Implementation
 **Date**: 2026-02-27
 
 ---
@@ -97,7 +97,7 @@ async def speak_council_round(adjudicator: str, text: str):
         "Synthesizer": ("windows", "default"),
     }
     provider, voice = voice_map.get(adjudicator, ("windows", "default"))
-    
+
     # Call speech-mcp MCP tool via stdio client, or call REST API directly
     # REST path (webapp must be running):
     async with httpx.AsyncClient() as client:

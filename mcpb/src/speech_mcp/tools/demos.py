@@ -78,7 +78,7 @@ def register_demo_tools(mcp: FastMCP):
         try:
             # Run using uv to ensure dependencies are loaded
             uv_path = shutil.which("uv") or "uv"
-            result = subprocess.run(  # noqa: S603
+            result = subprocess.run(
                 [uv_path, "run", "python", script_path], capture_output=True, text=True, check=False, cwd=cwd
             )
             # Mask API keys if they leaked in output (unlikely but good practice)

@@ -12,11 +12,11 @@ Modern synthesis platforms employ "Identity Fingerprinting." Every upload is cro
 
 ### 2. The Consented Biometric Barrier
 To clone a voice, providers often require a "Consented Sample."
-- **Verification Loop**: The provider may ask the user to read a randomized prompt in the *same* voice as the sample to prove "liveness" and consent. 
+- **Verification Loop**: The provider may ask the user to read a randomized prompt in the *same* voice as the sample to prove "liveness" and consent.
 - **Circumvention Risk**: AI-to-AI prompt reading (using one AI to read the verification prompt for another) is a high-risk activity that usually leads to account termination.
 
 ## 📂 Case Study: Oskar Werner's "Metallic" Speech
-The user noted Oskar Werner's performance in Rilke's *Weise von Liebe und Tod*. 
+The user noted Oskar Werner's performance in Rilke's *Weise von Liebe und Tod*.
 
 ### Technical Profile
 - **Signature**: "Metallic", "Cutting", High-Dynamic Range.

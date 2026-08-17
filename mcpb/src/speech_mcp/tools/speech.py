@@ -37,8 +37,8 @@ async def _play_mp3_bytes(data: bytes) -> None:
     tmp.close()
     try:
         await anyio.to_thread.run_sync(
-            lambda: subprocess.run(  # noqa: S603
-                ["wmplayer.exe", "/play", "/close", tmp.name],  # noqa: S607
+            lambda: subprocess.run(
+                ["wmplayer.exe", "/play", "/close", tmp.name],
                 check=False,
                 capture_output=True,
             )

@@ -30,11 +30,11 @@ We implement the **Sampling Protocol**, allowing tools to "glom on" to the host 
 Based on recent studies (e.g., *The Role of Prosodic and Lexical Cues in Turn-Taking*), Speech-MCP leverages the following advanced "tricks":
 
 ### 1. Voice Activity Projection (VAP)
-Instead of relying on simple silent-segment detection (VAD), we implement (or simulate via Hume EVI) VAP-style turn-taking. 
+Instead of relying on simple silent-segment detection (VAD), we implement (or simulate via Hume EVI) VAP-style turn-taking.
 - **The Trick**: Scaling the synthesis delay based on the **Emotional Prosody** of the user's closing sentence. A "high-energy" unfinished thought prevents the agent from interrupting, even if lexical cues suggest a stop.
 
 ### 2. Lexical-Prosodic Fallback
-Agents should prioritize **Prosodic Cues** (emotional tone) over **Lexical content** when ambiguity exists. 
+Agents should prioritize **Prosodic Cues** (emotional tone) over **Lexical content** when ambiguity exists.
 - **The Trick**: If a user says "Stop" but with a playful, high-energy tone, the agent might interpret it as a mock-protest and continue the empathic loop (Social Mimicry).
 
 ### 3. Kinematic Prosodic Boundaries

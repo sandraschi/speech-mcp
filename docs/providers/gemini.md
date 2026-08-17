@@ -42,7 +42,7 @@ The `speech-mcp` gateway utilizes the Gemini Multimodal Live API to provide ultr
 ---
 
 ## 🛠️ Configuration
-Ensure your `GOOGLE_API_KEY` is active in the `.env` file. 
+Ensure your `GOOGLE_API_KEY` is active in the `.env` file.
 
 ```bash
 # Activation in agentic.py

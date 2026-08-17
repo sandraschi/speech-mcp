@@ -13,7 +13,7 @@ a = Analysis(
     ["run_server.py"],
     pathex=["src"],
     binaries=[],
-    
+
     datas=datas,
     hiddenimports=[
 
@@ -47,7 +47,7 @@ a = Analysis(
     "_strptime",
 ],
     hookspath=[],
-    
+
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
@@ -70,7 +70,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    
+
     name="speech-mcp-backend",
     debug=False,
     bootloader_ignore_signals=False,
@@ -80,8 +80,3 @@ exe = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
 )
-
-
-
-
-

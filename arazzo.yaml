@@ -25,7 +25,7 @@ workflows:
         operationId: detect_wake_word
         successCriteria:
           - condition: $response.body.status == 'activated'
-      
+
       - stepId: initialize-orchestration
         description: Sample strategy and prepare the emotional persona.
         operationId: orchestrate_alexa_pattern

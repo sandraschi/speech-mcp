@@ -1,7 +1,7 @@
 # speech-mcp + Resonite: Voice for Avatars and Bots
 
-**Status**: Design / Partial — OSC bridge not yet implemented  
-**Date**: 2026-05-16  
+**Status**: Design / Partial — OSC bridge not yet implemented
+**Date**: 2026-05-16
 **Related**: `deepfang/docs/RESONITE_COUNCIL_AGENT.md`, `deepfang/docs/WORLDLABS_RESONITE_INTEGRATION.md`
 
 ---
@@ -59,12 +59,12 @@ async def play_speech_stream(stream_url: str):
     """Consume speech-mcp WebSocket stream and play via local audio."""
     pa = pyaudio.PyAudio()
     stream = pa.open(format=pyaudio.paInt16, channels=1, rate=22050, output=True)
-    
+
     async with websockets.connect(stream_url) as ws:
         async for chunk in ws:
             if isinstance(chunk, bytes):
                 stream.write(chunk)
-    
+
     stream.stop_stream()
     stream.close()
     pa.terminate()
