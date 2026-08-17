@@ -50,6 +50,91 @@ async def _play_mp3_bytes(data: bytes) -> None:
             pass
 
 
+async def _hume_speak(
+    hume_client: HumeClient,
+    text: str,
+    description: str | None = None,
+) -> dict:
+    """Synthesize via Hume Octave and play on the server speaker (shared by MCP + REST)."""
+    from hume.tts import FormatWav, PostedUtterance
+
+    utterance = PostedUtterance(text=text, description=description) if description else PostedUtterance(text=text)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        def _synth():
+            audio = bytearray()
+            for chunk in hume_client.tts.synthesize_file(
+                utterances=[utterance], format=FormatWav(), strip_headers=False
+            ):
+                audio.extend(chunk)
+            with open(tmp_path, "wb") as f:
+                f.write(audio)
+
+        await anyio.to_thread.run_sync(_synth)
+
+        if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+            return {"success": False, "error": "Hume returned empty audio"}
+
+        size = os.path.getsize(tmp_path)
+        await _play_wav_file(tmp_path)
+        return {"success": True, "provider": "Hume AI Octave", "bytes_played": size, "status": "played"}
+    except Exception as e:
+        logger.exception("Hume TTS failed")
+        return {"success": False, "error": str(e)}
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+
+async def _elevenlabs_speak(eleven_client: ElevenLabs, text: str, voice_id: str) -> dict:
+    """Synthesize via ElevenLabs and play on the server speaker (shared by MCP + REST)."""
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        def _synth():
+            audio = bytearray()
+            for chunk in eleven_client.text_to_speech.convert(
+                voice_id=voice_id,
+                text=text,
+                output_format="mp3_44100_128",
+            ):
+                audio.extend(chunk)
+            with open(tmp_path, "wb") as f:
+                f.write(audio)
+
+        await anyio.to_thread.run_sync(_synth)
+
+        if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+            return {"success": False, "error": "ElevenLabs returned empty audio"}
+
+        size = os.path.getsize(tmp_path)
+        await _play_mp3_bytes(open(tmp_path, "rb").read())
+        return {
+            "success": True,
+            "provider": "ElevenLabs",
+            "voice_id": voice_id,
+            "bytes_played": size,
+            "status": "played",
+        }
+    except Exception as e:
+        logger.exception("ElevenLabs TTS failed")
+        return {"success": False, "error": str(e)}
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+
 def register_speech_tools(
     mcp: FastMCP,
     hume_client: HumeClient | None,
@@ -162,54 +247,7 @@ def register_speech_tools(
         elif provider == "hume":
             if not hume_client:
                 return {"success": False, "error": "HUME_API_KEY not configured"}
-
-            from hume.tts import FormatWav, PostedUtterance, PostedUtteranceVoiceWithName
-
-            utt_kwargs: dict = {"text": text}
-            if description:
-                utt_kwargs["description"] = description
-            if voice_id and voice_id.lower() != "default":
-                utt_kwargs["voice"] = PostedUtteranceVoiceWithName(name=voice_id, provider="HUME_AI")
-
-            utterance = PostedUtterance(**utt_kwargs)
-            tmp_path = None
-            try:
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-                    tmp_path = tmp.name
-
-                def _synth_hume():
-                    audio = bytearray()
-                    for chunk in hume_client.tts.synthesize_file(
-                        utterances=[utterance], format=FormatWav(), strip_headers=False
-                    ):
-                        audio.extend(chunk)
-                    with open(tmp_path, "wb") as f:
-                        f.write(audio)
-
-                await anyio.to_thread.run_sync(_synth_hume)
-
-                if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
-                    return {"success": False, "error": "Hume returned empty audio"}
-
-                size = os.path.getsize(tmp_path)
-                await _play_wav_file(tmp_path)
-                return {
-                    "success": True,
-                    "provider": "Hume AI Octave",
-                    "voice": voice_id,
-                    "description_used": description,
-                    "bytes_played": size,
-                    "status": "played",
-                }
-            except Exception as e:
-                logger.exception("Hume TTS failed")
-                return {"success": False, "error": str(e)}
-            finally:
-                if tmp_path and os.path.exists(tmp_path):
-                    try:
-                        os.remove(tmp_path)
-                    except OSError:
-                        pass
+            return await _hume_speak(hume_client, text, description)
 
         # ── Gemini 3.1 Flash TTS ───────────────────────────────────────────────
         elif provider == "gemini":
@@ -284,45 +322,7 @@ def register_speech_tools(
                         "action='list' to see available voices"
                     ),
                 }
-            tmp_path = None
-            try:
-                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-                    tmp_path = tmp.name
-
-                def _synth_el():
-                    audio = bytearray()
-                    for chunk in eleven_client.text_to_speech.convert(
-                        voice_id=voice_id,
-                        text=text,
-                        output_format="mp3_44100_128",
-                    ):
-                        audio.extend(chunk)
-                    with open(tmp_path, "wb") as f:
-                        f.write(audio)
-
-                await anyio.to_thread.run_sync(_synth_el)
-
-                if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
-                    return {"success": False, "error": "ElevenLabs returned empty audio"}
-
-                size = os.path.getsize(tmp_path)
-                await _play_mp3_bytes(open(tmp_path, "rb").read())
-                return {
-                    "success": True,
-                    "provider": "ElevenLabs",
-                    "voice_id": voice_id,
-                    "bytes_played": size,
-                    "status": "played",
-                }
-            except Exception as e:
-                logger.exception("ElevenLabs TTS failed")
-                return {"success": False, "error": str(e)}
-            finally:
-                if tmp_path and os.path.exists(tmp_path):
-                    try:
-                        os.remove(tmp_path)
-                    except OSError:
-                        pass
+            return await _elevenlabs_speak(eleven_client, text, voice_id)
 
         else:
             return {

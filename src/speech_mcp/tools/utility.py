@@ -11,6 +11,38 @@ from speech_mcp.state import _timers, run_timer
 logger = logging.getLogger(__name__)
 
 
+async def _weather_report(location: str) -> dict:
+    """Real-time weather via wttr.in. Honest failure when the service is unreachable."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"https://wttr.in/{location}?format=%C+%t", timeout=10.0)
+            if resp.status_code == 200:
+                weather_text = resp.text.strip()
+                if weather_text:
+                    parts = weather_text.split(" ", 1)
+                    return {
+                        "success": True,
+                        "location": location,
+                        "condition": parts[0] if parts else weather_text,
+                        "temp": parts[1] if len(parts) > 1 else "",
+                        "condition_report": weather_text,
+                        "status": "realtime_data",
+                        "source": "wttr.in",
+                    }
+    except Exception as e:
+        logger.warning("Weather fetch failed for %s: %s", location, e)
+
+    return {
+        "success": False,
+        "error": "Weather service (wttr.in) unreachable",
+        "error_type": "upstream_unavailable",
+        "location": location,
+        "suggestions": ["Retry later", "Check network connectivity"],
+    }
+
+
 def register_utility_tools(mcp: FastMCP):
 
     @mcp.tool()
@@ -68,34 +100,8 @@ def register_utility_tools(mcp: FastMCP):
                 }
 
         elif type == "weather":
-            import httpx
-
             location = label if label != "Default" else "Vienna"
-            try:
-                # Use wttr.in for a SOTA text-based weather report
-                async with httpx.AsyncClient() as client:
-                    resp = await client.get(f"https://wttr.in/{location}?format=%C+%t")
-                    if resp.status_code == 200:
-                        weather_text = resp.text.strip()
-                        return {
-                            "success": True,
-                            "location": location,
-                            "condition_report": weather_text,
-                            "status": "realtime_data",
-                            "recommendation": "Wear a reductionist coat." if "C" in weather_text else "Stay optimal.",
-                            "source": "wttr.in",
-                        }
-            except Exception as e:
-                logger.error(f"Weather error: {e}")
-
-            return {
-                "success": True,
-                "location": location,
-                "condition": "Cloudy with a chance of data",
-                "temp": "21°C",
-                "status": "cached_stub",
-                "note": "Real-time fetch failed, using reductionist baseline.",
-            }
+            return await _weather_report(location)
 
         return {
             "success": False,

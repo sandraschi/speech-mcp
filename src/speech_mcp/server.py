@@ -13,7 +13,6 @@ from contextlib import asynccontextmanager
 from time import localtime, strftime
 from typing import TYPE_CHECKING, Any
 
-import anyio
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 from fastapi import (
@@ -286,7 +285,16 @@ register_utility_tools(mcp)
 register_monitoring_tools(mcp)
 register_rag_tools(mcp)
 register_safety_tools(mcp)
-register_ui_tools(mcp)
+register_ui_tools(
+    mcp,
+    providers={
+        "hume": bool(hume_client),
+        "elevenlabs": bool(eleven_client),
+        "gemini": bool(gemini_client),
+        "gemma": True,
+        "funasr": bool(funasr_provider),
+    },
+)
 register_demo_tools(mcp)
 register_wake_word_tools(mcp)
 
@@ -377,10 +385,10 @@ async def api_stop():
     # Stop wake word listener
     from fastmcp import Context
 
-    from speech_mcp.tools.wake_word import configure_local_wake_word
+    from speech_mcp.tools.wake_word import wake_word_configure
 
     try:
-        await configure_local_wake_word(ctx=Context(), action="stop")
+        await wake_word_configure(ctx=Context(), action="stop")
     except Exception as e:
         logger.warning("Wake word stop during emergency stop failed: %s", e)
 
@@ -469,12 +477,6 @@ async def api_tools():
     return {"success": True, "tools": tools, "count": len(tools)}
 
 
-@app.get("/api/skills")
-async def api_skills():
-    """List registered skill resources. Honest empty list - no skills registered yet."""
-    return {"success": True, "skills": [], "count": 0}
-
-
 @app.get("/api/v1/diagnostics")
 async def api_diagnostics():
     """Full diagnostics for CUA-NSIS smoke testing: tool list, system info, errors."""
@@ -530,9 +532,9 @@ class WakeWordRequest(BaseModel):
 async def api_wake_word(req: WakeWordRequest, ctx: Context = Depends(lambda: Context())):
     """Bridge to the configure_local_wake_word tool."""
     # We redefine/call the logic here for the API
-    from speech_mcp.tools.wake_word import configure_local_wake_word
+    from speech_mcp.tools.wake_word import wake_word_configure
 
-    return await configure_local_wake_word(ctx=ctx, keyword=req.keyword, sensitivity=req.sensitivity, action=req.action)
+    return await wake_word_configure(ctx=ctx, keyword=req.keyword, sensitivity=req.sensitivity, action=req.action)
 
 
 @app.get("/api/v1/stats")
@@ -588,7 +590,7 @@ async def api_voices():
         providers.append({"name": "hume", "status": "available", "voices": ["ito", "kora"]})
     if eleven_client:
         try:
-            resp = await anyio.to_thread.run_sync(lambda: eleven_client.voices.get_all())
+            resp = await asyncio.to_thread(lambda: eleven_client.voices.get_all())
             el_voices = [v.voice_id for v in resp.voices]
         except Exception as e:
             logger.warning(f"ElevenLabs voices fetch failed: {e}")
@@ -608,7 +610,7 @@ async def api_voices():
             engine.stop()
             return [v.name for v in vs] if vs else ["default"]
 
-        win_voices = await anyio.to_thread.run_sync(_get_win_voices)
+        win_voices = await asyncio.to_thread(_get_win_voices)
     except Exception:
         win_voices = ["default"]
     providers.append({"name": "windows", "status": "available", "voices": win_voices})
@@ -644,7 +646,7 @@ async def api_voices_clone(request: Request):
                     description="IVC clone uploaded via speech-mcp webapp",
                 )
 
-        result = await anyio.to_thread.run_sync(_clone)
+        result = await asyncio.to_thread(_clone)
         return {"success": True, "voice_id": result.voice_id, "name": name, "status": "cloned"}
     except Exception as e:
         logger.exception("Voice clone failed")
@@ -679,7 +681,7 @@ async def api_tts(req: TTSRequest):
         if req.provider == "gemini":
             if not gemini_client:
                 raise HTTPException(status_code=503, detail="Gemini not configured")
-            await anyio.to_thread.run_sync(lambda: gemini_client.synthesize_and_play(req.text, voice=req.voice_id))
+            await asyncio.to_thread(lambda: gemini_client.synthesize_and_play(req.text, voice=req.voice_id))
             return {"success": True, "provider": "gemini", "voice": req.voice_id}
         if req.provider == "hume":
             if not hume_client:
@@ -693,7 +695,7 @@ async def api_tts(req: TTSRequest):
                 raise HTTPException(status_code=503, detail="ElevenLabs not configured")
             from speech_mcp.tools.speech import _elevenlabs_speak
 
-            await anyio.to_thread.run_sync(lambda: _elevenlabs_speak(eleven_client, req.text, voice_id=req.voice_id))
+            await asyncio.to_thread(lambda: _elevenlabs_speak(eleven_client, req.text, voice_id=req.voice_id))
             return {"success": True, "provider": "elevenlabs", "voice": req.voice_id}
         # fallback: windows
         import pyttsx3
@@ -703,7 +705,7 @@ async def api_tts(req: TTSRequest):
             engine.say(req.text)
             engine.runAndWait()
 
-        await anyio.to_thread.run_sync(_win)
+        await asyncio.to_thread(_win)
         return {"success": True, "provider": "windows"}
     except HTTPException:
         raise
@@ -730,7 +732,7 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
             engine.save_to_file(text, tmp_path)
             engine.runAndWait()
 
-        await anyio.to_thread.run_sync(_synth)
+        await asyncio.to_thread(_synth)
         with open(tmp_path, "rb") as f:
             wav_bytes = f.read()
         os.remove(tmp_path)
@@ -752,7 +754,7 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
                 audio.extend(chunk)
             return bytes(audio)
 
-        mp3_bytes = await anyio.to_thread.run_sync(_synth_el)
+        mp3_bytes = await asyncio.to_thread(_synth_el)
         return Response(content=mp3_bytes, media_type="audio/mpeg")
     if provider == "gemini":
         if not gemini_client:
@@ -762,7 +764,7 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
         def _synth_gemini():
             return gemini_client.synthesize_wav(text, voice_name=effective_voice)
 
-        wav_bytes = await anyio.to_thread.run_sync(_synth_gemini)
+        wav_bytes = await asyncio.to_thread(_synth_gemini)
         return Response(content=wav_bytes, media_type="audio/wav")
     raise HTTPException(status_code=400, detail=f"provider '{provider}' not supported")
 
@@ -804,7 +806,7 @@ async def api_transcribe(request: Request):
         if gemma_client and provider == "gemma":
             transcript = await gemma_client.transcribe(file, mime_type="audio/wav")
         elif gemini_client:
-            transcript = await anyio.to_thread.run_sync(lambda: gemini_client.transcribe(file, mime_type="audio/wav"))
+            transcript = await asyncio.to_thread(lambda: gemini_client.transcribe(file, mime_type="audio/wav"))
         else:
             raise HTTPException(status_code=503, detail=f"Provider '{provider}' not available")
         return {"success": True, "provider": provider, "transcript": transcript, "text": transcript}
@@ -826,7 +828,7 @@ async def api_run_demo(req: DemoRequest):
     script_path = os.path.normpath(os.path.join(script_dir, script_filename))
     try:
         uv_path = shutil.which("uv") or "uv"
-        result = await anyio.to_thread.run_sync(
+        result = await asyncio.to_thread(
             lambda: subprocess.run(
                 [uv_path, "run", "python", script_path],
                 capture_output=True,
@@ -870,7 +872,23 @@ async def api_utility(req: UtilityRequest):
         return {"success": True, "timer_id": timer_id, "expires_in": seconds}
     if req.type == "timer" and req.action == "query":
         return {"success": True, "active_timers": len(_timers)}
-    return {"success": False, "error": "not implemented"}
+    if req.type == "timer" and req.action == "cancel":
+        from speech_mcp.state import _timers as _timer_store
+
+        matched = {k: v for k, v in _timer_store.items() if req.label in k}
+        for k, v in matched.items():
+            v.cancel()
+            del _timer_store[k]
+        return {"success": True, "cancelled": list(matched.keys())}
+    if req.type == "weather" and req.action == "query":
+        from speech_mcp.tools.utility import _weather_report
+
+        return await _weather_report(req.label if req.label != "Default" else "Vienna")
+    return {
+        "success": False,
+        "error": f"Action '{req.action}' / type '{req.type}' not supported",
+        "error_type": "not_implemented",
+    }
 
 
 @app.post("/api/v1/action")
