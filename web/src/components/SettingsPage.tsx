@@ -11,7 +11,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
-const BACKEND = "http://localhost:10909";
+import { BACKEND } from "../api";
 
 const SettingsPage: React.FC = () => {
   const [localProvider, setLocalProvider] = useState(
@@ -28,6 +28,7 @@ const SettingsPage: React.FC = () => {
     localStorage.getItem("LOCAL_MODEL") || "llama3.1:8b",
   );
   const [isSyncing, setIsSyncing] = useState(false);
+  const [providerOnline, setProviderOnline] = useState<boolean | null>(null);
 
   const [cloudKey, setCloudKey] = useState(
     localStorage.getItem("OPENAI_API_KEY") || "",
@@ -44,6 +45,7 @@ const SettingsPage: React.FC = () => {
 
   const handleSyncModels = useCallback(async () => {
     setIsSyncing(true);
+    setProviderOnline(null);
     const url = localProvider === "ollama" ? ollamaUrl : lmstudioUrl;
     try {
       const response = await fetch(
@@ -52,15 +54,18 @@ const SettingsPage: React.FC = () => {
       const data = await response.json();
       if (data.success && data.models.length > 0) {
         setAvailableModels(data.models);
+        setProviderOnline(true);
         setLocalModel((prev) =>
           data.models.includes(prev) ? prev : data.models[0],
         );
       } else {
         setAvailableModels([]);
+        setProviderOnline(false);
       }
     } catch (err) {
       console.error("Failed to sync local models:", err);
       setAvailableModels([]);
+      setProviderOnline(false);
     } finally {
       setIsSyncing(false);
     }
@@ -138,11 +143,38 @@ const SettingsPage: React.FC = () => {
                 value={localProvider}
                 onChange={(e) => setLocalProvider(e.target.value)}
                 title="Local LLM Provider"
+                data-testid="llm-provider-select"
                 className="w-full bg-white/[0.03] border border-white/5 rounded-xl p-4 text-white focus:border-accent-purple/50 outline-none transition-all font-bold uppercase tracking-wider cursor-pointer"
               >
-                <option value="ollama">Ollama (Detected)</option>
+                <option value="ollama">Ollama</option>
                 <option value="lmstudio">LM Studio</option>
               </select>
+              <div className="mt-2 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    providerOnline === null
+                      ? "bg-white/20"
+                      : providerOnline
+                        ? "bg-emerald-500"
+                        : "bg-rose-500"
+                  }`}
+                />
+                <span
+                  className={
+                    providerOnline === null
+                      ? "text-text-secondary opacity-50"
+                      : providerOnline
+                        ? "text-emerald-500"
+                        : "text-rose-500"
+                  }
+                >
+                  {providerOnline === null
+                    ? "probing…"
+                    : providerOnline
+                      ? "provider online"
+                      : "provider not detected"}
+                </span>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -180,6 +212,7 @@ const SettingsPage: React.FC = () => {
                   value={localModel}
                   onChange={(e) => setLocalModel(e.target.value)}
                   title="Available LLM Models"
+                  data-testid="llm-model-select"
                   className="flex-1 bg-white/[0.03] border border-white/5 rounded-xl p-4 text-white focus:border-accent-purple/50 outline-none transition-all font-bold tracking-wide cursor-pointer"
                 >
                   {availableModels.length > 0 ? (
@@ -207,10 +240,22 @@ const SettingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-emerald-500/5 border border-emerald-500/10 p-5 rounded-2xl mt-4 flex items-center gap-4">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-xs font-bold text-emerald-500/80 uppercase tracking-widest">
-                RTX 4090 detected. Tensor acceleration active.
+            <div className="bg-white/[0.03] border border-white/5 p-5 rounded-2xl mt-4 flex items-center gap-4">
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  providerOnline === null
+                    ? "bg-white/20"
+                    : providerOnline
+                      ? "bg-emerald-500"
+                      : "bg-amber-500"
+                }`}
+              />
+              <p className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+                {providerOnline === null
+                  ? "Probing local LLM provider…"
+                  : providerOnline
+                    ? "Local LLM reachable — models listed above"
+                    : "No local LLM detected — start Ollama or LM Studio"}
               </p>
             </div>
           </div>
@@ -334,20 +379,20 @@ const SettingsPage: React.FC = () => {
             <StatusItem
               icon={<Terminal size={14} />}
               label="MCP Transport"
-              value="Studion / JSON-RPC"
+              value="SSE / JSON-RPC :10909/mcp"
               status="active"
             />
             <StatusItem
               icon={<Database size={14} />}
               label="RAG Vector DB"
-              value="LanceDB (v13.0)"
+              value="LanceDB"
               status="active"
             />
             <StatusItem
               icon={<Cpu size={14} />}
               label="Hardware Accel"
-              value="CUDA/NVIDIA RTX"
-              status="active"
+              value="not exposed by backend"
+              status="unknown"
             />
           </div>
         </section>
@@ -377,10 +422,10 @@ const StatusItem = ({
       </div>
       <div className="text-sm font-black text-white leading-tight">{value}</div>
       <div
-        className={`text-xs uppercase font-black mt-2 flex items-center gap-2 ${status === "active" ? "text-emerald-500" : "text-rose-500"}`}
+        className={`text-xs uppercase font-black mt-2 flex items-center gap-2 ${status === "active" ? "text-emerald-500" : status === "unknown" ? "text-white/40" : "text-rose-500"}`}
       >
         <span
-          className={`w-1 h-1 rounded-full ${status === "active" ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`}
+          className={`w-1 h-1 rounded-full ${status === "active" ? "bg-emerald-500" : status === "unknown" ? "bg-white/30" : "bg-rose-500"}`}
         />
         {status}
       </div>

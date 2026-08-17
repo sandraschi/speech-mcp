@@ -80,6 +80,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           zIndex: 40,
         }}
         className="sidebar-desktop"
+        data-testid="sidebar-nav"
       >
         <div
           style={{
@@ -605,6 +606,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                   background: backendOnline ? "#34d399" : "#f87171",
                   display: "inline-block",
                 }}
+                data-testid="topbar-status"
               />
               <span
                 style={{
@@ -624,6 +626,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               type="button"
               onClick={() => emergencyStop()}
               title="EMERGENCY STOP (Cancel All Audio & Timers)"
+              data-testid="stop-button"
               style={{
                 display: "flex",
                 alignItems: "center",

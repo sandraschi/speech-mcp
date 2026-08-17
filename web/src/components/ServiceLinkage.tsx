@@ -9,13 +9,13 @@ import {
   Shield,
 } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Service {
   id: string;
   label: string;
   port: number;
-  repo_path: string;
+  repo: string;
   tags: string[];
 }
 
@@ -24,90 +24,110 @@ const SERVICES: Service[] = [
     id: "virtualization-mcp",
     label: "Virtualization MCP",
     port: 10700,
-    repo_path: "D:/Dev/repos/virtualization-mcp",
+    repo: "virtualization-mcp",
     tags: ["frontend", "sota"],
   },
   {
     id: "robotics-mcp",
     label: "Robotics MCP",
     port: 10706,
-    repo_path: "D:/Dev/repos/robotics-mcp",
+    repo: "robotics-mcp",
     tags: ["frontend", "sota"],
   },
   {
     id: "devices-mcp",
     label: "Devices MCP (Tapo/Ring)",
     port: 10716,
-    repo_path: "D:/Dev/repos/devices-mcp",
+    repo: "devices-mcp",
     tags: ["infra", "sota"],
   },
   {
     id: "filesystem-mcp-frontend",
     label: "Filesystem MCP",
     port: 10743,
-    repo_path: "D:/Dev/repos/filesystem-mcp",
+    repo: "filesystem-mcp",
     tags: ["frontend", "sota"],
   },
   {
     id: "windows-operations-mcp-frontend",
     label: "Windows Operations",
     port: 10749,
-    repo_path: "D:/Dev/repos/windows-operations-mcp",
+    repo: "windows-operations-mcp",
     tags: ["frontend", "sota"],
-  },
-  {
-    id: "resolume-mcp",
-    label: "Resolume VJ MCP",
-    port: 10770,
-    repo_path: "D:/Dev/repos/resolume-mcp",
-    tags: ["frontend", "sota", "media"],
   },
   {
     id: "reaper-mcp",
     label: "Reaper MCP",
     port: 10796,
-    repo_path: "D:/Dev/repos/reaper-mcp",
+    repo: "reaper-mcp",
     tags: ["frontend", "sota"],
   },
   {
     id: "obs-mcp-frontend",
     label: "OBS Control",
     port: 10818,
-    repo_path: "D:/Dev/repos/obs-mcp",
+    repo: "obs-mcp",
     tags: ["frontend", "media", "sota"],
   },
   {
     id: "local-llm-mcp-frontend",
     label: "Local LLM Hub",
     port: 10832,
-    repo_path: "D:/Dev/repos/local-llm-mcp",
+    repo: "local-llm-mcp",
     tags: ["frontend", "ai", "sota"],
   },
   {
     id: "home-assistant-mcp-frontend",
     label: "Home Assistant",
     port: 10834,
-    repo_path: "D:/Dev/repos/home-assistant-mcp",
+    repo: "home-assistant-mcp",
     tags: ["frontend", "smart-home", "sota"],
   },
   {
     id: "advanced-memory-mcp-frontend",
     label: "Advanced Memory",
     port: 10704,
-    repo_path: "D:/Dev/repos/advanced-memory-mcp",
+    repo: "advanced-memory-mcp",
     tags: ["frontend", "knowledge", "sota"],
   },
   {
     id: "mcp-federation-hub",
     label: "Fleet Command Hub",
     port: 10856,
-    repo_path: "D:/Dev/repos/mcp-federation-hub",
+    repo: "mcp-federation-hub",
     tags: ["frontend", "command", "sota"],
   },
 ];
 
+const PROBE_TIMEOUT_MS = 2500;
+
 const ServiceLinkage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [onlinePorts, setOnlinePorts] = useState<Set<number>>(new Set());
+  const [probing, setProbing] = useState(true);
+
+  useEffect(() => {
+    const controllers: AbortController[] = [];
+    Promise.all(
+      SERVICES.map((s) => {
+        const controller = new AbortController();
+        controllers.push(controller);
+        const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+        return fetch(`http://localhost:${s.port}`, {
+          signal: controller.signal,
+        })
+          .then((r) => (r.ok ? s.port : null))
+          .catch(() => null)
+          .finally(() => clearTimeout(timer));
+      }),
+    ).then((results) => {
+      setOnlinePorts(new Set(results.filter((p): p is number => p !== null)));
+      setProbing(false);
+    });
+    return () => {
+      for (const c of controllers) c.abort();
+    };
+  }, []);
 
   const filteredServices = SERVICES.filter(
     (s) =>
@@ -115,8 +135,15 @@ const ServiceLinkage: React.FC = () => {
       s.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
+  const onlineCount = filteredServices.filter((s) =>
+    onlinePorts.has(s.port),
+  ).length;
+
   return (
-    <div className="h-full space-y-8 animate-in fade-in duration-700">
+    <div
+      className="h-full space-y-8 animate-in fade-in duration-700"
+      data-testid="apps-hub"
+    >
       {/* Header Card */}
       <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800 rounded-3xl p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/5 blur-[100px] rounded-full -mr-32 -mt-32" />
@@ -129,7 +156,7 @@ const ServiceLinkage: React.FC = () => {
               Apps Hub
             </h1>
             <p className="text-slate-400 mt-1 font-medium text-lg">
-              Central Fleet Discovery & Cross-Link Navigation
+              Fleet Discovery — live port probes
             </p>
           </div>
         </div>
@@ -152,62 +179,73 @@ const ServiceLinkage: React.FC = () => {
 
       {/* Grid of Services */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredServices.map((service) => (
-          <a
-            key={service.id}
-            href={`http://localhost:${service.port}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl p-6 hover:border-indigo-500/40 hover:bg-slate-900/80 transition-all duration-300 flex flex-col justify-between min-h-[220px] shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1"
-          >
-            <div className="space-y-4">
-              <div className="flex justify-between items-start">
-                <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 group-hover:border-indigo-500/30 transition-colors">
-                  {service.tags.includes("media") ? (
-                    <Globe className="w-6 h-6 text-blue-400" />
-                  ) : service.tags.includes("ai") ? (
-                    <Cpu className="w-6 h-6 text-purple-400" />
-                  ) : service.tags.includes("infra") ? (
-                    <Shield className="w-6 h-6 text-emerald-400" />
-                  ) : (
-                    <Box className="w-6 h-6 text-indigo-400" />
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 bg-slate-950/50 px-3 py-1 rounded-full border border-slate-800">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                    Port {service.port}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors">
-                  {service.label}
-                </h3>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {service.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-slate-950 text-slate-500 border border-slate-800 group-hover:border-indigo-500/20"
-                    >
-                      {tag}
+        {filteredServices.map((service) => {
+          const online = onlinePorts.has(service.port);
+          return (
+            <a
+              key={service.id}
+              href={`http://localhost:${service.port}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl p-6 hover:border-indigo-500/40 hover:bg-slate-900/80 transition-all duration-300 flex flex-col justify-between min-h-[220px] shadow-lg hover:shadow-indigo-500/10 hover:-translate-y-1"
+            >
+              <div className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 group-hover:border-indigo-500/30 transition-colors">
+                    {service.tags.includes("media") ? (
+                      <Globe className="w-6 h-6 text-blue-400" />
+                    ) : service.tags.includes("ai") ? (
+                      <Cpu className="w-6 h-6 text-purple-400" />
+                    ) : service.tags.includes("infra") ? (
+                      <Shield className="w-6 h-6 text-emerald-400" />
+                    ) : (
+                      <Box className="w-6 h-6 text-indigo-400" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-slate-950/50 px-3 py-1 rounded-full border border-slate-800">
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        probing
+                          ? "bg-white/20"
+                          : online
+                            ? "bg-emerald-500"
+                            : "bg-rose-500/70"
+                      } ${!probing && online ? "animate-pulse" : ""}`}
+                    />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                      Port {service.port}
                     </span>
-                  ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors">
+                    {service.label}
+                  </h3>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {service.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-slate-950 text-slate-500 border border-slate-800 group-hover:border-indigo-500/20"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-600 truncate max-w-[180px]">
-                {service.repo_path.split("/").pop()}
-              </span>
-              <div className="bg-indigo-600/10 text-indigo-400 p-2 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
-                <ExternalLink className="w-4 h-4" />
+              <div className="mt-6 flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-600 truncate max-w-[180px]">
+                  {probing ? "probing…" : online ? "online" : "offline"}
+                </span>
+                <div className="bg-indigo-600/10 text-indigo-400 p-2 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                  <ExternalLink className="w-4 h-4" />
+                </div>
               </div>
-            </div>
-          </a>
-        ))}
+            </a>
+          );
+        })}
       </div>
 
       {/* Quick Actions Card */}
@@ -221,26 +259,26 @@ const ServiceLinkage: React.FC = () => {
               Fleet Command Integration
             </h4>
             <p className="text-slate-500 text-sm">
-              Cross-link protocol SEP-1577 v1.2 active for all local substrate
-              webapps.
+              Status is probed live on page load — offline peers are shown, not
+              hidden.
             </p>
           </div>
         </div>
         <div className="flex gap-4">
           <div className="bg-slate-950/50 px-6 py-3 rounded-2xl border border-slate-800 flex flex-col items-center">
             <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">
-              Active Peers
+              Online Peers
             </span>
             <span className="text-white font-mono font-black text-xl">
-              {SERVICES.length}
+              {probing ? "…" : `${onlineCount}/${filteredServices.length}`}
             </span>
           </div>
           <div className="bg-slate-950/50 px-6 py-3 rounded-2xl border border-slate-800 flex flex-col items-center">
             <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">
-              Core Mesh
+              Registry
             </span>
             <span className="text-white font-mono font-black text-xl">
-              SOTA
+              {SERVICES.length}
             </span>
           </div>
         </div>

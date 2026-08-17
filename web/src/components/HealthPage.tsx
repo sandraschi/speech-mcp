@@ -73,7 +73,7 @@ const HealthPage: React.FC = () => {
   const tokens = health?.tokens;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto" data-testid="health-page">
       <div className="mb-10">
         <h2 className="text-2xl font-black text-white tracking-tight">
           System Health
@@ -95,22 +95,36 @@ const HealthPage: React.FC = () => {
           </span>
         </section>
 
-        {/* WebSocket Status */}
+        {/* Service State — real health value */}
         <section className="glass-card p-6 flex flex-col items-center justify-center text-center">
           <Activity size={24} className="text-accent-purple mb-3" />
           <span className="text-xs font-black uppercase tracking-widest text-text-secondary mb-1">
             Service State
           </span>
-          <span className="text-3xl font-black text-emerald-400">Stable</span>
+          <span
+            className={`text-3xl font-black ${
+              health?.status === "healthy"
+                ? "text-emerald-400"
+                : health
+                  ? "text-amber-400"
+                  : "text-rose-400"
+            }`}
+          >
+            {health?.status ?? "unreachable"}
+          </span>
         </section>
 
-        {/* Global Connectivity */}
+        {/* Global Connectivity — real provider count */}
         <section className="glass-card p-6 flex flex-col items-center justify-center text-center">
           <Globe size={24} className="text-blue-400 mb-3" />
           <span className="text-xs font-black uppercase tracking-widest text-text-secondary mb-1">
-            External Link
+            Cloud Providers
           </span>
-          <span className="text-3xl font-black text-white">Active</span>
+          <span className="text-3xl font-black text-white">
+            {providers
+              ? `${Object.values(providers).filter(Boolean).length}/${Object.values(providers).length}`
+              : "--"}
+          </span>
         </section>
       </div>
 
