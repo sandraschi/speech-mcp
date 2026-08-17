@@ -29,6 +29,45 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
       className="grid grid-cols-1 lg:grid-cols-3 gap-8"
       data-testid="dashboard"
     >
+      <section className="glass-card lg:col-span-3 p-8 border border-accent-purple/20 bg-accent-purple/[0.04]">
+        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-accent-purple mb-3">
+          Humanoid &amp; fleet voice
+        </h2>
+        <p className="text-sm text-text-secondary leading-relaxed max-w-3xl mb-4">
+          Speech perception and reply are load-bearing for embodied agents:
+          hands-free commands, noisy environments, structured transcripts for
+          planners, and local STT without per-minute cloud tax. speech-mcp
+          defaults to <span className="text-white font-semibold">FunASR</span>{" "}
+          and the{" "}
+          <span className="text-white font-semibold">Voice Command Bus</span>{" "}
+          into fleet-agent (wake → STT → mission).
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <a
+            href="https://github.com/sandraschi/speech-mcp/blob/main/docs/HUMANOID_VOICE.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-bold text-accent-purple hover:underline"
+          >
+            HUMANOID_VOICE.md <ExternalLink size={14} />
+          </a>
+          <button
+            type="button"
+            className="text-sm font-bold text-white/70 hover:text-white"
+            onClick={() => onNavigate("help")}
+          >
+            Help → FunASR &amp; bus
+          </button>
+          <button
+            type="button"
+            className="text-sm font-bold text-white/70 hover:text-white"
+            onClick={() => onNavigate("stt")}
+          >
+            Wake word / STT
+          </button>
+        </div>
+      </section>
+
       <section className="glass-card lg:col-span-2 p-8 min-h-[200px] flex flex-col justify-between">
         <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-secondary opacity-50 mb-2">
           Backend Status
@@ -127,45 +166,6 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
             </div>
           </div>
         )}
-      </section>
-
-      <section className="glass-card lg:col-span-3 p-8 border border-accent-purple/20 bg-accent-purple/[0.04]">
-        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-accent-purple mb-3">
-          Humanoid &amp; fleet voice
-        </h2>
-        <p className="text-sm text-text-secondary leading-relaxed max-w-3xl mb-4">
-          Speech perception and reply are load-bearing for embodied agents:
-          hands-free commands, noisy environments, structured transcripts for
-          planners, and local STT without per-minute cloud tax. speech-mcp
-          defaults to <span className="text-white font-semibold">FunASR</span>{" "}
-          and the{" "}
-          <span className="text-white font-semibold">Voice Command Bus</span>{" "}
-          into fleet-agent (wake → STT → mission).
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <a
-            href="https://github.com/sandraschi/speech-mcp/blob/main/docs/HUMANOID_VOICE.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-bold text-accent-purple hover:underline"
-          >
-            HUMANOID_VOICE.md <ExternalLink size={14} />
-          </a>
-          <button
-            type="button"
-            className="text-sm font-bold text-white/70 hover:text-white"
-            onClick={() => onNavigate("help")}
-          >
-            Help → FunASR &amp; bus
-          </button>
-          <button
-            type="button"
-            className="text-sm font-bold text-white/70 hover:text-white"
-            onClick={() => onNavigate("stt")}
-          >
-            Wake word / STT
-          </button>
-        </div>
       </section>
 
       <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
