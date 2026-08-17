@@ -77,3 +77,6 @@ testpaths = ["tests"]
 markers = [
     "live: marks tests requiring live API keys or hardware (deselect with '-m \"not live\"')",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["B007", "S310", "S603", "S607"]
