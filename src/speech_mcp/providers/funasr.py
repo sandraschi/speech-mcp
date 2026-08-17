@@ -117,6 +117,9 @@ class FunASRProvider:
             "model": self._config.model,
             "device": self._config.device,
             "hub": self._config.hub,
+            # Fun-ASR-MLT-Nano-2512 (and SenseVoice) ship remote code; required
+            # for hub="hf" loading, otherwise AutoModel fails and STT is disabled.
+            "trust_remote_code": True,
         }
         if self._config.vad_model:
             kwargs["vad_model"] = self._config.vad_model
