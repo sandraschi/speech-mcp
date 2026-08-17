@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import io
 import json
@@ -124,7 +125,7 @@ async def _handle_windows(websocket: WebSocket):
                     e.save_to_file(t, p)
                     e.runAndWait()
 
-                await anyio.to_thread.run_sync(_synth)
+                await asyncio.to_thread(_synth)
                 with open(tmp_path, "rb") as f:
                     await websocket.send_bytes(f.read())
                 os.remove(tmp_path)
@@ -138,7 +139,7 @@ async def _handle_elevenlabs(websocket: WebSocket, client: ElevenLabs, voice_id:
             msg = await websocket.receive_json()
             if msg.get("type") == "tts":
                 text = msg.get("text")
-                audio_gen = client.generate(text=text, voice=voice_id, stream=True)
+                audio_gen = client.text_to_speech.convert(voice_id=voice_id, text=text, output_format="mp3_44100_128")
                 for chunk in audio_gen:
                     await websocket.send_bytes(chunk)
         except Exception:
@@ -174,7 +175,7 @@ async def _handle_gemini(websocket: WebSocket, api_key: str, voice_id: str):
                 continue
             effective_voice = voice_id if voice_id and voice_id.lower() != "default" else "Kore"
             try:
-                wav_bytes = await anyio.to_thread.run_sync(
+                wav_bytes = await asyncio.to_thread(
                     lambda t=text, v=effective_voice: provider.synthesize_wav(t, voice_name=v)
                 )
                 await websocket.send_bytes(wav_bytes)
@@ -226,14 +227,14 @@ async def _handle_gemini_live(
 
     model = "gemini-3.1-flash-live-preview"
     config = types.LiveConnectConfig(
-        response_modalities=["AUDIO"],
+        response_modalities=[types.Modality.AUDIO],
         speech_config=types.SpeechConfig(
             voice_config=types.VoiceConfig(prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice_id))
         ),
         output_audio_transcription=types.AudioTranscriptionConfig(),
         input_audio_transcription=types.AudioTranscriptionConfig(),
         system_instruction=system_instruction or None,
-        thinking_config=types.ThinkingConfig(thinking_level="minimal"),
+        thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.MINIMAL),
     )
 
     try:
@@ -294,7 +295,7 @@ async def _handle_gemini_live(
                             continue
 
                         # Audio chunks
-                        if sc.model_turn:
+                        if sc.model_turn and sc.model_turn.parts:
                             for part in sc.model_turn.parts:
                                 if part.inline_data and part.inline_data.data:
                                     wav = _pcm_to_wav_bytes(part.inline_data.data)

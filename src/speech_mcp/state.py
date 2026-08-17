@@ -31,7 +31,7 @@ M_ERRORS = Counter("substrate_errors_total", "Total substrate errors", ["type", 
 M_TOKENS = Counter("substrate_tokens_processed_total", "Total tokens processed", ["provider"])
 
 
-def get_store():
+def get_store() -> "DocumentStore":
     """Lazy-initialization for DocumentStore. Auto-ingests docs/ if empty."""
     global _store
     if _store is None:

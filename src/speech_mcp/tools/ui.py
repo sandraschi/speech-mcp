@@ -66,10 +66,10 @@ def register_ui_tools(mcp: FastMCP, providers: dict[str, bool] | None = None) ->
             Heading("Session Activity")
             Text(f"{len(_history)} interactions recorded this session.")
             if data:
-                BarChart(
+                BarChart(  # type: ignore[call-arg]
                     data=data,
-                    series=[ChartSeries(data_key="tokens", label="Interactions")],
-                    x_axis="session",
+                    series=[ChartSeries(data_key="tokens", label="Interactions")],  # type: ignore[call-arg]
+                    x_axis="session",  # type: ignore[call-arg]
                 )
             else:
                 Text("No TTS/STT activity recorded yet this session.")

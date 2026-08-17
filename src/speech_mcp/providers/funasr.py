@@ -10,6 +10,7 @@ Models: Fun-ASR-Nano-2512, SenseVoiceSmall, and other FunASR hub entries.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 import os
@@ -17,7 +18,6 @@ import tempfile
 from dataclasses import dataclass
 from typing import Any
 
-import anyio
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,7 @@ class FunASRProvider:
             return self._model
 
         try:
-            from funasr import AutoModel
+            from funasr import AutoModel  # type: ignore[import-not-found]
         except ImportError as exc:
             raise RuntimeError("FunASR is not installed. Run: uv sync --extra funasr") from exc
 
@@ -176,7 +176,7 @@ class FunASRProvider:
             return {"success": False, "error": f"File not found: {file_path}"}
 
         try:
-            raw = await anyio.to_thread.run_sync(lambda: self._generate_sync(file_path, language))
+            raw = await asyncio.to_thread(lambda: self._generate_sync(file_path, language))
             parsed = _parse_transcript_result(raw)
             return {
                 "success": True,
@@ -246,7 +246,7 @@ class FunASRProvider:
                 return {"available": False, "mode": "sidecar", "error": str(exc)}
 
         try:
-            import funasr  # noqa: F401
+            import funasr  # noqa: F401  # type: ignore[import-not-found]
 
             return {
                 "available": True,

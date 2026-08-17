@@ -13,7 +13,7 @@ def register_rag_tools(mcp: FastMCP):
     async def search_docs(
         query: Annotated[str, Field(description="Natural language search query.")],
         limit: Annotated[int, Field(description="Maximum number of results.")] = 5,
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Semantic search over the speech-mcp knowledge base (RAG).

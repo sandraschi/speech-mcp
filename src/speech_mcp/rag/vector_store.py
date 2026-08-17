@@ -18,7 +18,7 @@ class DocumentStore(BaseVectorStore):
 
     def list_sources(self) -> list[str]:
         """List distinct sources indexed."""
-        if self.table_name not in self.db.list_tables():
+        if self.table_name not in list(self.db.list_tables()):
             return []
 
         tbl = self.db.open_table(self.table_name)

@@ -21,6 +21,7 @@ import threading
 from collections.abc import Callable
 from typing import Annotated
 
+import numpy as np
 import openwakeword
 from fastmcp import Context, FastMCP
 from openwakeword.model import Model
@@ -52,7 +53,7 @@ def _run_listener(
 
     try:
         # Pre-download models if missing
-        openwakeword.utils.download_models(models=[keyword])
+        openwakeword.utils.download_models(models=[keyword])  # type: ignore[attr-defined]
 
         # Initialize openWakeWord Model
         # vad_threshold=0.5 helps filter out non-speech noise
@@ -76,11 +77,11 @@ def _run_listener(
 
         while not _stop_event.is_set():
             pcm_bytes = stream.read(CHUNK, exception_on_overflow=False)
-            # Unpack bytes to list of 16-bit integers
-            pcm = list(struct.unpack(f"{CHUNK}h", pcm_bytes))
+            # Unpack bytes to int16 samples as a numpy array (predict expects ndarray)
+            pcm = np.asarray(struct.unpack(f"{CHUNK}h", pcm_bytes), dtype=np.int16)
 
             # Get predictions
-            scores = oww_model.predict(pcm)
+            scores: dict[str, float] = oww_model.predict(pcm)  # type: ignore[arg-type, assignment]
 
             # Check if any model score exceeds the sensitivity (threshold)
             for name, score in scores.items():

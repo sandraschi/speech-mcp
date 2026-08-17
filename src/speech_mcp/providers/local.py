@@ -1,6 +1,6 @@
+import asyncio
 import logging
 
-import anyio
 import requests
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class LocalLLMProvider:
         Priority: Ollama. Default fallback provided if offline.
         """
         try:
-            return await anyio.to_thread.run_sync(lambda: self._fetch(provider, base_url))
+            return await asyncio.to_thread(lambda: self._fetch(provider, base_url))
         except Exception as e:
             logger.debug(f"Local provider {provider} unreachable at {base_url}: {e}")
             return []
@@ -49,9 +49,7 @@ class LocalLLMProvider:
         Grounded context should be injected into the prompt before calling this.
         """
         try:
-            return await anyio.to_thread.run_sync(
-                lambda: self._generate_sync(provider, base_url, model, prompt, system)
-            )
+            return await asyncio.to_thread(lambda: self._generate_sync(provider, base_url, model, prompt, system))
         except Exception as e:
             logger.error(f"Local generation failed ({provider}): {e}")
             return f"Generation failed: {e}"

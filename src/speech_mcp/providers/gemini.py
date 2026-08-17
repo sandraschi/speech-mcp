@@ -121,7 +121,10 @@ class GeminiProvider:
         )
 
         try:
-            pcm_bytes = response.candidates[0].content.parts[0].inline_data.data
+            candidate = response.candidates[0] if response.candidates else None
+            content = candidate.content if candidate else None
+            part = content.parts[0] if content and content.parts else None
+            pcm_bytes = part.inline_data.data if part and part.inline_data else None
             if not pcm_bytes:
                 raise ValueError("Empty audio data")
             return _pcm_to_wav(pcm_bytes)
@@ -153,7 +156,10 @@ class GeminiProvider:
         )
 
         try:
-            return response.text.strip()
+            text = response.text
+            if not text:
+                raise ValueError("Gemini returned empty transcript")
+            return text.strip()
         except Exception as e:
             raise ValueError(f"Gemini STT failed: {e}") from e
 

@@ -8,6 +8,7 @@ import threading
 import time
 from collections.abc import Callable
 
+import numpy as np
 import openwakeword
 from openwakeword.model import Model
 
@@ -53,7 +54,7 @@ def _run_fleet_listener(
         if sleep_kw and sleep_kw.lower() != keyword.lower():
             models.append(sleep_kw)
         for model in models:
-            openwakeword.utils.download_models(models=[model])
+            openwakeword.utils.download_models(models=[model])  # type: ignore[attr-defined]
         oww_model = Model(wakeword_models=models, vad_threshold=0.5, inference_framework="onnx")
         pa = pyaudio.PyAudio()
         stream = pa.open(
@@ -73,8 +74,8 @@ def _run_fleet_listener(
 
         while not _stop_event.is_set():
             pcm_bytes = stream.read(chunk, exception_on_overflow=False)
-            pcm = list(struct.unpack(f"{chunk}h", pcm_bytes))
-            scores = oww_model.predict(pcm)
+            pcm = np.asarray(struct.unpack(f"{chunk}h", pcm_bytes), dtype=np.int16)
+            scores: dict[str, float] = oww_model.predict(pcm)  # type: ignore[arg-type, assignment]
             for name, score in scores.items():
                 if score < sensitivity:
                     continue

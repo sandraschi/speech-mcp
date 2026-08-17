@@ -13,7 +13,7 @@ def register_monitoring_tools(mcp: FastMCP):
     async def trigger_action(
         action_type: Annotated[str, Field(description="Action type: light_on, light_off, notify")],
         params: Annotated[dict | None, Field(description="Action parameters, e.g. {'room': 'living_room'}")] = None,
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Trigger IoT or UI actions via the devices-mcp bridge.

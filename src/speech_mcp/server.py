@@ -26,7 +26,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
 from fastmcp.server import create_proxy
 from hume import HumeClient
 from pydantic import BaseModel
@@ -182,7 +182,11 @@ def _probe_bridges():
 
 async def _log_broadcaster():
     while True:
-        msg = await _log_queue.get()
+        queue = _log_queue
+        if queue is None:
+            await asyncio.sleep(0.2)
+            continue
+        msg = await queue.get()
         await _broadcast_log(msg)
 
 
@@ -303,16 +307,18 @@ if funasr_provider:
 
     from speech_mcp.voice_bus import set_transcribe_path_hook
 
+    _funasr = funasr_provider
+
     def _voice_transcribe_file(path: _Path) -> str:
-        import anyio
+        import asyncio
 
         async def _go() -> str:
-            result = await funasr_provider.transcribe_file(str(path), language="auto")
+            result = await _funasr.transcribe_file(str(path), language="auto")
             if not result.get("success", True):
                 return ""
             return str(result.get("text") or result.get("formatted") or "").strip()
 
-        return anyio.run(_go)
+        return asyncio.run(_go())
 
     set_transcribe_path_hook(_voice_transcribe_file)
     logger.info("Fleet voice STT hook: FunASR file transcription")
@@ -383,12 +389,11 @@ async def api_stop():
         _timers.pop(timer_id, None)
 
     # Stop wake word listener
-    from fastmcp import Context
 
     from speech_mcp.tools.wake_word import wake_word_configure
 
     try:
-        await wake_word_configure(ctx=Context(), action="stop")
+        await wake_word_configure(ctx=None, action="stop")
     except Exception as e:
         logger.warning("Wake word stop during emergency stop failed: %s", e)
 
@@ -529,12 +534,11 @@ class WakeWordRequest(BaseModel):
 
 
 @app.post("/api/v1/wake_word")
-async def api_wake_word(req: WakeWordRequest, ctx: Context = Depends(lambda: Context())):
-    """Bridge to the configure_local_wake_word tool."""
-    # We redefine/call the logic here for the API
+async def api_wake_word(req: WakeWordRequest):
+    """Bridge to the configure_local_wake_word tool (REST has no MCP context)."""
     from speech_mcp.tools.wake_word import wake_word_configure
 
-    return await wake_word_configure(ctx=ctx, keyword=req.keyword, sensitivity=req.sensitivity, action=req.action)
+    return await wake_word_configure(ctx=None, keyword=req.keyword, sensitivity=req.sensitivity, action=req.action)
 
 
 @app.get("/api/v1/stats")
@@ -590,8 +594,15 @@ async def api_voices():
         providers.append({"name": "hume", "status": "available", "voices": ["ito", "kora"]})
     if eleven_client:
         try:
-            resp = await asyncio.to_thread(lambda: eleven_client.voices.get_all())
-            el_voices = [v.voice_id for v in resp.voices]
+
+            def _get_el_voices(client: ElevenLabs) -> list[str]:
+                from typing import Any, cast
+
+                resp = client.voices.get_all()
+                raw = cast(Any, getattr(resp, "voices", []))
+                return [v.voice_id for v in raw]
+
+            el_voices: list[str] = await asyncio.to_thread(_get_el_voices, eleven_client)
         except Exception as e:
             logger.warning(f"ElevenLabs voices fetch failed: {e}")
             el_voices = []
@@ -605,8 +616,10 @@ async def api_voices():
         import pyttsx3
 
         def _get_win_voices():
+            from typing import Any, cast
+
             engine = pyttsx3.init()
-            vs = engine.getProperty("voices")
+            vs = cast(list[Any], engine.getProperty("voices"))
             engine.stop()
             return [v.name for v in vs] if vs else ["default"]
 
@@ -625,11 +638,11 @@ async def api_voices_clone(request: Request):
     if not eleven_client:
         raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY not configured")
     form = await request.form()
-    name = form.get("name", "")
-    file: UploadFile | None = form.get("file")
-    if not name:
+    name = form.get("name")
+    file = form.get("file")
+    if not isinstance(name, str) or not name:
         raise HTTPException(status_code=400, detail="name field required")
-    if not file:
+    if not isinstance(file, UploadFile):
         raise HTTPException(status_code=400, detail="file field required")
     suffix = os.path.splitext(file.filename or "audio.mp3")[1] or ".mp3"
     tmp_path = None
@@ -638,9 +651,11 @@ async def api_voices_clone(request: Request):
             tmp_path = tmp.name
             tmp.write(await file.read())
 
+        el = eleven_client
+
         def _clone():
             with open(tmp_path, "rb") as f:
-                return eleven_client.voices.ivc.create(
+                return el.voices.ivc.create(
                     name=name,
                     files=[f],
                     description="IVC clone uploaded via speech-mcp webapp",
@@ -674,28 +689,51 @@ async def api_tts(req: TTSRequest):
     add_history("tts", req.text, req.provider)
     try:
         if req.provider == "gemma":
-            if not gemma_client:
+            gemma = gemma_client
+            if not gemma:
                 raise HTTPException(status_code=503, detail="Gemma not initialized")
-            await gemma_client.synthesize_and_play(req.text, voice=req.voice_id)
+            played = await asyncio.to_thread(lambda: gemma.synthesize_and_play(req.text, voice=req.voice_id))
+            if not played:
+                raise HTTPException(status_code=500, detail="Gemma/SAPI TTS failed")
             return {"success": True, "provider": "gemma", "voice": req.voice_id}
         if req.provider == "gemini":
-            if not gemini_client:
+            gemini = gemini_client
+            if not gemini:
                 raise HTTPException(status_code=503, detail="Gemini not configured")
-            await asyncio.to_thread(lambda: gemini_client.synthesize_and_play(req.text, voice=req.voice_id))
+            from speech_mcp.tools.speech import _play_wav_file
+
+            wav = await asyncio.to_thread(lambda: gemini.synthesize_wav(req.text, voice_name=req.voice_id or "Kore"))
+            if not wav:
+                raise HTTPException(status_code=500, detail="Gemini returned empty audio")
+            import tempfile as _tf
+
+            with _tf.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(wav)
+                tmp_path = tmp.name
+            try:
+                await _play_wav_file(tmp_path)
+            finally:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
             return {"success": True, "provider": "gemini", "voice": req.voice_id}
         if req.provider == "hume":
-            if not hume_client:
+            hume = hume_client
+            if not hume:
                 raise HTTPException(status_code=503, detail="Hume not configured")
             from speech_mcp.tools.speech import _hume_speak
 
-            await _hume_speak(hume_client, req.text, description=req.emotion)
+            await _hume_speak(hume, req.text, description=req.emotion)
             return {"success": True, "provider": "hume"}
         if req.provider == "elevenlabs":
-            if not eleven_client:
+            el = eleven_client
+            if not el:
                 raise HTTPException(status_code=503, detail="ElevenLabs not configured")
             from speech_mcp.tools.speech import _elevenlabs_speak
 
-            await asyncio.to_thread(lambda: _elevenlabs_speak(eleven_client, req.text, voice_id=req.voice_id))
+            await asyncio.to_thread(lambda: _elevenlabs_speak(el, req.text, voice_id=req.voice_id))
             return {"success": True, "provider": "elevenlabs", "voice": req.voice_id}
         # fallback: windows
         import pyttsx3
@@ -738,7 +776,8 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
         os.remove(tmp_path)
         return Response(content=wav_bytes, media_type="audio/wav")
     if provider == "elevenlabs":
-        if not eleven_client:
+        el = eleven_client
+        if not el:
             raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY not configured")
         effective_voice = voice_id if voice_id and voice_id != "default" else None
         if not effective_voice:
@@ -746,7 +785,7 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
 
         def _synth_el():
             audio = bytearray()
-            for chunk in eleven_client.text_to_speech.convert(
+            for chunk in el.text_to_speech.convert(
                 voice_id=effective_voice,
                 text=text,
                 output_format="mp3_44100_128",
@@ -757,12 +796,13 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
         mp3_bytes = await asyncio.to_thread(_synth_el)
         return Response(content=mp3_bytes, media_type="audio/mpeg")
     if provider == "gemini":
-        if not gemini_client:
+        gemini = gemini_client
+        if not gemini:
             raise HTTPException(status_code=503, detail="Gemini not configured")
         effective_voice = voice_id if voice_id and voice_id != "default" else "Kore"
 
         def _synth_gemini():
-            return gemini_client.synthesize_wav(text, voice_name=effective_voice)
+            return gemini.synthesize_wav(text, voice_name=effective_voice)
 
         wav_bytes = await asyncio.to_thread(_synth_gemini)
         return Response(content=wav_bytes, media_type="audio/wav")
@@ -803,10 +843,12 @@ async def api_transcribe(request: Request):
         raise HTTPException(status_code=503, detail="No STT providers (Gemini/Gemma) configured")
     try:
         file = await request.body()
-        if gemma_client and provider == "gemma":
-            transcript = await gemma_client.transcribe(file, mime_type="audio/wav")
-        elif gemini_client:
-            transcript = await asyncio.to_thread(lambda: gemini_client.transcribe(file, mime_type="audio/wav"))
+        gemma = gemma_client
+        gemini = gemini_client
+        if gemma and provider == "gemma":
+            transcript = await gemma.transcribe(file, mime_type="audio/wav")
+        elif gemini:
+            transcript = await asyncio.to_thread(lambda: gemini.transcribe(file, mime_type="audio/wav"))
         else:
             raise HTTPException(status_code=503, detail=f"Provider '{provider}' not available")
         return {"success": True, "provider": provider, "transcript": transcript, "text": transcript}

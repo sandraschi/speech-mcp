@@ -49,7 +49,7 @@ def register_demo_tools(mcp: FastMCP):
     @mcp.tool()
     async def run_speech_demo(
         demo: Annotated[DemoName, Field(description="Demo name to execute.")],
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Execute a hardware-specific speech or capability demo script.

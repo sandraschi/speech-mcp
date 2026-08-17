@@ -1,10 +1,10 @@
+import asyncio
 import logging
 import os
 import subprocess
 import tempfile
 from typing import Annotated, Any
 
-import anyio
 import pyttsx3
 from elevenlabs.client import ElevenLabs
 from fastmcp import Context, FastMCP
@@ -18,8 +18,6 @@ async def _play_wav_file(path: str) -> None:
     """Play a WAV file via winsound (stdlib, zero dependencies)."""
     import winsound
 
-    import anyio
-
     if not os.path.exists(path):
         raise FileNotFoundError(f"Audio file not found: {path}")
 
@@ -27,7 +25,7 @@ async def _play_wav_file(path: str) -> None:
     def _play():
         winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_NODEFAULT)
 
-    await anyio.to_thread.run_sync(_play)
+    await asyncio.to_thread(_play)
 
 
 async def _play_mp3_bytes(data: bytes) -> None:
@@ -36,7 +34,7 @@ async def _play_mp3_bytes(data: bytes) -> None:
     tmp.write(data)
     tmp.close()
     try:
-        await anyio.to_thread.run_sync(
+        await asyncio.to_thread(
             lambda: subprocess.run(
                 ["wmplayer.exe", "/play", "/close", tmp.name],
                 check=False,
@@ -73,7 +71,7 @@ async def _hume_speak(
             with open(tmp_path, "wb") as f:
                 f.write(audio)
 
-        await anyio.to_thread.run_sync(_synth)
+        await asyncio.to_thread(_synth)
 
         if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
             return {"success": False, "error": "Hume returned empty audio"}
@@ -110,7 +108,7 @@ async def _elevenlabs_speak(eleven_client: ElevenLabs, text: str, voice_id: str)
             with open(tmp_path, "wb") as f:
                 f.write(audio)
 
-        await anyio.to_thread.run_sync(_synth)
+        await asyncio.to_thread(_synth)
 
         if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
             return {"success": False, "error": "ElevenLabs returned empty audio"}
@@ -146,7 +144,7 @@ def register_speech_tools(
     @mcp.tool()
     async def play_audio_file(
         path: Annotated[str, Field(description="Absolute path to the audio file.")],
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         DIAGNOSTIC TOOL: Play an arbitrary audio file on the system speaker.
@@ -162,11 +160,11 @@ def register_speech_tools(
         try:
             if ext == ".wav":
                 if ctx:
-                    ctx.info(f"Playing WAV: {path}")
+                    await ctx.info(f"Playing WAV: {path}")
                 await _play_wav_file(path)
             elif ext == ".mp3":
                 if ctx:
-                    ctx.info(f"Playing MP3: {path}")
+                    await ctx.info(f"Playing MP3: {path}")
                 # _play_mp3_bytes expects bytes, so read them
                 with open(path, "rb") as f:
                     content = f.read()
@@ -188,7 +186,7 @@ def register_speech_tools(
         description: Annotated[
             str | None, Field(description="Hume-only: prose style prompt driving Octave prosody.")
         ] = None,
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Synthesize speech and play it on the PC speaker.
@@ -225,7 +223,7 @@ def register_speech_tools(
                     engine.save_to_file(text, tmp_path)
                     engine.runAndWait()
 
-                await anyio.to_thread.run_sync(_synth)
+                await asyncio.to_thread(_synth)
 
                 if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
                     return {"success": False, "error": "pyttsx3 produced empty file"}
@@ -251,7 +249,8 @@ def register_speech_tools(
 
         # ── Gemini 3.1 Flash TTS ───────────────────────────────────────────────
         elif provider == "gemini":
-            if not gemini_client:
+            gemini = gemini_client
+            if not gemini:
                 return {
                     "success": False,
                     "error": "Gemini TTS not available — GOOGLE_API_KEY not set.",
@@ -264,11 +263,11 @@ def register_speech_tools(
                     tmp_path = tmp.name
 
                 def _synth_gemini():
-                    wav = gemini_client.synthesize_wav(text, voice_name=effective_voice)
+                    wav = gemini.synthesize_wav(text, voice_name=effective_voice)
                     with open(tmp_path, "wb") as f:
                         f.write(wav)
 
-                await anyio.to_thread.run_sync(_synth_gemini)
+                await asyncio.to_thread(_synth_gemini)
 
                 if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
                     return {"success": False, "error": "Gemini returned empty audio"}
@@ -295,16 +294,19 @@ def register_speech_tools(
 
         # ── Gemma 4 Native Local ──────────────────────────────────────────────
         elif provider == "gemma":
-            if not gemma_client:
+            gemma = gemma_client
+            if not gemma:
                 return {"success": False, "error": "Gemma provider not initialized"}
             try:
-                await gemma_client.synthesize_and_play(text, voice=voice_id)
+                played = await asyncio.to_thread(lambda: gemma.synthesize_and_play(text, voice=voice_id))
+                if not played:
+                    return {"success": False, "error": "Gemma/SAPI TTS failed"}
                 return {
                     "success": True,
-                    "provider": "Gemma 4 Native Local",
+                    "provider": "Gemma 4 (SAPI fallback)",
                     "voice": voice_id,
                     "status": "played",
-                    "note": "Native audio encoder pipeline used.",
+                    "note": "Gemma native audio not wired; used Windows SAPI5 fallback.",
                 }
             except Exception as e:
                 logger.exception("Gemma TTS failed")
@@ -333,7 +335,7 @@ def register_speech_tools(
     @mcp.tool()
     async def text_to_dialogue(
         lines: list[dict],
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Multi-voice dialogue synthesis via ElevenLabs — plays on the PC speaker.
@@ -362,6 +364,7 @@ def register_speech_tools(
 
         from elevenlabs import DialogueInput
 
+        el = eleven_client
         inputs = [DialogueInput(text=line["text"], voice_id=line["voice_id"]) for line in lines]
 
         tmp_path = None
@@ -371,7 +374,7 @@ def register_speech_tools(
 
             def _synth_dialogue():
                 audio = bytearray()
-                for chunk in eleven_client.text_to_dialogue.convert(
+                for chunk in el.text_to_dialogue.convert(
                     inputs=inputs,
                     output_format="mp3_44100_128",
                 ):
@@ -379,7 +382,7 @@ def register_speech_tools(
                 with open(tmp_path, "wb") as f:
                     f.write(audio)
 
-            await anyio.to_thread.run_sync(_synth_dialogue)
+            await asyncio.to_thread(_synth_dialogue)
 
             if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
                 return {"success": False, "error": "ElevenLabs dialogue returned empty audio"}
@@ -412,7 +415,7 @@ def register_speech_tools(
         audio_path: str | None = None,
         voice_id: str | None = None,
         language: str = "en",
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Manage voice clones across providers.
@@ -435,20 +438,21 @@ def register_speech_tools(
             await ctx.info(f"Voice management: {action} via {provider}")
 
         if provider == "elevenlabs":
-            if not eleven_client:
+            el = eleven_client
+            if not el:
                 return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
 
             if action == "list":
                 try:
-                    voices = await anyio.to_thread.run_sync(lambda: eleven_client.voices.get_all())
+                    voices = await asyncio.to_thread(lambda: el.voices.get_all())
                     return {
                         "success": True,
                         "provider": "ElevenLabs",
                         "voices": [
                             {"id": v.voice_id, "name": v.name, "category": getattr(v, "category", "unknown")}
-                            for v in voices.voices
+                            for v in getattr(voices, "voices", [])
                         ],
-                        "count": len(voices.voices),
+                        "count": len(getattr(voices, "voices", [])),
                     }
                 except Exception as e:
                     return {"success": False, "error": str(e)}
@@ -462,13 +466,13 @@ def register_speech_tools(
 
                     def _clone():
                         with open(audio_path, "rb") as f:
-                            return eleven_client.voices.ivc.create(
+                            return el.voices.ivc.create(
                                 name=name,
                                 files=[f],
                                 description=f"IVC clone from {os.path.basename(audio_path)}",
                             )
 
-                    result = await anyio.to_thread.run_sync(_clone)
+                    result = await asyncio.to_thread(_clone)
                     return {
                         "success": True,
                         "voice_id": result.voice_id,
@@ -483,7 +487,7 @@ def register_speech_tools(
                 if not voice_id:
                     return {"success": False, "error": "voice_id required for delete"}
                 try:
-                    await anyio.to_thread.run_sync(lambda: eleven_client.voices.delete(voice_id))
+                    await asyncio.to_thread(lambda: el.voices.delete(voice_id))
                     return {"success": True, "deleted": voice_id}
                 except Exception as e:
                     return {"success": False, "error": str(e)}
@@ -491,11 +495,12 @@ def register_speech_tools(
             return {"success": False, "error": f"Unknown action '{action}' for elevenlabs"}
 
         elif provider == "hume":
-            if not hume_client:
+            hume = hume_client
+            if not hume:
                 return {"success": False, "error": "HUME_API_KEY not configured"}
             if action == "list":
                 try:
-                    voices = await anyio.to_thread.run_sync(lambda: list(hume_client.tts.voices.list()))
+                    voices = await asyncio.to_thread(lambda: list(hume.tts.voices.list(provider="HUME_AI")))
                     return {
                         "success": True,
                         "provider": "Hume AI",

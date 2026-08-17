@@ -1,8 +1,6 @@
 import logging
 import os
 
-import httpx
-
 logger = logging.getLogger(__name__)
 
 
@@ -19,31 +17,31 @@ class GemmaProvider:
 
     async def transcribe(self, audio_bytes: bytes, mime_type: str = "audio/wav") -> str:
         """
-        Native STT via Gemma 4 Audio Encoder.
-        Bypasses traditional Whisper pipelines for direct token ingestion.
-        """
-        logger.info(f"Native transcription via Gemma 4 ({self.provider})")
+        STT via Gemma 4 Audio Encoder.
 
-        if self.provider == "ollama":
-            # 2026 Ollama API supports multimodal audio blocks
-            # Note: In a real 2026 implementation, audio_bytes would be encoded or sent as a file part
-            # For the prototype, we simulate the 'Native-First' bridge
-            try:
-                async with httpx.AsyncClient():
-                    # Simulation block: In production, this hits the Gemma 4 /v1/audio/transcriptions endpoint
-                    # which is backed by the native conformer encoder.
-                    return "[Gemma 4 Prototype Transcript: The native audio encoder is active.]"
-            except Exception as e:
-                logger.error(f"Gemma STT failed: {e}")
-                raise ValueError(f"Gemma STT failed: {e}") from e
+        Gemma 4 native audio input is not wired in yet - this raises so callers
+        fall back to funasr/gemini instead of receiving a fabricated transcript.
+        """
+        raise NotImplementedError("Gemma 4 native audio input is not wired. Use provider='funasr' (local) or 'gemini'.")
 
-    def synthesize_and_play(self, text: str, voice: str = "default"):
+    def synthesize_and_play(self, text: str, voice: str = "default") -> bool:
         """
-        Synthesize speech using Gemma 4 native audio generation or local fallback.
+        Synthesize speech on the server speaker.
+
+        Gemma 4 native audio output is not wired in yet - this falls back to
+        Windows SAPI5 so the call actually produces sound (declared fallback).
         """
-        logger.info(f"Synthesizing speech via Gemma 4 for: {text[:20]}...")
-        # Prototype implementation: Gemma 4 output generation (Audio mod)
-        pass
+        logger.info("Gemma provider: native audio not wired, using Windows SAPI5 fallback")
+        try:
+            import pyttsx3
+
+            engine = pyttsx3.init()
+            engine.say(text)
+            engine.runAndWait()
+            return True
+        except Exception:
+            logger.exception("Gemma/SAPI fallback TTS failed")
+            return False
 
     @property
     def voices(self) -> list[str]:

@@ -48,7 +48,8 @@ def create_text_embedding(
                 cache_dir=cache_dir,
                 providers=["CUDAExecutionProvider"],
             )
-            providers = model.model.model.get_providers()
+            onnx_session = getattr(getattr(model, "model", None), "model", None)
+            providers = onnx_session.get_providers() if onnx_session else []
             if "CUDAExecutionProvider" in providers:
                 logger.info("FastEmbed providers: %s", providers)
                 return model, "cuda", batch_gpu
@@ -57,5 +58,6 @@ def create_text_embedding(
             logger.warning("GPU embed init failed (%s); using CPU", exc)
 
     model = TextEmbedding(model_name=model_name, cache_dir=cache_dir)
-    logger.info("FastEmbed providers: %s", model.model.model.get_providers())
+    onnx_session = getattr(getattr(model, "model", None), "model", None)
+    logger.info("FastEmbed providers: %s", onnx_session.get_providers() if onnx_session else "unknown")
     return model, "cpu", batch_cpu

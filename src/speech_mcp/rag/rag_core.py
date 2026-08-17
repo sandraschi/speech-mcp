@@ -58,7 +58,7 @@ class BaseVectorStore:
                 entry["source"] = doc["source"]
             data.append(entry)
 
-        if overwrite or self.table_name not in self.db.list_tables():
+        if overwrite or self.table_name not in list(self.db.list_tables()):
             self.db.create_table(self.table_name, data=data, mode="overwrite")
         else:
             tbl = self.db.open_table(self.table_name)
@@ -68,8 +68,8 @@ class BaseVectorStore:
 
     def search(self, query: str, limit: int = 5, where: str | None = None) -> list[dict[str, Any]]:
         """Semantic search with optional pre-filter."""
-        tables = self.db.list_tables()
-        if self.table_name not in tables and (hasattr(tables, "tables") and self.table_name not in tables.tables):
+        tables = list(self.db.list_tables())
+        if self.table_name not in tables:
             logger.warning("Table '%s' not found.", self.table_name)
             return []
 
@@ -83,8 +83,8 @@ class BaseVectorStore:
         return search_req.to_arrow().to_pylist()
 
     def count_rows(self) -> int:
-        tables = self.db.list_tables()
-        if self.table_name not in tables and (hasattr(tables, "tables") and self.table_name not in tables.tables):
+        tables = list(self.db.list_tables())
+        if self.table_name not in tables:
             return 0
         tbl = self.db.open_table(self.table_name)
         return tbl.count_rows()

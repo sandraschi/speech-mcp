@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Annotated, Any
 
@@ -24,7 +25,7 @@ def register_stt_tools(
         language: Annotated[
             str, Field(description="Target language code (en, zh, ja, de, …) or 'auto' for detection.")
         ] = "auto",
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Transcribe a local audio file with speaker labels, timestamps, and punctuation.
@@ -61,27 +62,25 @@ def register_stt_tools(
             return await funasr_provider.transcribe_file(file_path, language=language)
 
         if provider == "gemini":
-            if not gemini_client:
+            gemini = gemini_client
+            if not gemini:
                 return {"success": False, "error": "GOOGLE_API_KEY not configured"}
             try:
-                import anyio
-
                 with open(file_path, "rb") as f:
                     audio_bytes = f.read()
-                text = await anyio.to_thread.run_sync(
-                    lambda: gemini_client.transcribe(audio_bytes, mime_type="audio/wav")
-                )
+                text = await asyncio.to_thread(lambda: gemini.transcribe(audio_bytes, mime_type="audio/wav"))
                 return {"success": True, "provider": "gemini", "text": text, "segments": [], "formatted": text}
             except Exception as exc:
                 return {"success": False, "error": str(exc), "provider": "gemini"}
 
         if provider == "gemma":
-            if not gemma_client:
+            gemma = gemma_client
+            if not gemma:
                 return {"success": False, "error": "Gemma provider not initialized"}
             try:
                 with open(file_path, "rb") as f:
                     audio_bytes = f.read()
-                text = await gemma_client.transcribe(audio_bytes, mime_type="audio/wav")
+                text = await asyncio.to_thread(lambda: gemma.transcribe(audio_bytes, mime_type="audio/wav"))
                 return {"success": True, "provider": "gemma", "text": text, "segments": [], "formatted": text}
             except Exception as exc:
                 return {"success": False, "error": str(exc), "provider": "gemma"}
@@ -98,7 +97,7 @@ def register_stt_tools(
         language: Annotated[str, Field(description="Language code or 'auto'.")] = "auto",
         sample_rate: Annotated[int, Field(description="Input sample rate in Hz (informational).")] = 16000,
         mime_type: Annotated[str, Field(description="MIME type of the chunk, e.g. audio/wav.")] = "audio/wav",
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Stateless transcription of a single audio fragment from a stream bridge.
@@ -138,14 +137,11 @@ def register_stt_tools(
                 return {"success": False, "error": f"Invalid base64: {exc}"}
 
             if provider == "gemini":
-                if not gemini_client:
+                gemini = gemini_client
+                if not gemini:
                     return {"success": False, "error": "GOOGLE_API_KEY not configured"}
                 try:
-                    import anyio
-
-                    text = await anyio.to_thread.run_sync(
-                        lambda: gemini_client.transcribe(audio_bytes, mime_type=mime_type)
-                    )
+                    text = await asyncio.to_thread(lambda: gemini.transcribe(audio_bytes, mime_type=mime_type))
                     return {"success": True, "provider": "gemini", "text": text, "segments": [], "formatted": text}
                 except Exception as exc:
                     return {"success": False, "error": str(exc)}

@@ -16,7 +16,7 @@ def _local_proxy_url() -> str:
 def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
     @mcp.tool()
-    async def start_evi_session(ctx: Context = None) -> dict:
+    async def start_evi_session(ctx: Context | None = None) -> dict:
         """
         Initializes a real-time Empathic Voice Interface session.
 
@@ -120,7 +120,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
     @mcp.tool()
     async def agentic_conversation_workflow(
         goal: Annotated[str, Field(description="High-level objective for the conversational mission.")],
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Run a SEP-1577 compliant autonomous conversation mission.
@@ -135,16 +135,19 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
         if not ctx:
             return {"success": False, "error": "Context required for agentic workflow"}
 
-        # SOTA: Hardening via Elicitation if goal is too short/vague
+        # Hardening via Elicitation if goal is too short/vague
         if len(goal.split()) < 3:
             await ctx.info("Goal appears ambiguous. Requesting clarification.")
+            from fastmcp.server.elicitation import AcceptedElicitation
+
             prompt_text = (
                 f"Your goal '{goal}' is a bit brief. Could you provide more detail on what you'd like to achieve?"
             )
-            goal = await ctx.elicit(
-                prompt=prompt_text,
-                title="Goal Refinement",
-            )
+            elicited = await ctx.elicit(prompt_text, response_title="Goal Refinement")  # type: ignore[call-overload]
+            if isinstance(elicited, AcceptedElicitation) and elicited.data:
+                goal = str(elicited.data)
+            else:
+                return {"success": False, "error": "Goal refinement declined or cancelled"}
 
         await ctx.info(f"Starting agentic mission: {goal}")
 

@@ -53,7 +53,7 @@ def register_utility_tools(mcp: FastMCP):
             str | int | None, Field(description="Duration in seconds for timers, time string for alarms.")
         ] = None,
         label: Annotated[str, Field(description="Human-readable label.")] = "Default",
-        ctx: Context = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Manage timers, alarms, and domestic utility queries (Alexa pattern).
