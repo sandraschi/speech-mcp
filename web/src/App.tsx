@@ -16,6 +16,7 @@ import SkillsPage from "./components/SkillsPage";
 import { SpeechToText } from "./components/SpeechToText";
 import SystemLogs from "./components/SystemLogs";
 import ToolsPage from "./components/ToolsPage";
+import TranscribePage from "./components/TranscribePage";
 import VoiceChat from "./components/VoiceChat";
 import VoicesPage from "./components/VoicesPage";
 import useZoom from "./lib/use-zoom";
@@ -235,6 +236,8 @@ function App() {
           <ServiceLinkage />
         ) : activePage === "stt" ? (
           <SpeechToText />
+        ) : activePage === "transcribe" ? (
+          <TranscribePage />
         ) : activePage === "history" || activePage === "analysis" ? (
           <HistoryPage />
         ) : activePage === "settings" ? (

@@ -17,6 +17,7 @@ export const SpeechToText: React.FC = () => {
   const { health } = useBackend();
   const [isPending, setIsPending] = useState(false);
   const [keyword, setKeyword] = useState("hey_jarvis");
+  const [sleepKeyword, setSleepKeyword] = useState("hey_mycroft");
   const [sensitivity, setSensitivity] = useState(0.5);
   const [sttSensitivity, setSttSensitivity] = useState(0.5);
   const [logs, setLogs] = useState<
@@ -57,7 +58,12 @@ export const SpeechToText: React.FC = () => {
     addLog(`Requesting wake word ${action}...`, "info");
 
     try {
-      const res = await controlWakeWord(action, keyword, sensitivity);
+      const res = await controlWakeWord(
+        action,
+        keyword,
+        sensitivity,
+        sleepKeyword,
+      );
       if (res.success) {
         addLog(
           `Wake word listener ${res.status === "listening" ? "started" : "stopped"}.`,
@@ -82,7 +88,14 @@ export const SpeechToText: React.FC = () => {
     }
   }, [isActive, addLog]);
 
-  const KEYWORDS = ["hey_jarvis", "hey_mycroft"];
+  const KEYWORDS = [
+    "alexa",
+    "hey_jarvis",
+    "hey_mycroft",
+    "hey_rhasspy",
+    "timers",
+    "weather",
+  ];
 
   // ---- Microphone test ----
   useEffect(() => {
@@ -281,40 +294,66 @@ export const SpeechToText: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             <div className="space-y-4">
-              <label
-                htmlFor="wake-keyword-selector"
-                className="text-xs font-black uppercase tracking-widest text-text-secondary flex justify-between"
-              >
-                Wake word
+              <span className="text-xs font-black uppercase tracking-widest text-text-secondary flex justify-between">
+                Wake words
                 <span className="text-accent-purple font-mono lowercase">
                   openWakeWord
                 </span>
-              </label>
-              <div className="grid grid-cols-2 gap-2 max-h-[220px] overflow-y-auto custom-scrollbar pr-2">
-                {KEYWORDS.map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setKeyword(k)}
-                    className={`
-                      px-4 py-3 rounded-xl text-xs font-bold transition-all border
-                      ${
-                        keyword === k
-                          ? "bg-accent-purple/20 border-accent-purple text-white"
-                          : "bg-white/[0.03] border-white/5 text-text-secondary hover:bg-white/5 hover:text-white"
-                      }
-                    `}
-                  >
-                    {k}
-                  </button>
-                ))}
+              </span>
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <span className="text-xs font-black uppercase tracking-widest text-text-secondary">
+                    Start word
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+                    {KEYWORDS.map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setKeyword(k)}
+                        className={`
+                          px-4 py-3 rounded-xl text-xs font-bold transition-all border
+                          ${
+                            keyword === k
+                              ? "bg-accent-purple/20 border-accent-purple text-white"
+                              : "bg-white/[0.03] border-white/5 text-text-secondary hover:bg-white/5 hover:text-white"
+                          }
+                        `}
+                      >
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <span className="text-xs font-black uppercase tracking-widest text-text-secondary">
+                    Stop word
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-2">
+                    {KEYWORDS.map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setSleepKeyword(k)}
+                        className={`
+                          px-4 py-3 rounded-xl text-xs font-bold transition-all border
+                          ${
+                            sleepKeyword === k
+                              ? "bg-accent-purple/20 border-accent-purple text-white"
+                              : "bg-white/[0.03] border-white/5 text-text-secondary hover:bg-white/5 hover:text-white"
+                          }
+                        `}
+                      >
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               <p className="text-[11px] text-text-secondary opacity-70 leading-relaxed">
-                <span className="text-white/70">hey_jarvis</span> starts the
-                listener, <span className="text-white/70">hey_mycroft</span>{" "}
-                stops it. openWakeWord also ships pre-trained alexa, timers,
-                weather and hey_rhasspy models, but a fully custom wake word
-                requires training your own model — a separate workflow.
+                All six are pre-trained openWakeWord models (downloaded on first
+                use). Say the start word to wake, the stop word to sleep. A
+                custom word needs a trained model — a separate workflow.
               </p>
             </div>
 

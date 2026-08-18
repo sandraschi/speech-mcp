@@ -211,6 +211,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             }}
           />
           <NavItem
+            icon="🎬"
+            label="Transcribe"
+            active={activePage === "transcribe"}
+            collapsed={isCollapsed}
+            onClick={() => {
+              onNavigate("transcribe");
+              setMobileOpen(false);
+            }}
+          />
+          <NavItem
             icon="🔧"
             label="Tools"
             active={activePage === "tools"}
@@ -471,6 +481,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             collapsed={false}
             onClick={() => {
               onNavigate("stt");
+              setMobileOpen(false);
+            }}
+          />
+          <NavItem
+            icon="🎬"
+            label="Transcribe"
+            active={activePage === "transcribe"}
+            collapsed={false}
+            onClick={() => {
+              onNavigate("transcribe");
               setMobileOpen(false);
             }}
           />
