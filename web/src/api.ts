@@ -72,14 +72,78 @@ export async function runDemo(
 
 export async function controlWakeWord(
   action: string,
-  keyword = "computer",
+  keyword = "hey_jarvis",
   sensitivity = 0.5,
+  sleepKeyword?: string,
 ): Promise<{ success: boolean; error?: string; status?: string }> {
   const res = await fetch(`${BACKEND}/api/v1/wake_word`, {
     method: "POST",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ action, keyword, sensitivity }),
+    body: JSON.stringify({
+      action,
+      keyword,
+      sleep_keyword: sleepKeyword,
+      sensitivity,
+    }),
   });
+  return res.json();
+}
+
+export interface RuntimeStatus {
+  funasr: string;
+  sherpa: string;
+  gpu?: { available: boolean; name?: string; device?: string; torch?: string };
+}
+
+export async function getRuntime(): Promise<RuntimeStatus> {
+  const res = await fetch(`${BACKEND}/api/v1/runtime`, {
+    headers: authHeaders(),
+  });
+  return res.json();
+}
+
+export async function setRuntime(
+  target: "funasr" | "sherpa",
+  device: string,
+): Promise<{ success: boolean; error?: string; device?: string }> {
+  const res = await fetch(`${BACKEND}/api/v1/runtime`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ target, device }),
+  });
+  return res.json();
+}
+
+export interface TranscriptSegment {
+  start_s: number;
+  end_s: number;
+  text: string;
+  speaker?: number;
+}
+
+export interface BatchTranscribeResult {
+  filename: string;
+  success: boolean;
+  error?: string;
+  text: string;
+  segments: TranscriptSegment[];
+}
+
+export async function transcribeBatch(
+  files: File[],
+  language = "auto",
+): Promise<{
+  success: boolean;
+  results: BatchTranscribeResult[];
+  count: number;
+}> {
+  const form = new FormData();
+  for (const f of files) form.append("files", f, f.name);
+  const res = await fetch(
+    `${BACKEND}/api/v1/transcribe/batch?language=${encodeURIComponent(language)}`,
+    { method: "POST", headers: authHeaders(), body: form },
+  );
+  if (!res.ok) throw new Error(`Batch transcription failed: ${res.statusText}`);
   return res.json();
 }
 
@@ -102,6 +166,7 @@ export interface HealthData {
     gemini: boolean;
     gemma?: boolean;
     funasr?: boolean;
+    sherpa_streaming?: boolean;
     windows: boolean;
   };
 }
