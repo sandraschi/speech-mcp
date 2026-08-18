@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 import requests
@@ -43,24 +44,46 @@ class LocalLLMProvider:
 
         return []
 
-    async def generate(self, provider: str, base_url: str, model: str, prompt: str, system: str = "") -> str:
+    async def generate(
+        self,
+        provider: str,
+        base_url: str,
+        model: str,
+        prompt: str,
+        system: str = "",
+        timeout: float = 30.0,
+        options: dict | None = None,
+    ) -> str:
         """
         Asynchronously generates a response from the local LLM.
         Grounded context should be injected into the prompt before calling this.
         """
         try:
-            return await asyncio.to_thread(lambda: self._generate_sync(provider, base_url, model, prompt, system))
+            return await asyncio.to_thread(
+                lambda: self._generate_sync(provider, base_url, model, prompt, system, timeout, options)
+            )
         except Exception as e:
             logger.error(f"Local generation failed ({provider}): {e}")
             return f"Generation failed: {e}"
 
-    def _generate_sync(self, provider: str, base_url: str, model: str, prompt: str, system: str) -> str:
+    def _generate_sync(
+        self,
+        provider: str,
+        base_url: str,
+        model: str,
+        prompt: str,
+        system: str,
+        timeout: float,
+        options: dict | None = None,
+    ) -> str:
         """Synchronous generation logic executed in a thread pool."""
         if provider == "ollama":
             # Ollama API: POST /api/generate
             url = f"{base_url.rstrip('/')}/api/generate"
-            payload = {"model": model, "prompt": prompt, "system": system, "stream": False}
-            resp = requests.post(url, json=payload, timeout=30.0)
+            payload: dict = {"model": model, "prompt": prompt, "system": system, "stream": False}
+            if options:
+                payload["options"] = options
+            resp = requests.post(url, json=payload, timeout=timeout)
             resp.raise_for_status()
             return resp.json().get("response", "")
 
@@ -73,12 +96,71 @@ class LocalLLMProvider:
             messages.append({"role": "user", "content": prompt})
 
             payload = {"model": model, "messages": messages, "temperature": 0.7, "stream": False}
-            resp = requests.post(url, json=payload, timeout=30.0)
+            resp = requests.post(url, json=payload, timeout=timeout)
             resp.raise_for_status()
             data = resp.json()
             return data["choices"][0]["message"]["content"]
 
         return "Unsupported provider for generation."
+
+    async def generate_stream_capped(
+        self,
+        provider: str,
+        base_url: str,
+        model: str,
+        prompt: str,
+        system: str = "",
+        max_tokens: int = 2000,
+        timeout: float = 300.0,
+    ) -> str:
+        """Streaming Ollama generation with a hard client-side token cap.
+
+        Reads tokens until `done` or `max_tokens`, whichever comes first, then
+        disconnects. A runaway model can never hang the caller past the cap.
+        Returns the accumulated text (may be truncated mid-JSON if capped).
+        """
+        if provider != "ollama":
+            return await self.generate(provider, base_url, model, prompt, system, timeout)
+        try:
+            return await asyncio.to_thread(
+                lambda: self._generate_stream_capped_sync(base_url, model, prompt, system, max_tokens, timeout)
+            )
+        except Exception as e:
+            logger.error(f"Local streaming generation failed (ollama): {e}")
+            return f"Generation failed: {e}"
+
+    def _generate_stream_capped_sync(
+        self,
+        base_url: str,
+        model: str,
+        prompt: str,
+        system: str,
+        max_tokens: int,
+        timeout: float,
+    ) -> str:
+        url = f"{base_url.rstrip('/')}/api/generate"
+        payload = {"model": model, "prompt": prompt, "system": system, "stream": True}
+        resp = requests.post(url, json=payload, timeout=timeout, stream=True)
+        resp.raise_for_status()
+        chunks: list[str] = []
+        count = 0
+        try:
+            for line in resp.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except ValueError:
+                    continue
+                token = data.get("response", "") or ""
+                if token:
+                    chunks.append(token)
+                    count += 1
+                if data.get("done") or count >= max_tokens:
+                    break
+        finally:
+            resp.close()
+        return "".join(chunks)
 
 
 local_llm_provider = LocalLLMProvider()
