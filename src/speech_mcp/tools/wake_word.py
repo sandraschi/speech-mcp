@@ -40,10 +40,11 @@ def _run_listener(
     keyword: str,
     sensitivity: float,
     on_detection: Callable[[str], None],
+    sleep_keyword: str | None = None,
 ) -> None:
     """
     Blocking mic capture + openWakeWord processing loop.
-    Runs in a daemon thread. Stops when _stop_event is set.
+    Runs in a daemon thread. Stops when _stop_event is set or the sleep word fires.
     """
     import pyaudio
 
@@ -52,12 +53,17 @@ def _run_listener(
     stream = None
 
     try:
+        models = [keyword]
+        if sleep_keyword and sleep_keyword.lower() != keyword.lower():
+            models.append(sleep_keyword)
+
         # Pre-download models if missing
-        openwakeword.utils.download_models(models=[keyword])  # type: ignore[attr-defined]
+        for model in models:
+            openwakeword.utils.download_models(models=[model])  # type: ignore[attr-defined]
 
         # Initialize openWakeWord Model
         # vad_threshold=0.5 helps filter out non-speech noise
-        oww_model = Model(wakeword_models=[keyword], vad_threshold=0.5, inference_framework="onnx")
+        oww_model = Model(wakeword_models=models, vad_threshold=0.5, inference_framework="onnx")
 
         CHUNK = 1280  # 80ms at 16kHz
         pa = pyaudio.PyAudio()
@@ -70,8 +76,9 @@ def _run_listener(
         )
 
         logger.info(
-            "Wake word listener started (openWakeWord): keyword='%s' sensitivity=%.2f",
+            "Wake word listener started (openWakeWord): keyword='%s' sleep='%s' sensitivity=%.2f",
             keyword,
+            sleep_keyword or "-",
             sensitivity,
         )
 
@@ -85,10 +92,23 @@ def _run_listener(
 
             # Check if any model score exceeds the sensitivity (threshold)
             for name, score in scores.items():
-                if score >= sensitivity:
-                    logger.info("Wake word detected: '%s' (score: %.4f)", name, score)
-                    on_detection(name)
-                    oww_model.reset()  # Reset buffer to prevent immediate double-trigger
+                if score < sensitivity:
+                    continue
+                if sleep_keyword and name == sleep_keyword:
+                    logger.info("Sleep word detected: '%s' - stopping listener", name)
+                    _stop_event.set()
+                    try:
+                        import pyttsx3
+
+                        engine = pyttsx3.init()
+                        engine.say("Going to sleep.")
+                        engine.runAndWait()
+                    except Exception:
+                        pass
+                    return
+                logger.info("Wake word detected: '%s' (score: %.4f)", name, score)
+                on_detection(name)
+                oww_model.reset()  # Reset buffer to prevent immediate double-trigger
 
     except Exception as e:
         logger.error("Wake word listener error: %s", e)
@@ -109,6 +129,10 @@ def register_wake_word_tools(mcp: FastMCP) -> None:
         keyword: Annotated[
             str, Field(description="Wake word model: alexa, hey_jarvis, hey_mycroft, hey_rhasspy, timers, weather")
         ] = "hey_jarvis",
+        sleep_keyword: Annotated[
+            str | None,
+            Field(description="Optional stop word (stock models; e.g. hey_mycroft) that stops the listener."),
+        ] = None,
         sensitivity: Annotated[float, Field(description="Detection threshold 0.0-1.0.", ge=0.0, le=1.0)] = 0.5,
         action: Annotated[str, Field(description="Operation: start, stop, or status")] = "start",
     ) -> dict:
@@ -118,22 +142,27 @@ def register_wake_word_tools(mcp: FastMCP) -> None:
         When a wake word is detected, a log entry is written and a notification
         is sent via ctx.info. The listener runs as a background daemon thread.
 
-        Built-in keyword options: 'alexa', 'hey_jarvis', 'hey_mycroft', 'hey_rhasspy', 'timers', 'weather'.
+        Stock models (pre-trained, downloaded on first use): alexa, hey_jarvis,
+        hey_mycroft, hey_rhasspy, timers, weather. A custom wake word needs a
+        trained model (separate workflow).
 
         ## Return Format
         {"success": bool, "status": str, "engine": str, "keyword"?: str, "listening"?: bool}
 
         ## Examples
-        configure_local_wake_word(keyword="hey_jarvis", action="start")
+        configure_local_wake_word(keyword="hey_jarvis", sleep_keyword="hey_mycroft", action="start")
         configure_local_wake_word(action="status")
         configure_local_wake_word(action="stop")
         """
-        return await wake_word_configure(ctx=ctx, keyword=keyword, sensitivity=sensitivity, action=action)
+        return await wake_word_configure(
+            ctx=ctx, keyword=keyword, sleep_keyword=sleep_keyword, sensitivity=sensitivity, action=action
+        )
 
 
 async def wake_word_configure(
     ctx: Context | None = None,
     keyword: str = "hey_jarvis",
+    sleep_keyword: str | None = None,
     sensitivity: float = 0.5,
     action: str = "start",
 ) -> dict:
@@ -209,7 +238,7 @@ async def wake_word_configure(
         else:
             _listener_thread = threading.Thread(
                 target=_run_listener,
-                args=(wake_kw, sensitivity, _on_detection),
+                args=(wake_kw, sensitivity, _on_detection, sleep_keyword),
                 daemon=True,
                 name=f"oww-{wake_kw}",
             )
@@ -225,14 +254,19 @@ async def wake_word_configure(
     else:
         logger.info("Wake word listener started: '%s' (threshold %s). %s", wake_kw, sensitivity, note)
 
+    stop_with = "configure_local_wake_word action='stop'"
+    if sleep_keyword:
+        stop_with += f' or say "{sleep_keyword}"'
+
     return {
         "success": True,
         "status": "listening",
         "engine": "openWakeWord",
         "keyword": wake_kw,
+        "sleep_keyword": sleep_keyword,
         "threshold": sensitivity,
         "fleet_delegate": fleet_mode,
         "router_url": router_url() if fleet_mode else None,
         "note": note,
-        "stop_with": "configure_local_wake_word action='stop'",
+        "stop_with": stop_with,
     }

@@ -93,3 +93,12 @@ markers = [
 "scripts/*" = ["B007", "S310", "S311", "S113", "S602", "S603", "S607", "T201"]
 "tests/*" = ["T201"]
 "tests/live/*" = ["T201"]
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+torchaudio = { index = "pytorch-cu126" }
+torchcodec = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
