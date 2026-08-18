@@ -1,0 +1,49 @@
+name: release-notify
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Summarize release
+        id: sum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          PREV=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "none")
+          COUNT=$(git rev-list --count "${PREV}..${TAG}" 2>/dev/null || echo 0)
+          {
+            echo "tag=$TAG"
+            echo "prev=$PREV"
+            echo "count=$COUNT"
+            echo "title=${{ github.event.release.name }}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK_URL not set - skipping Discord post"
+            exit 0
+          fi
+          jq -n \
+            --arg r "${{ github.event.repository.name }}" \
+            --arg t "${{ steps.sum.outputs.tag }}" \
+            --arg p "${{ steps.sum.outputs.prev }}" \
+            --arg c "${{ steps.sum.outputs.count }}" \
+            --arg ti "${{ steps.sum.outputs.title }}" \
+            --arg u "${{ github.event.release.html_url }}" \
+            '{embeds:[{title:("Release " + $r + " " + $t), description:($ti + "\n\nCommits since " + $p + ": " + $c + "\n" + $u), color: 15973907}]}' \
+            | curl -sS -H "Content-Type: application/json" -d @- "$WEBHOOK"
