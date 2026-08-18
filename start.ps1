@@ -14,4 +14,8 @@ if (-not (Test-Path -LiteralPath $webStart)) {
     exit 1
 }
 & $webStart @PSBoundParameters
-exit $LASTEXITCODE
+# The fleet engine calls `exit 1` internally on real failures (those terminate
+# the process before this line). On the success path $LASTEXITCODE can hold a
+# stale code leaked by the port-clearing taskkill, making the launcher report
+# failure and close the console after a healthy start - so exit 0 here.
+exit 0
