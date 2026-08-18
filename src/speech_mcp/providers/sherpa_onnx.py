@@ -184,8 +184,51 @@ class SherpaStreamingASR:
         if provider:
             recognizer_cfg["provider"] = provider
 
+        self._provider = provider or "cpu"
         self.recognizer = sherpa_onnx.OnlineRecognizer.from_transducer(**recognizer_cfg)
         self.reset()
+
+    def set_device(self, provider: str | None) -> str:
+        """Switch the onnxruntime execution provider and rebuild the recognizer."""
+        import sherpa_onnx
+
+        new_provider = (provider or "cpu").strip().lower()
+        if new_provider in ("cuda", "cuda:0"):
+            new_provider = "cuda"
+        elif new_provider in ("cpu", ""):
+            new_provider = "cpu"
+        else:
+            raise ValueError(f"sherpa device must be 'cpu' or 'cuda', got '{new_provider}'")
+
+        if new_provider == self._provider and self.recognizer is not None:
+            return self._provider
+
+        _ensure_onnxruntime_dll()
+        spec = resolve_model_files(self._dir)
+        recognizer_cfg: dict = dict(
+            tokens=spec.tokens,
+            encoder=spec.encoder,
+            decoder=spec.decoder,
+            joiner=spec.joiner,
+            num_threads=2,
+            sample_rate=SHERPA_SAMPLE_RATE,
+            feature_dim=80,
+            decoding_method="greedy_search",
+            enable_endpoint_detection=True,
+        )
+        if spec.bpe_vocab:
+            recognizer_cfg["bpe_vocab"] = spec.bpe_vocab
+        if new_provider == "cuda":
+            recognizer_cfg["provider"] = "cuda"
+        self._provider = new_provider
+        self.recognizer = sherpa_onnx.OnlineRecognizer.from_transducer(**recognizer_cfg)
+        self.reset()
+        logger.info("sherpa-onnx device switched to %s", new_provider)
+        return self._provider
+
+    @property
+    def device(self) -> str:
+        return self._provider
 
     def reset(self) -> None:
         self.stream = self.recognizer.create_stream()
