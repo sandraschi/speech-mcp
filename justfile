@@ -227,6 +227,9 @@ fix-web:
 # Run mock-based test suite (suitable for GitHub CI)
 test:
     Set-Location '{{justfile_directory()}}'
+    # BUG-026 guard: prove pytest imports YOUR source, not a stale site-packages copy.
+    # Exit 1 -> `uv pip install -e .` then re-run.
+    pwsh -NoProfile -File 'D:\Dev\repos\mcp-central-docs\scripts\check-editable-install.ps1' -RepoRoot (Get-Location).Path
     uv run pytest tests/ -v -m "not live"
 
 # Run high-fidelity audio integration tests (Local only, produces sound)
