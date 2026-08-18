@@ -18,9 +18,11 @@ from elevenlabs.client import ElevenLabs
 from fastapi import (
     Depends,
     FastAPI,
+    File,
     HTTPException,
     Request,
     Response,
+    UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
@@ -41,6 +43,8 @@ from speech_mcp.tools.agentic import register_agentic_tools
 from speech_mcp.tools.demos import DemoName, register_demo_tools
 from speech_mcp.tools.monitoring import register_monitoring_tools
 from speech_mcp.tools.rag import register_rag_tools
+from speech_mcp.tools.revise import register_revise_tools
+from speech_mcp.tools.runtime import register_runtime_tools
 from speech_mcp.tools.safety import register_safety_tools
 from speech_mcp.tools.speech import register_speech_tools
 from speech_mcp.tools.streaming_asr import register_streaming_asr_tools
@@ -131,9 +135,25 @@ def _gpu_info() -> dict:
 
 
 def _sherpa_device() -> str:
-    if SHERPA_PROVIDER:
-        return SHERPA_PROVIDER
-    return "cpu (onnxruntime default)"
+    try:
+        from speech_mcp.runtime_config import sherpa_device as _sd
+
+        return _sd()
+    except Exception:
+        return "cpu"
+
+
+def funasr_device_runtime() -> str:
+    try:
+        from speech_mcp.runtime_config import funasr_device as _fd
+
+        return _fd()
+    except Exception:
+        return FUNASR_DEVICE
+
+
+def sherpa_device_runtime() -> str:
+    return _sherpa_device()
 
 
 def _ort_providers() -> list[str]:
@@ -372,6 +392,8 @@ register_ui_tools(
     },
 )
 register_streaming_asr_tools(mcp, sherpa_asr)
+register_runtime_tools(mcp, sherpa_asr)
+register_revise_tools(mcp)
 register_demo_tools(mcp)
 register_wake_word_tools(mcp)
 
@@ -417,6 +439,37 @@ class TTSRequest(BaseModel):
 
 class AgenticRequest(BaseModel):
     goal: str
+
+
+class SubtitleReviseRequest(BaseModel):
+    srt: str = ""
+    language: str = "ja"
+    series: str = ""
+    glossary: str = ""
+
+
+class TranscriptCreateRequest(BaseModel):
+    srt: str
+    series: str = ""
+    season: int | None = None
+    episode: int | None = None
+    title: str = ""
+    source: str = "upload"
+    source_media_key: str = ""
+    language: str = "ja"
+
+
+class TranscriptStatusRequest(BaseModel):
+    status: str
+
+
+class PlexTranscribeRequest(BaseModel):
+    media_key: str
+    plex_mcp_url: str = "http://127.0.0.1:10740"
+    series: str = ""
+    season: int | None = None
+    episode: int | None = None
+    language: str = "ja"
 
 
 class AskRequest(BaseModel):
@@ -507,13 +560,13 @@ async def health_check():
         "devices": {
             "funasr": {
                 "configured": bool(funasr_provider),
-                "device": FUNASR_DEVICE,
+                "device": funasr_device_runtime(),
                 "cuda_available": gpu.get("available", False),
                 "loaded": bool(funasr_provider and getattr(funasr_provider, "_model", None) is not None),
             },
             "sherpa_streaming": {
                 "configured": bool(sherpa_asr),
-                "device": _sherpa_device(),
+                "device": sherpa_device_runtime(),
                 "lang": SHERPA_ASR_LANG if sherpa_asr else None,
                 "onnxruntime_providers": _ort_providers(),
                 "barge_in": bool(getattr(sherpa_asr, "_barge_in", None)),
@@ -610,13 +663,13 @@ async def api_diagnostics():
         "devices": {
             "funasr": {
                 "configured": bool(funasr_provider),
-                "device": FUNASR_DEVICE,
+                "device": funasr_device_runtime(),
                 "cuda_available": _gpu_info().get("available", False),
                 "loaded": bool(funasr_provider and getattr(funasr_provider, "_model", None) is not None),
             },
             "sherpa_streaming": {
                 "configured": bool(sherpa_asr),
-                "device": _sherpa_device(),
+                "device": sherpa_device_runtime(),
                 "lang": SHERPA_ASR_LANG if sherpa_asr else None,
                 "onnxruntime_providers": _ort_providers(),
                 "barge_in": bool(getattr(sherpa_asr, "_barge_in", None)),
@@ -987,6 +1040,281 @@ async def api_transcribe(request: Request):
     except Exception as e:
         logger.exception("API transcription failed")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+def _segments_to_srt(segments: list[dict]) -> str:
+    def _ts(seconds: float) -> str:
+        ms = round(seconds * 1000)
+        h, rem = divmod(ms, 3600000)
+        m, rem = divmod(rem, 60000)
+        s, ms = divmod(rem, 1000)
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+    blocks: list[str] = []
+    for i, seg in enumerate(segments, 1):
+        blocks.append(f"{i}\n{_ts(seg['start_s'])} --> {_ts(seg['end_s'])}\n{seg['text'].strip()}")
+    return "\n\n".join(blocks) + "\n"
+
+
+def _segments_to_vtt(segments: list[dict]) -> str:
+    def _ts(seconds: float) -> str:
+        ms = round(seconds * 1000)
+        m, rem = divmod(ms, 60000)
+        s, ms = divmod(rem, 1000)
+        return f"{m:02d}:{s:02d}.{ms:03d}"
+
+    blocks = ["WEBVTT", ""]
+    for seg in segments:
+        blocks.append(f"{_ts(seg['start_s'])} --> {_ts(seg['end_s'])}\n{seg['text'].strip()}")
+        blocks.append("")
+    return "\n".join(blocks)
+
+
+def _segments_to_txt(segments: list[dict]) -> str:
+    return "\n".join(seg["text"].strip() for seg in segments if seg["text"].strip())
+
+
+def _render_subtitles(segments: list[dict], fmt: str) -> str:
+    if fmt == "srt":
+        return _segments_to_srt(segments)
+    if fmt == "vtt":
+        return _segments_to_vtt(segments)
+    if fmt == "txt":
+        return _segments_to_txt(segments)
+    raise HTTPException(status_code=400, detail="format must be srt, vtt, or txt")
+
+
+@app.post("/api/v1/transcribe/file")
+async def api_transcribe_file(
+    file: UploadFile = File(...),
+    language: str = "auto",
+    format: str = "json",
+):
+    """Transcribe an uploaded audio file. format: json (segments), srt, vtt, or txt."""
+    if not funasr_provider:
+        raise HTTPException(status_code=503, detail="FunASR not configured — set FUNASR_ENABLED=true")
+    try:
+        data = await file.read()
+        if not data:
+            raise HTTPException(status_code=400, detail="Empty file")
+        suffix = os.path.splitext(file.filename or "audio.wav")[1] or ".wav"
+        import tempfile
+
+        tmpdir = tempfile.mkdtemp(prefix="speech-mcp-")
+        tmp_path = os.path.join(tmpdir, f"upload{suffix}")
+        with open(tmp_path, "wb") as fh:
+            fh.write(data)
+        try:
+            result = await funasr_provider.transcribe_file(tmp_path, language=language)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail=result.get("error", "transcription failed"))
+        segments = result.get("segments", [])
+        if format == "json":
+            return {
+                "success": True,
+                "provider": "funasr",
+                "text": result.get("text", ""),
+                "segments": segments,
+            }
+        return Response(content=_render_subtitles(segments, format), media_type="text/plain; charset=utf-8")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("File transcription failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/api/v1/transcribe/batch")
+async def api_transcribe_batch(
+    files: list[UploadFile] = File(...),
+    language: str = "auto",
+):
+    """Batch-transcribe multiple uploaded audio files (FunASR)."""
+    if not funasr_provider:
+        raise HTTPException(status_code=503, detail="FunASR not configured — set FUNASR_ENABLED=true")
+    import tempfile
+
+    results: list[dict] = []
+    for file in files:
+        try:
+            data = await file.read()
+            suffix = os.path.splitext(file.filename or "audio.wav")[1] or ".wav"
+            tmpdir = tempfile.mkdtemp(prefix="speech-mcp-")
+            tmp_path = os.path.join(tmpdir, f"upload{suffix}")
+            with open(tmp_path, "wb") as fh:
+                fh.write(data)
+            try:
+                result = await funasr_provider.transcribe_file(tmp_path, language=language)
+            finally:
+                shutil.rmtree(tmpdir, ignore_errors=True)
+            results.append(
+                {
+                    "filename": file.filename or "audio.wav",
+                    "success": bool(result.get("success")),
+                    "error": result.get("error"),
+                    "text": result.get("text", ""),
+                    "segments": result.get("segments", []),
+                }
+            )
+        except Exception as e:
+            logger.exception("Batch item failed: %s", file.filename)
+            results.append(
+                {
+                    "filename": file.filename or "audio.wav",
+                    "success": False,
+                    "error": str(e),
+                    "text": "",
+                    "segments": [],
+                }
+            )
+    return {"success": True, "results": results, "count": len(results)}
+
+
+@app.post("/api/v1/subtitles/revise")
+async def api_subtitles_revise(req: SubtitleReviseRequest):
+    from speech_mcp.tools.revise import revise_srt
+
+    return await revise_srt(req.srt, series=req.series, glossary=req.glossary, language=req.language)
+
+
+@app.post("/api/v1/transcripts")
+async def api_transcript_create(req: TranscriptCreateRequest):
+    import speech_mcp.transcript_depot as depot
+
+    row = depot.record(
+        req.srt,
+        series=req.series,
+        season=req.season,
+        episode=req.episode,
+        title=req.title,
+        source=req.source,
+        source_media_key=req.source_media_key,
+        language=req.language,
+        model="funasr",
+    )
+    return {"success": True, "transcript": row}
+
+
+@app.get("/api/v1/transcripts")
+async def api_transcript_list(limit: int = 100):
+    import speech_mcp.transcript_depot as depot
+
+    transcripts = depot.list_transcripts(limit=limit)
+    return {"success": True, "transcripts": transcripts, "count": len(transcripts)}
+
+
+@app.get("/api/v1/transcripts/{tid}")
+async def api_transcript_get(tid: int):
+    import speech_mcp.transcript_depot as depot
+
+    row = depot.read_transcript(tid)
+    if not row:
+        raise HTTPException(status_code=404, detail=f"No transcript #{tid}")
+    return {"success": True, "transcript": row}
+
+
+@app.post("/api/v1/transcripts/{tid}/status")
+async def api_transcript_status(tid: int, req: TranscriptStatusRequest):
+    import speech_mcp.transcript_depot as depot
+
+    row = depot.set_status(tid, req.status)
+    if not row:
+        raise HTTPException(status_code=404, detail=f"No transcript #{tid}")
+    return {"success": True, "transcript": row}
+
+
+@app.post("/api/v1/transcripts/{tid}/revise")
+async def api_transcript_revise(tid: int, req: SubtitleReviseRequest | None = None):
+    import speech_mcp.transcript_depot as depot
+    from speech_mcp.tools.revise import revise_srt
+
+    row = depot.read_transcript(tid)
+    if not row:
+        raise HTTPException(status_code=404, detail=f"No transcript #{tid}")
+    series = (req.series if req and req.series else row.get("series", "")) or ""
+    glossary = (req.glossary if req else "") or ""
+    result = await revise_srt(row["raw_srt"], series=series, glossary=glossary, language=row.get("language", "ja"))
+    if not result.get("success"):
+        raise HTTPException(status_code=503, detail=result.get("error", "revision failed"))
+    updated = depot.save_revised(tid, result["revised_srt"], result["changes"], model=result.get("model", ""))
+    return {
+        "success": True,
+        "transcript": updated,
+        "changes": result["changes"],
+        "applied_count": result["applied_count"],
+        "flagged_count": result["flagged_count"],
+    }
+
+
+@app.post("/api/v1/transcribe/plex")
+async def api_transcribe_plex(req: PlexTranscribeRequest):
+    """Fetch audio for a Plex item via plex-mcp, transcribe with FunASR, store draft SRT."""
+    import speech_mcp.transcript_depot as depot
+    from speech_mcp.tools.subtitles import fetch_audio_and_transcribe
+
+    if not funasr_provider:
+        raise HTTPException(status_code=503, detail="FunASR not configured — set FUNASR_ENABLED=true")
+    try:
+        result = await fetch_audio_and_transcribe(
+            plex_mcp_url=req.plex_mcp_url,
+            media_key=req.media_key,
+            language=req.language,
+            funasr=funasr_provider,
+        )
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail=result.get("error", "plex fetch failed"))
+        row = depot.record(
+            result["srt"],
+            series=req.series,
+            season=req.season,
+            episode=req.episode,
+            title=result.get("title") or "",
+            source="plex",
+            source_media_key=req.media_key,
+            language=req.language,
+            model="funasr",
+        )
+        return {"success": True, "transcript": row, "info": result.get("info", {})}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Plex transcription failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/api/v1/runtime")
+async def api_runtime_get():
+    from speech_mcp.runtime_config import snapshot
+
+    return {"success": True, **snapshot(), "gpu": _gpu_info()}
+
+
+class RuntimeDeviceRequest(BaseModel):
+    target: str = "funasr"
+    device: str = "cpu"
+
+
+@app.post("/api/v1/runtime")
+async def api_runtime_set(req: RuntimeDeviceRequest):
+    from speech_mcp.runtime_config import set_funasr_device, set_sherpa_device
+
+    try:
+        if req.target == "funasr":
+            device = set_funasr_device(req.device)
+        elif req.target == "sherpa":
+            if sherpa_asr is None:
+                raise HTTPException(status_code=503, detail="sherpa-onnx not enabled (SHERPA_ASR_ENABLED=1)")
+            device = set_sherpa_device(req.device)
+            await asyncio.to_thread(sherpa_asr.set_device, device)
+        else:
+            raise HTTPException(status_code=400, detail="target must be funasr or sherpa")
+        return {"success": True, "target": req.target, "device": device, "gpu": _gpu_info()}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.post("/api/v1/demos/run")
