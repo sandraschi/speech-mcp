@@ -1,6 +1,21 @@
-import { CheckCircle, Clock, Download, FileText, Search } from "lucide-react";
+import {
+  BookMarked,
+  CheckCircle,
+  Clock,
+  Download,
+  FileText,
+  Plus,
+  Search,
+} from "lucide-react";
 import React from "react";
-import { BACKEND } from "../api";
+import {
+  BACKEND,
+  fetchAnalytics,
+  fetchMemory,
+  fetchMemoryStats,
+  type MemoryEpisode,
+  storeMemory,
+} from "../api";
 
 interface HistoryItem {
   id: string;
@@ -13,6 +28,13 @@ interface HistoryItem {
 const HistoryPage: React.FC = () => {
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [episodes, setEpisodes] = React.useState<MemoryEpisode[]>([]);
+  const [memoryQuery, setMemoryQuery] = React.useState("");
+  const [memoryText, setMemoryText] = React.useState("");
+  const [memoryMsg, setMemoryMsg] = React.useState<string | null>(null);
+  const [analytics, setAnalytics] =
+    React.useState<Awaited<ReturnType<typeof fetchAnalytics>>>(null);
+  const [memoryTotal, setMemoryTotal] = React.useState(0);
 
   React.useEffect(() => {
     const fetchHistoryData = async () => {
@@ -20,7 +42,7 @@ const HistoryPage: React.FC = () => {
         const res = await fetch(`${BACKEND}/api/v1/history`);
         if (res.ok) {
           const data = await res.json();
-          setHistory(data.reverse()); // Show newest first
+          setHistory(data.reverse());
         }
       } catch (err) {
         console.error("Failed to fetch history:", err);
@@ -29,7 +51,36 @@ const HistoryPage: React.FC = () => {
       }
     };
     fetchHistoryData();
+    fetchMemory(15).then(setEpisodes);
+    fetchAnalytics(24).then(setAnalytics);
+    fetchMemoryStats().then((s) => setMemoryTotal(s.total));
   }, []);
+
+  const searchMemory = async (q: string) => {
+    setMemoryQuery(q);
+    if (!q.trim()) {
+      fetchMemory(15).then(setEpisodes);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `${BACKEND}/api/v1/memory/search?q=${encodeURIComponent(q)}`,
+      );
+      const data = await res.json();
+      setEpisodes(data.results ?? []);
+    } catch {
+      setEpisodes([]);
+    }
+  };
+
+  const addNote = async () => {
+    const text = memoryText.trim();
+    if (!text) return;
+    const res = await storeMemory({ text, kind: "note" });
+    setMemoryMsg(res.success ? "Note stored." : "Store failed.");
+    setMemoryText("");
+    fetchMemory(15).then(setEpisodes);
+  };
 
   return (
     <div className="h-full space-y-8 animate-in fade-in duration-700">
@@ -163,33 +214,136 @@ const HistoryPage: React.FC = () => {
         </table>
       </div>
 
-      {/* Footer Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          {
-            label: "Total Interactions",
-            value: "1,284",
-            color: "text-indigo-400",
-          },
-          {
-            label: "Synthesis Success",
-            value: "99.4%",
-            color: "text-emerald-400",
-          },
-          { label: "Storage Used", value: "4.2 GB", color: "text-blue-400" },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="glass-card p-6 flex justify-between items-center bg-white/[0.02]"
-          >
-            <span className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">
-              {stat.label}
-            </span>
-            <span className={`text-xl font-mono font-black ${stat.color}`}>
-              {stat.value}
-            </span>
+      {/* Voice Memory */}
+      <div className="glass-card p-8 bg-white/[0.02]">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-accent-purple/10 text-accent-purple">
+              <BookMarked size={18} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-white tracking-tight">
+                Voice Memory
+              </h2>
+              <p className="text-xs text-text-secondary uppercase tracking-widest">
+                Persistent episodic diary - survives restarts
+              </p>
+            </div>
           </div>
-        ))}
+          <div className="flex items-center gap-2">
+            <Search size={14} className="text-white/30" />
+            <input
+              type="text"
+              value={memoryQuery}
+              onChange={(e) => searchMemory(e.target.value)}
+              placeholder="Search memory..."
+              data-testid="memory-search"
+              className="bg-zinc-800 text-zinc-100 border border-zinc-600 rounded-lg px-3 py-1.5 text-sm focus:border-accent-purple/50 outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 mb-6">
+          <input
+            type="text"
+            value={memoryText}
+            onChange={(e) => setMemoryText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addNote()}
+            placeholder="Quick note to remember..."
+            data-testid="memory-input"
+            className="flex-1 bg-zinc-800 text-zinc-100 border border-zinc-600 rounded-lg px-3 py-2 text-sm focus:border-accent-purple/50 outline-none"
+          />
+          <button
+            type="button"
+            onClick={addNote}
+            data-testid="memory-add"
+            className="flex items-center gap-1.5 text-xs font-bold text-white bg-accent-purple/70 hover:bg-accent-purple px-3 py-2 rounded-lg transition-colors"
+          >
+            <Plus size={13} /> Remember
+          </button>
+        </div>
+        {memoryMsg && (
+          <p className="text-xs text-text-secondary mb-4">{memoryMsg}</p>
+        )}
+
+        {episodes.length === 0 ? (
+          <p className="text-sm text-text-secondary">
+            No voice memory yet. Say something, chat, or add a note above.
+          </p>
+        ) : (
+          <div className="space-y-2 max-h-[360px] overflow-y-auto pr-2">
+            {episodes.map((ep) => (
+              <div
+                key={ep.id}
+                className="flex items-start gap-3 p-3 bg-white/[0.03] border border-white/5 rounded-xl"
+              >
+                <span
+                  className={`mt-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${
+                    ep.kind === "tts"
+                      ? "bg-accent-blue/20 text-accent-blue"
+                      : ep.kind === "stt"
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : ep.kind === "chat"
+                          ? "bg-accent-purple/20 text-accent-purple"
+                          : "bg-white/10 text-white/60"
+                  }`}
+                >
+                  {ep.kind}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white/90 leading-snug">
+                    {ep.text}
+                  </p>
+                  <div className="flex gap-3 mt-1 text-[10px] text-text-secondary uppercase tracking-wider font-bold">
+                    <span>{ep.ts}</span>
+                    {ep.topic && <span>#{ep.topic}</span>}
+                    {ep.provider && <span>{ep.provider}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Real telemetry (replaces the old hardcoded footer stats) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="glass-card p-6 flex justify-between items-center bg-white/[0.02]">
+          <span className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">
+            Analytics calls (24h)
+          </span>
+          <span className="text-xl font-mono font-black text-indigo-400">
+            {analytics ? analytics.total_calls : "—"}
+          </span>
+        </div>
+        <div className="glass-card p-6 flex justify-between items-center bg-white/[0.02]">
+          <span className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">
+            p95 latency
+          </span>
+          <span className="text-xl font-mono font-black text-emerald-400">
+            {analytics
+              ? Math.max(
+                  ...Object.values(analytics.providers).map(
+                    (p) => p.p95_latency_ms ?? 0,
+                  ),
+                ) > 0
+                ? `${Math.max(
+                    ...Object.values(analytics.providers).map(
+                      (p) => p.p95_latency_ms ?? 0,
+                    ),
+                  )}ms`
+                : "—"
+              : "—"}
+          </span>
+        </div>
+        <div className="glass-card p-6 flex justify-between items-center bg-white/[0.02]">
+          <span className="text-xs font-black text-text-secondary uppercase tracking-widest opacity-40">
+            Memory episodes
+          </span>
+          <span className="text-xl font-mono font-black text-blue-400">
+            {memoryTotal > 0 ? memoryTotal : "—"}
+          </span>
+        </div>
       </div>
     </div>
   );

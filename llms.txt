@@ -14,7 +14,7 @@
 - [Streaming ASR & barge-in (sherpa-onnx)](docs/STREAMING_ASR.md) — ja/en/de, CPU, partials + endpoint
 - [Humanoid voice — thesis & architecture](docs/HUMANOID_VOICE.md) — embodied agents, Chinese open speech, fleet bus
 - [Chinese FOSS speech landscape](docs/CHINESE_AI_RESEARCH.md) — FunASR, SenseVoice, CosyVoice, ChatTTS, GPT-SoVITS
-- [Tools reference](docs/tools-reference.md) — all 28 MCP tools
+- [Tools reference](docs/tools-reference.md) — all 41 MCP tools
 - [Configuration](docs/configuration.md) — FUNASR_*, SHERPA_*, provider env vars
 - [Troubleshooting](docs/TROUBLESHOOTING.md) — ports, native build, CUA smoke
 - [Installation](INSTALL.md) — uv sync --extra funasr, just bootstrap

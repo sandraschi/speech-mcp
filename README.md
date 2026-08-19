@@ -124,6 +124,8 @@ speech-mcp is a **gateway**: cloud TTS/live voice plus **local STT via FunASR**.
 
 **RAG / Semantic Search** — LanceDB + FastEmbed knowledge base over project docs. `ask_docs` tool uses Claude sampling for grounded Q&A.
 
+**Voice Intelligence (2026-08)** — persistent **voice memory** (episodic diary), **voice macros** (spoken phrases → actions), **translation bridge** (FunASR → local LLM → TTS), **sound-event detection**, **voice bank** (named provider-routed voice profiles), **speech analytics** (real latency/cost telemetry), spoken **fleet readouts**, and a skill-first **Chat page** with personalities. Spec: [docs/FEATURE_SPEC_2026.md](docs/FEATURE_SPEC_2026.md).
+
 **Local AI** — Ollama and LM Studio model discovery and grounded generation.
 
 ---

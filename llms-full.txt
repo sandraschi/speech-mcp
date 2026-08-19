@@ -42,7 +42,7 @@ openWakeWord   <-  offline wake word
 | 10909 | Backend (FastAPI + MCP SSE `/mcp`, WebSocket `/ws/stream`, `/ws/stt`, `/ws/logs`) |
 | 10914 | FunASR OpenAI-compatible sidecar (optional, `scripts/start_funasr_sidecar.py`) |
 
-## MCP Tools (28)
+## MCP Tools (41)
 
 | Tool | Purpose |
 |------|---------|
@@ -66,6 +66,14 @@ openWakeWord   <-  offline wake word
 | `revise_subtitles` | Japanese homophone/jukugo SRT revision via local LLM |
 | `prosody_dashboard` / `speech_activity_chart` / `fleet_health_overview` / `provider_capability_matrix` / `latency_benchmark_view` | Prefab UI cards (real data) |
 | `play_audio_file` / `run_speech_demo` | Diagnostics |
+| `voice_memory_store` / `voice_memory_recall` / `voice_memory_search` | Persistent voice memory (episodic diary) |
+| `voice_macros` | Spoken-phrase -> multi-step action bindings |
+| `translate_text` / `translate_speech` | Local-LLM translation (text + FunASR audio) |
+| `detect_sound_events` | Energy-based sound-event detection (loud/silence/speech-like) |
+| `spoken_status_readout` / `read_aloud` | Spoken fleet status + reading mode |
+| `manage_voice_bank` / `voice_bank_resolve` | Voice profile bank (provider-routed) |
+| `chat_message` | Skill-first local LLM chat with personalities |
+| `speech_analytics` | Measured latency/cost telemetry summary |
 
 REST surface: `/api/v1/health`, `/api/v1/status`, `/api/health`, `/api/capabilities`,
 `/api/tools`, `/api/skills`, `/api/skills/{name}`, `/api/v1/diagnostics`,
@@ -75,7 +83,11 @@ REST surface: `/api/v1/health`, `/api/v1/status`, `/api/health`, `/api/capabilit
 `/api/v1/transcripts/{id}` (+ `/status`, `/revise`), `/api/v1/runtime`,
 `/api/v1/wake_word`, `/api/v1/utility`, `/api/v1/agentic`, `/api/v1/action`,
 `/api/v1/stop`, `/api/v1/shutdown`, `/api/v1/history`, `/api/v1/search`,
-`/api/v1/stats`, `/api/v1/local/models`, `/api/v1/hardware`, `/api/v1/demos/run`.
+`/api/v1/stats`, `/api/v1/local/models`, `/api/v1/hardware`, `/api/v1/demos/run`,
+`/api/v1/memory` (+ `/search`, `/stats`), `/api/v1/analytics`,
+`/api/v1/macros` (+ `/run`), `/api/v1/translate`, `/api/v1/sound/events`,
+`/api/v1/voicebank`, `/api/v1/personas`, `/api/v1/chat`, `/api/v1/readout`,
+`/api/v1/read`.
 
 ## Environment Variables
 

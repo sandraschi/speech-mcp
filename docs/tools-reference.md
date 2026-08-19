@@ -1,12 +1,14 @@
 # Speech-MCP Tools Reference
 
-Full MCP tool surface (28 tools, version 0.6.5). Every tool sets an
+Full MCP tool surface (41 tools, version 0.6.5). Every tool sets an
 `annotations=` hint (`READ_ONLY` = query only, `MUTATING` = changes state,
 `DESTRUCTIVE` = can delete/overwrite) and documents a `## Return Format` +
 `## Examples` block in its docstring.
 
 Run `uv run python -m speech_mcp` (stdio) and call any tool from an MCP client
 (Claude Desktop, Cursor, Windsurf). REST mirrors exist under `/api/v1/*`.
+
+> Feature spec (2026-08-19): `docs/FEATURE_SPEC_2026.md`.
 
 ---
 
@@ -294,3 +296,154 @@ Execute a hardware-specific speech or capability demo script (e.g. `weather`,
 `windows`, `shakespeare`, `price`). Runs the matching `scripts/demos/*.py`.
 
 **Returns:** `{"success": bool, "demo": str, "exit_code": int, "output": str}`
+
+---
+
+## Voice memory (persistent episodic diary)
+
+### `voice_memory_store`
+`voice_memory_store(text, kind, speaker, topic, provider, ctx)` — `MUTATING`
+
+Persist a voice episode (tts / stt / note / chat) to the SQLite diary at
+`data/speech_mcp.db`. Survives restarts.
+
+**Returns:** `{"success": bool, "episode": {id, ts, kind, text, ...}}`
+
+REST: `GET/POST /api/v1/memory`, `GET /api/v1/memory/search?q=`,
+`GET /api/v1/memory/stats`.
+
+### `voice_memory_recall`
+`voice_memory_recall(limit, kind, topic)` — `READ_ONLY`
+
+Recent episodes, newest first, optional kind/topic filter.
+
+### `voice_memory_search`
+`voice_memory_search(query, limit)` — `READ_ONLY`
+
+Keyword search over episode text/topic/speaker.
+
+---
+
+## Voice macros (phrase -> actions)
+
+### `voice_macros`
+`voice_macros(operation, phrase, label, actions, ctx)` — `MUTATING`
+
+Bind spoken phrases to multi-step actions. `operation`: `list` | `create` |
+`run` | `delete`. Actions: `{type: tts|timer|weather|memory, ...}`. Unknown
+action types are reported, never silently skipped.
+
+**Returns:** `list` -> `macros`; `create` -> stored macro; `run` -> per-action
+`results` + `ok_all`; `delete` -> `deleted`.
+
+REST: `GET/POST/DELETE /api/v1/macros`, `POST /api/v1/macros/run`.
+
+---
+
+## Translation bridge
+
+### `translate_text`
+`translate_text(text, target_language, provider, model, base_url)` — `READ_ONLY`
+
+Translate via a local LLM (Ollama/LM Studio) - no cloud translation dependency.
+
+**Returns:** `{"success": bool, "translation": str, "provider": str}`
+
+### `translate_speech`
+`translate_speech(file_path, target_language, speak, source_language, ...)` — `READ_ONLY`
+
+FunASR transcribe -> local LLM translate -> optional TTS playback.
+
+**Returns:** `{"success": bool, "transcript": str, "translation": str,
+"spoken": {...}|null, "errors": [...]}`
+
+REST: `POST /api/v1/translate`.
+
+---
+
+## Sound events
+
+### `detect_sound_events`
+`detect_sound_events(file_path, threshold_db, min_duration_s)` — `READ_ONLY`
+
+Model-free energy-based segmentation of a 16-bit PCM WAV: RMS over 50 ms
+windows, contiguous loud windows clustered into events. Labels:
+`loud_event`, `speech_like` (high duty-cycle), plus silence gaps.
+
+**Returns:** `{"success": bool, "duration_s": float, "duty_cycle": float,
+"events": [{start_s, end_s, peak_db, label}], "count": int}`
+
+REST: `POST /api/v1/sound/events` (wav bytes).
+
+---
+
+## Fleet readouts + reading mode
+
+### `spoken_status_readout`
+`spoken_status_readout(provider, voice_id)` — `MUTATING`
+
+Speaks a live status readout: providers configured, RAG sources, active
+timers, GPU. Real server state, spoken via TTS.
+
+**Returns:** `{"success": bool, "text": str, "spoken": {...}}`
+
+### `read_aloud`
+`read_aloud(text, file_path, provider, voice_id)` — `MUTATING`
+
+Reading mode: speak arbitrary text or a text file.
+
+**Returns:** `{"success": bool, "spoken": {...}, "chars": int}`
+
+REST: `POST /api/v1/readout`, `POST /api/v1/read`.
+
+---
+
+## Voice bank
+
+### `manage_voice_bank`
+`manage_voice_bank(operation, name, provider, voice_id, source, description)` — `MUTATING`
+
+Named voice profiles routed to a provider + voice id. Register a profile, then
+use its `name` directly as `voice_id` in `text_to_speech`. `source` marks the
+origin (`elevenlabs`, `cosyvoice`, `gpt-sovits`, `custom`); local cloning needs
+the optional model install and is never silently faked.
+
+### `voice_bank_resolve`
+`voice_bank_resolve(name)` — `READ_ONLY`
+
+Resolve a profile to `{provider, voice_id}`.
+
+REST: `GET/POST/DELETE /api/v1/voicebank`.
+
+---
+
+## Chat (skill-first)
+
+### `chat_message`
+`chat_message(message, personality, skill, provider, model, base_url, remember)` — `MUTATING`
+
+Local LLM chat composed skill-first: loads the skill content (if given) as the
+base system prompt, appends the persona framing (`sherlock`, `zen`,
+`engineer`, `professor`, `custom`), generates, and optionally stores the
+exchange in voice memory.
+
+**Returns:** `{"success": bool, "reply": str, "personality": str, "skill": str}`
+
+REST: `POST /api/v1/chat`, `GET /api/v1/personas`.
+
+---
+
+## Speech analytics
+
+### `speech_analytics`
+`speech_analytics(hours)` — `READ_ONLY`
+
+Measured telemetry summary: per-provider calls, avg/p95 latency, success rate,
+over the lookback window. Samples auto-recorded by TTS / readout / macro /
+translate calls and the REST endpoints.
+
+**Returns:** `{"success": bool, "window_hours": float, "total_calls": int,
+"providers": {...}}`
+
+REST: `GET /api/v1/analytics`. The `latency_benchmark_view` Prefab card renders
+the same real numbers.

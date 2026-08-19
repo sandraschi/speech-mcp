@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   History,
   Menu,
+  MessageSquare,
   Settings,
   Square,
   Target,
@@ -254,6 +255,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             collapsed={isCollapsed}
             onClick={() => {
               onNavigate("semantic");
+              setMobileOpen(false);
+            }}
+          />
+          <NavItem
+            icon={<MessageSquare size={18} />}
+            label="Chat"
+            active={activePage === "chat"}
+            collapsed={isCollapsed}
+            onClick={() => {
+              onNavigate("chat");
               setMobileOpen(false);
             }}
           />
@@ -528,6 +539,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             collapsed={false}
             onClick={() => {
               onNavigate("semantic");
+              setMobileOpen(false);
+            }}
+          />
+          <NavItem
+            icon={<MessageSquare size={18} />}
+            label="Chat"
+            active={activePage === "chat"}
+            collapsed={false}
+            onClick={() => {
+              onNavigate("chat");
               setMobileOpen(false);
             }}
           />

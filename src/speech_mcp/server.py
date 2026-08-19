@@ -39,18 +39,27 @@ from speech_mcp.providers.gemma import gemma_provider
 from speech_mcp.skills import get_skill, list_skills, register_skill_resources
 from speech_mcp.state import _timers, get_store
 from speech_mcp.streaming import handle_websocket_stream
+from speech_mcp.synthesis import speak_text
 from speech_mcp.tools.agentic import register_agentic_tools
+from speech_mcp.tools.analytics import register_analytics_tools
+from speech_mcp.tools.chat import register_chat_tools
 from speech_mcp.tools.demos import DemoName, register_demo_tools
+from speech_mcp.tools.macros import register_macro_tools
+from speech_mcp.tools.memory import register_memory_tools
 from speech_mcp.tools.monitoring import register_monitoring_tools
 from speech_mcp.tools.rag import register_rag_tools
+from speech_mcp.tools.readout import register_readout_tools
 from speech_mcp.tools.revise import register_revise_tools
 from speech_mcp.tools.runtime import register_runtime_tools
 from speech_mcp.tools.safety import register_safety_tools
+from speech_mcp.tools.sound_events import register_sound_event_tools
 from speech_mcp.tools.speech import register_speech_tools
 from speech_mcp.tools.streaming_asr import register_streaming_asr_tools
 from speech_mcp.tools.stt import register_stt_tools
+from speech_mcp.tools.translate import register_translate_tools
 from speech_mcp.tools.ui import register_ui_tools
-from speech_mcp.tools.utility import register_utility_tools
+from speech_mcp.tools.utility import _weather_report, register_utility_tools
+from speech_mcp.tools.voice_bank import register_voice_bank_tools
 from speech_mcp.tools.wake_word import register_wake_word_tools
 
 if TYPE_CHECKING:
@@ -381,21 +390,49 @@ register_utility_tools(mcp)
 register_monitoring_tools(mcp)
 register_rag_tools(mcp)
 register_safety_tools(mcp)
-register_ui_tools(
-    mcp,
-    providers={
-        "hume": bool(hume_client),
-        "elevenlabs": bool(eleven_client),
-        "gemini": bool(gemini_client),
-        "gemma": True,
-        "funasr": bool(funasr_provider),
-    },
-)
+
+# Shared provider availability map + text-to-speech dispatcher for readout/
+# macro/translate tools (avoids circular imports into this module).
+_providers = {
+    "hume": bool(hume_client),
+    "elevenlabs": bool(eleven_client),
+    "gemini": bool(gemini_client),
+    "gemma": True,
+    "funasr": bool(funasr_provider),
+    "windows": True,
+    "sherpa_streaming": bool(sherpa_asr),
+}
+
+
+async def _speak(
+    text: str, provider: str = "windows", voice_id: str = "default", description: str | None = None
+) -> dict:
+    return await speak_text(
+        text,
+        provider=provider,
+        voice_id=voice_id,
+        description=description,
+        gemini_client=gemini_client,
+        eleven_client=eleven_client,
+        hume_client=hume_client,
+        gemma_client=gemma_client,
+    )
+
+
+register_ui_tools(mcp, providers=_providers)
 register_streaming_asr_tools(mcp, sherpa_asr)
 register_runtime_tools(mcp, sherpa_asr)
 register_revise_tools(mcp)
 register_demo_tools(mcp)
 register_wake_word_tools(mcp)
+register_memory_tools(mcp)
+register_voice_bank_tools(mcp)
+register_sound_event_tools(mcp)
+register_chat_tools(mcp)
+register_analytics_tools(mcp)
+register_translate_tools(mcp, funasr_provider, _speak)
+register_readout_tools(mcp, _providers, _speak)
+register_macro_tools(mcp, _speak, _weather_report)
 
 if funasr_provider:
     from pathlib import Path as _Path
@@ -1405,6 +1442,268 @@ async def api_action(req: ActionRequest):
             "Configure devices-mcp and wire a real bridge",
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# Voice intelligence REST surface (memory / macros / translate / analytics /
+# sound events / voice bank / chat / readout)
+# ---------------------------------------------------------------------------
+
+
+class MemoryStoreRequest(BaseModel):
+    text: str
+    kind: str = "note"
+    speaker: str = ""
+    topic: str = ""
+    provider: str = ""
+
+
+class MacroRequest(BaseModel):
+    phrase: str
+    label: str = ""
+    actions: list[dict] | None = None
+
+
+class MacroRunRequest(BaseModel):
+    phrase: str
+
+
+class TranslateRequest(BaseModel):
+    text: str = ""
+    target_language: str
+    provider: str = "ollama"
+    model: str | None = None
+    base_url: str | None = None
+
+
+class ChatRequest(BaseModel):
+    message: str
+    personality: str = "custom"
+    skill: str | None = None
+    provider: str = "ollama"
+    model: str | None = None
+    base_url: str | None = None
+    remember: bool = True
+
+
+class VoiceBankRequest(BaseModel):
+    name: str
+    provider: str = "elevenlabs"
+    voice_id: str = ""
+    source: str = "custom"
+    description: str = ""
+
+
+class ReadAloudRequest(BaseModel):
+    text: str | None = None
+    file_path: str | None = None
+    provider: str = "windows"
+    voice_id: str = "default"
+
+
+@app.get("/api/v1/memory")
+async def api_memory_list(limit: int = 20, kind: str | None = None):
+    from speech_mcp.storage import memory_recall
+
+    episodes = memory_recall(limit=limit, kind=kind)
+    return {"success": True, "episodes": episodes, "count": len(episodes)}
+
+
+@app.post("/api/v1/memory")
+async def api_memory_store(req: MemoryStoreRequest):
+    from speech_mcp.storage import memory_store
+
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="text is required")
+    episode = memory_store(req.text.strip(), kind=req.kind, speaker=req.speaker, topic=req.topic, provider=req.provider)
+    return {"success": True, "episode": episode}
+
+
+@app.get("/api/v1/memory/search")
+async def api_memory_search(q: str = "", limit: int = 10):
+    from speech_mcp.storage import memory_search
+
+    if not q.strip():
+        return {"success": True, "results": [], "count": 0}
+    results = memory_search(q, limit=limit)
+    return {"success": True, "results": results, "count": len(results)}
+
+
+@app.get("/api/v1/memory/stats")
+async def api_memory_stats():
+    from speech_mcp.storage import memory_stats
+
+    return {"success": True, **memory_stats()}
+
+
+@app.get("/api/v1/analytics")
+async def api_analytics(hours: float = 24.0):
+    from speech_mcp.storage import analytics_prune, analytics_summary
+
+    analytics_prune()
+    return {"success": True, **analytics_summary(hours=hours)}
+
+
+@app.get("/api/v1/macros")
+async def api_macros_list():
+    from speech_mcp.storage import macro_list
+
+    return {"success": True, "macros": macro_list()}
+
+
+@app.post("/api/v1/macros")
+async def api_macros_create(req: MacroRequest):
+    from speech_mcp.storage import macro_create
+
+    if not req.phrase.strip():
+        raise HTTPException(status_code=400, detail="phrase is required")
+    res = macro_create(req.phrase, label=req.label, actions=req.actions or [])
+    if "error" in res:
+        raise HTTPException(status_code=409, detail=res["error"])
+    return {"success": True, **res}
+
+
+@app.delete("/api/v1/macros")
+async def api_macros_delete(phrase: str = ""):
+    from speech_mcp.storage import macro_delete
+
+    removed = macro_delete(phrase) if phrase else False
+    return {"success": True, "phrase": phrase, "removed": removed}
+
+
+@app.post("/api/v1/macros/run")
+async def api_macros_run(req: MacroRunRequest):
+    from speech_mcp.storage import macro_get
+    from speech_mcp.tools.macros import _run_actions
+
+    macro = macro_get(req.phrase)
+    if macro is None:
+        raise HTTPException(status_code=404, detail=f"no macro for phrase '{req.phrase}'")
+    outcome = await _run_actions(macro.get("actions", []), _speak, _weather_report)
+    return {"success": outcome["ok_all"], "phrase": req.phrase, **outcome}
+
+
+@app.post("/api/v1/translate")
+async def api_translate(req: TranslateRequest):
+    from speech_mcp.tools.translate import _llm_translate
+
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="text is required")
+    translation = await _llm_translate(req.text, req.target_language, req.provider, req.model, req.base_url)
+    if translation.startswith("Generation failed"):
+        raise HTTPException(status_code=503, detail=translation)
+    return {"success": True, "text": req.text, "translation": translation, "provider": req.provider}
+
+
+@app.post("/api/v1/sound/events")
+async def api_sound_events(request: Request):
+    from speech_mcp.tools.sound_events import detect_events
+
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty audio body")
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp_path = tmp.name
+            tmp.write(body)
+        return detect_events(tmp_path)
+    except Exception as e:
+        logger.exception("sound event analysis failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+
+@app.get("/api/v1/voicebank")
+async def api_voicebank_list():
+    from speech_mcp.storage import voice_profile_list
+
+    return {"success": True, "profiles": voice_profile_list()}
+
+
+@app.post("/api/v1/voicebank")
+async def api_voicebank_register(req: VoiceBankRequest):
+    from speech_mcp.storage import voice_profile_register
+
+    if not req.name.strip():
+        raise HTTPException(status_code=400, detail="name is required")
+    res = voice_profile_register(req.name, req.provider, req.voice_id, req.source, req.description)
+    if "error" in res:
+        raise HTTPException(status_code=409, detail=res["error"])
+    return {"success": True, **res}
+
+
+@app.delete("/api/v1/voicebank")
+async def api_voicebank_delete(name: str = ""):
+    from speech_mcp.storage import voice_profile_delete
+
+    removed = voice_profile_delete(name) if name else False
+    return {"success": True, "name": name, "removed": removed}
+
+
+@app.get("/api/v1/personas")
+async def api_personas():
+    from speech_mcp.personas import PERSONAS
+
+    return {"success": True, "personas": PERSONAS}
+
+
+@app.post("/api/v1/chat")
+async def api_chat(req: ChatRequest):
+    from speech_mcp.providers.local import local_llm_provider
+    from speech_mcp.tools.chat import compose_system
+
+    if not req.message.strip():
+        raise HTTPException(status_code=400, detail="message is required")
+    system = compose_system(req.personality, req.skill)
+    base = req.base_url or ("http://localhost:11434" if req.provider == "ollama" else "http://localhost:1234")
+    effective = req.model or ("llama3" if req.provider == "ollama" else "default")
+    reply = await local_llm_provider.generate(
+        provider=req.provider, base_url=base, model=effective, prompt=req.message.strip(), system=system
+    )
+    if reply.startswith("Generation failed"):
+        raise HTTPException(status_code=503, detail=reply)
+    if req.remember:
+        from speech_mcp.storage import memory_store
+
+        memory_store(
+            req.message.strip(), kind="chat", topic=req.personality, provider=req.provider, meta={"role": "user"}
+        )
+        memory_store(reply, kind="chat", topic=req.personality, provider=req.provider, meta={"role": "assistant"})
+    return {"success": True, "reply": reply, "personality": req.personality, "skill": req.skill}
+
+
+@app.post("/api/v1/readout")
+async def api_readout(provider: str = "windows", voice_id: str = "default"):
+    from speech_mcp.tools.readout import _compose_status
+
+    text = _compose_status(_providers)
+    spoken = await _speak(text, provider, voice_id)
+    return {"success": bool(spoken.get("success")), "text": text, "spoken": spoken}
+
+
+@app.post("/api/v1/read")
+async def api_read_aloud(req: ReadAloudRequest):
+    if req.text is None and req.file_path is None:
+        raise HTTPException(status_code=400, detail="Provide text or file_path")
+    if req.text is not None and req.file_path is not None:
+        raise HTTPException(status_code=400, detail="Provide only one of text or file_path")
+    if req.file_path is not None:
+        try:
+            with open(req.file_path, encoding="utf-8") as f:
+                req.text = f.read()
+        except OSError as e:
+            raise HTTPException(status_code=400, detail=f"Cannot read {req.file_path}: {e}") from e
+    assert req.text is not None
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="Nothing to read - empty input")
+    spoken = await _speak(req.text.strip(), req.provider, req.voice_id)
+    return {"success": bool(spoken.get("success")), "spoken": spoken, "chars": len(req.text.strip())}
 
 
 @app.websocket("/ws/stream")

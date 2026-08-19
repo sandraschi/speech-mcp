@@ -1,9 +1,11 @@
 import { Clock, Database, ExternalLink, Server } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { fetchAnalytics } from "./api";
 import { BackendProvider, useBackend } from "./BackendContext";
 import AgenticWorkflow from "./components/AgenticWorkflow";
 import AppLayout from "./components/AppLayout";
+import ChatPage from "./components/ChatPage";
 import CreativeLabs from "./components/CreativeLabs";
 import DeviceSettings from "./components/DeviceSettings";
 import HealthPage from "./components/HealthPage";
@@ -35,6 +37,12 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
   onNavigate,
 }) => {
   const { health, stats, error, restartBackend } = useBackend();
+  const [analytics, setAnalytics] =
+    useState<Awaited<ReturnType<typeof fetchAnalytics>>>(null);
+
+  useEffect(() => {
+    fetchAnalytics(24).then(setAnalytics);
+  }, []);
 
   return (
     <div
@@ -205,6 +213,48 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
           onClick={() => onNavigate("history")}
         />
       </div>
+
+      <section
+        className="glass-card p-6 lg:col-span-3"
+        data-testid="analytics-strip"
+      >
+        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary opacity-50 mb-4">
+          Speech telemetry (24h)
+        </h2>
+        {!analytics || analytics.total_calls === 0 ? (
+          <p className="text-sm text-text-secondary">
+            No speech calls recorded yet - run a TTS, readout, or macro and it
+            lands here.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div className="text-xs text-text-secondary uppercase tracking-widest">
+                Calls
+              </div>
+              <div className="text-2xl font-black text-white">
+                {analytics.total_calls}
+              </div>
+            </div>
+            {Object.entries(analytics.providers)
+              .sort((a, b) => b[1].calls - a[1].calls)
+              .slice(0, 3)
+              .map(([name, p]) => (
+                <div key={name}>
+                  <div className="text-xs text-text-secondary uppercase tracking-widest">
+                    {name}
+                  </div>
+                  <div className="text-2xl font-black text-accent-purple">
+                    {p.p95_latency_ms !== null ? `${p.p95_latency_ms}ms` : "—"}
+                    <span className="text-xs text-text-secondary ml-1">
+                      p95 · {p.calls} calls
+                    </span>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 };
@@ -224,6 +274,8 @@ function App() {
           <VoicesPage />
         ) : activePage === "semantic" ? (
           <SemanticSearch />
+        ) : activePage === "chat" ? (
+          <ChatPage />
         ) : activePage === "lab" || activePage === "evi" ? (
           <InteractionLab />
         ) : activePage === "creative" || activePage === "tts" ? (

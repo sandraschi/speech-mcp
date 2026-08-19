@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-08-19
 
+### Added - Voice intelligence feature set (spec: docs/FEATURE_SPEC_2026.md)
+
+- **Persistent voice memory** - SQLite episodic diary (`voice_memory_store` /
+  `voice_memory_recall` / `voice_memory_search`, REST `/api/v1/memory*`).
+  History page gains a Voice Memory panel (search + quick note).
+- **Translation bridge** - `translate_text` + `translate_speech` (FunASR ->
+  local LLM -> optional TTS), REST `/api/v1/translate`. No cloud translation.
+- **Sound-event detection** - `detect_sound_events`: model-free energy-based
+  segmentation (loud events / silence / speech-like), REST `/api/v1/sound/events`.
+- **Voice bank** - `manage_voice_bank` / `voice_bank_resolve`: named profiles
+  routed to a provider + voice; local cloning (cosyvoice/gpt-sovits) reserved
+  as an optional-extra path, never silently faked.
+- **Voice macros + reading mode** - `voice_macros` (list/create/run/delete),
+  `read_aloud` (text or file), REST `/api/v1/macros`, `/api/v1/read`.
+- **Speech analytics** - auto-recorded per-call latency telemetry
+  (`speech_analytics`, REST `/api/v1/analytics`); the `latency_benchmark_view`
+  Prefab card and dashboard/History now render real measured numbers (closes the
+  "latency not measured" honest-gap).
+- **Fleet readouts** - `spoken_status_readout` speaks live status (providers,
+  RAG, timers, GPU), REST `/api/v1/readout`.
+- **Chat page + tool** - webapp Chat page (5 personalities incl. Custom,
+  skill-first prompts, localStorage history 100-cap, export/clear,
+  data-testids) + `chat_message` MCP tool, REST `/api/v1/chat` + `/api/v1/personas`.
+- 13 new MCP tools (41 total); `storage.py` SQLite stores; 7 new tests
+  (36 passed).
+
 ### Changed - assfix quality pass
 
 - Tool surface: `annotations=` (READ_ONLY / MUTATING / DESTRUCTIVE) on all 28 MCP tools, `## Return Format` + `## Examples` added where missing, `Args:` blocks removed (docstrings_sota).

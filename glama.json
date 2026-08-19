@@ -142,6 +142,58 @@
         {
             "name": "latency_benchmark_view",
             "description": "Comparative latency (TTFB) metrics for high-fidelity speech engines (Prefab card)."
+        },
+        {
+            "name": "voice_memory_store",
+            "description": "Persist a voice episode to the episodic memory store (persistent SQLite diary)."
+        },
+        {
+            "name": "voice_memory_recall",
+            "description": "Recall recent voice memory episodes, newest first, with kind/topic filters."
+        },
+        {
+            "name": "voice_memory_search",
+            "description": "Keyword search over voice memory episodes."
+        },
+        {
+            "name": "voice_macros",
+            "description": "Bind spoken phrases to multi-step actions (list/create/run/delete)."
+        },
+        {
+            "name": "translate_text",
+            "description": "Translate text via a local LLM (no cloud translation dependency)."
+        },
+        {
+            "name": "translate_speech",
+            "description": "Transcribe an audio file (FunASR), translate via local LLM, optionally speak it."
+        },
+        {
+            "name": "detect_sound_events",
+            "description": "Energy-based sound-event detection (loud events, silence gaps, speech-like segments)."
+        },
+        {
+            "name": "spoken_status_readout",
+            "description": "Speak a live fleet status readout (providers, RAG, timers, GPU) via TTS."
+        },
+        {
+            "name": "read_aloud",
+            "description": "Reading mode: speak arbitrary text or a text file via TTS."
+        },
+        {
+            "name": "manage_voice_bank",
+            "description": "Voice bank: register/remove/list named profiles routed to a provider + voice."
+        },
+        {
+            "name": "voice_bank_resolve",
+            "description": "Resolve a voice bank profile to its provider + voice_id."
+        },
+        {
+            "name": "chat_message",
+            "description": "Skill-first chat via local LLM with personality composition."
+        },
+        {
+            "name": "speech_analytics",
+            "description": "Summarize measured synthesis telemetry (calls, latency, errors)."
         }
     ],
     "runtime": "python>=3.11",

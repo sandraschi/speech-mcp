@@ -137,22 +137,39 @@ def register_ui_tools(mcp: FastMCP, providers: dict[str, bool] | None = None) ->
 
     @mcp.tool(app=True, annotations=_README_ONLY)
     def latency_benchmark_view() -> PrefabApp:
-        """Latency is not measured by this server - honest status.
+        """Measured synthesis latency per provider (real telemetry)."""
 
-        ## Return Format
-        ``PrefabApp`` - an honest card stating latency is not captured and
-        pointing to ``GET /api/v1/health``.
+        from speech_mcp.storage import analytics_prune, analytics_summary
 
-        ## Examples
-        ``latency_benchmark_view()`` -> Prefab card explaining the absence of
-        latency telemetry.
-        """
+        analytics_prune()
+        summary = analytics_summary(hours=24)
+        providers = summary.get("providers", {})
+
         with Column(gap=4) as view:
-            Heading("Latency")
+            Heading("Latency (24h)")
             Text(
-                "Latency measurements are not captured by this server. "
-                "Use GET /api/v1/health for live connectivity status."
+                f"{summary.get('total_calls', 0)} calls recorded across "
+                f"{len(providers)} providers in the last 24 hours."
             )
+            if providers:
+                Separator()
+                for name, p in providers.items():
+                    with Row(gap=4):
+                        Text(name)
+                        Badge(
+                            f"{p.get('avg_latency_ms', '-')}ms avg",
+                            variant="info",
+                        )
+                        Badge(
+                            f"p95 {p.get('p95_latency_ms', '-')}ms",
+                            variant="info",
+                        )
+                        Badge(
+                            f"{int((p.get('success_rate', 1)) * 100)}% ok",
+                            variant="success" if p.get("success_rate", 1) > 0.9 else "warning",
+                        )
+            else:
+                Text("No speech activity recorded yet - run a TTS/readout call to populate.")
 
         return PrefabApp(title="Latency", view=view)
 

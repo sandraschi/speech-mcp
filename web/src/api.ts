@@ -305,4 +305,137 @@ export interface StatsData {
   sources: string[];
 }
 
+export interface Persona {
+  name: string;
+  description: string;
+  system: string;
+}
+
+export interface ChatResponse {
+  success: boolean;
+  reply: string;
+  personality: string;
+  skill?: string | null;
+}
+
+export async function fetchPersonas(): Promise<Persona[]> {
+  try {
+    const res = await fetch(`${BACKEND}/api/v1/personas`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.personas ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function chatMessage(payload: {
+  message: string;
+  personality: string;
+  skill?: string | null;
+  provider: string;
+  model?: string | null;
+  base_url?: string | null;
+  remember?: boolean;
+}): Promise<ChatResponse> {
+  const res = await fetch(`${BACKEND}/api/v1/chat`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || `Chat failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export interface MemoryEpisode {
+  id: number;
+  ts: string;
+  kind: string;
+  speaker: string;
+  text: string;
+  topic: string;
+  provider: string;
+}
+
+export async function fetchMemory(limit = 20): Promise<MemoryEpisode[]> {
+  try {
+    const res = await fetch(`${BACKEND}/api/v1/memory?limit=${limit}`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.episodes ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function storeMemory(payload: {
+  text: string;
+  kind?: string;
+  speaker?: string;
+  topic?: string;
+  provider?: string;
+}): Promise<{ success: boolean; episode?: MemoryEpisode }> {
+  try {
+    const res = await fetch(`${BACKEND}/api/v1/memory`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  } catch {
+    return { success: false };
+  }
+}
+
+export async function fetchMemoryStats(): Promise<{
+  total: number;
+  by_kind: Record<string, number>;
+}> {
+  try {
+    const res = await fetch(`${BACKEND}/api/v1/memory/stats`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) return { total: 0, by_kind: {} };
+    return res.json();
+  } catch {
+    return { total: 0, by_kind: {} };
+  }
+}
+
+export interface AnalyticsSummary {
+  window_hours: number;
+  total_calls: number;
+  providers: Record<
+    string,
+    {
+      calls: number;
+      errors: number;
+      success_rate: number;
+      avg_latency_ms: number | null;
+      p95_latency_ms: number | null;
+    }
+  >;
+}
+
+export async function fetchAnalytics(
+  hours = 24,
+): Promise<AnalyticsSummary | null> {
+  try {
+    const res = await fetch(`${BACKEND}/api/v1/analytics?hours=${hours}`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export { BACKEND };
