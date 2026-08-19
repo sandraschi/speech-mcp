@@ -19,22 +19,34 @@ Speech-MCP is designed as a modular gateway for speech services:
 
 | Artifact | Recipe | Output |
 |----------|--------|--------|
-| Claude Desktop bundle | `just mcpb-pack` | `dist/speech-mcp-v0.6.3.mcpb` |
+| Claude Desktop bundle | `just mcpb-pack` | `dist/speech-mcp-v0.6.5.mcpb` |
 | Windows installer | `just build-native` | `native/target/release/bundle/nsis/*.exe`, `msi/*.msi` |
 
 Pipeline (`native/build.ps1`): Vite with `VITE_API_BASE=http://127.0.0.1:10909` → PyInstaller `speech-mcp-backend.exe` → Tauri bundle. Sidecar excludes FunASR/torch (install via `uv sync --extra funasr` separately).
 
-Tag releases run `.github/workflows/release.yml` (wheel + MCPB on `windows-latest` only).
+Tag releases run `.github/workflows/release-notify.yml` (wheel + MCPB on `windows-latest` only).
 
-**CI:** single `windows-latest` job (Ruff, Biome, pytest) — no Ubuntu runners.
+**CI:** single `windows-latest` job via the fleet-ci reusable workflow (`hybrid.yml@v1`): ruff check/format, pyright, pytest, webapp tsc + biome. Public repos run Actions; private repos run the same gates locally with `just ci` (alias of `just gates-green`).
 
 **Tauri NSIS/MSI (~180 MB):** build on Windows and upload:
 
 ```powershell
-just publish-release-local tag=v0.6.3
+just publish-release-local tag=v0.6.5
 ```
 
-Or `just build-native` then `gh release upload v0.6.3 native/target/release/bundle/nsis/*.exe native/target/release/bundle/msi/*.msi --clobber`.
+Or `just build-native` then `gh release upload v0.6.5 native/target/release/bundle/nsis/*.exe native/target/release/bundle/msi/*.msi --clobber`.
+
+---
+
+## Quality gates
+
+Run the full local five-gate suite (`ruff`/`biome` style, `pyright` + `tsc` types, `pytest` behavior):
+
+```powershell
+just gates-green     # or just ci
+```
+
+`just gates-green` runs: `ruff check`, `ruff format --check`, `pyright src/`, the BUG-026 editable-install probe, `pytest -m "not live"`, then webapp `tsc --noEmit` and `biome check`. It must be green before every PR.
 
 ---
 

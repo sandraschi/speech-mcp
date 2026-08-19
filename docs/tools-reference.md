@@ -1,29 +1,38 @@
 # Speech-MCP Tools Reference
 
-## v0.6.0 — May 2026
+Full MCP tool surface (28 tools, version 0.6.5). Every tool sets an
+`annotations=` hint (`READ_ONLY` = query only, `MUTATING` = changes state,
+`DESTRUCTIVE` = can delete/overwrite) and documents a `## Return Format` +
+`## Examples` block in its docstring.
+
+Run `uv run python -m speech_mcp` (stdio) and call any tool from an MCP client
+(Claude Desktop, Cursor, Windsurf). REST mirrors exist under `/api/v1/*`.
 
 ---
 
-## Speech
+## Speech / TTS
 
 ### `text_to_speech`
+`text_to_speech(text, provider, voice_id, description, ctx)` — `MUTATING`
 
-Synthesize speech and **play it immediately on the PC speaker**.
+Synthesize speech and play it immediately on the PC speaker.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `text` | str | required | Text to speak. Gemini supports inline audio tags: `[excited]`, `[whispers]`, `[laughs]`, `[sighs]`, `[fast]`, `[slow]` |
-| `provider` | str | `"windows"` | TTS backend — see providers table below |
-| `voice_id` | str | `"default"` | Voice name. Provider-specific — see below |
-| `description` | str | None | **Hume only.** Prose style prompt, e.g. `"warm, slightly melancholic female voice"`. Drives Octave's expressive synthesis |
+| `provider` | str | `"windows"` | `windows`, `hume`, `gemini`, `gemma`, `elevenlabs` |
+| `voice_id` | str | `"default"` | Provider-specific voice name |
+| `description` | str | None | **Hume only.** Prose style prompt (e.g. `"warm, slightly melancholic female voice"`) |
 
 **Providers:**
 
 | Provider | Key required | Voice options | Notes |
 |---|---|---|---|
-| `windows` | No | `"default"` only | Windows SAPI5, always available, robotic but instant |
-| `hume` | `HUME_API_KEY` | Named: `ITO`, `KORA`, or omit for dynamic | Hume Octave REST. `description` drives prosody |
-| `gemini` | `GOOGLE_API_KEY` | `Kore`, `Aoede`, `Charon`, `Fenrir`, `Orion`, `Puck`, `Leda`, `Zephyr` + 23 more | Gemini 3.1 Flash TTS (released 2026-04-15). Audio tags in text drive delivery |
+| `windows` | No | SAPI5 voices | Always available, instant |
+| `hume` | `HUME_API_KEY` | `ITO`, `KORA`, or dynamic | Hume Octave; `description` drives prosody |
+| `gemini` | `GOOGLE_API_KEY` | `Kore`, `Aoede`, `Charon`, `Fenrir`, `Orion`, `Puck`, `Leda`, `Zephyr` + more | Gemini 3.1 Flash TTS, inline audio tags |
+| `gemma` | No | local | Gemma 4 local, SAPI5 fallback |
+| `elevenlabs` | `ELEVENLABS_API_KEY` | account voices | High-fidelity synthesis |
 
 **Returns:** `{"success": true, "provider": "...", "bytes_played": N, "status": "played"}`
 
@@ -34,29 +43,44 @@ Say "[cheerfully] Welcome! [whispers] This part is quiet." using gemini, voice K
 Say "The reductionist universe..." using hume with description "warm, academic, slightly melancholic"
 ```
 
----
+### `text_to_dialogue`
+`text_to_dialogue(lines, ctx)` — `MUTATING`
+
+Multi-voice dialogue via ElevenLabs (up to 10 voices), played on the PC speaker.
+`lines` is a list of `{"text": str, "voice_id": str}` dicts.
+
+**Returns:** `{"success": true, "provider": "ElevenLabs text_to_dialogue", "lines": N, "voices_used": N, "bytes_played": N, "status": "played"}`
+
+### `play_audio_file`
+`play_audio_file(path, ctx)` — `MUTATING` (diagnostics)
+
+Play a `.wav` or `.mp3` file on the system speaker.
+
+**Returns:** `{"success": true, "path": "..."}` or `{"success": false, "error": "..."}`
 
 ### `manage_voice_clones`
-
-List or manage voice clones across providers.
+`manage_voice_clones(action, provider, name, audio_path, voice_id, language, ctx)` — `DESTRUCTIVE` (delete action)
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `action` | str | required | `"list"`, `"create"`, `"delete"`, `"info"` |
-| `provider` | str | `"hume"` | `"hume"` or `"elevenlabs"` |
-| `name` | str | None | Name for new clone |
-| `audio_path` | str | None | Local file path for cloning source |
-| `voice_id` | str | None | Target voice ID for info/delete |
+| `action` | str | required | `"list"`, `"clone"`, `"delete"` |
+| `provider` | str | `"elevenlabs"` | `"elevenlabs"` or `"hume"` |
+| `name` | str | None | Display name for a new clone |
+| `audio_path` | str | None | Absolute path to the audio sample (WAV/MP3/M4A, >= 5 s) |
+| `voice_id` | str | None | Target voice for delete |
+| `language` | str | `"en"` | IVC language code (`en`, `de`, `ja`, ...) |
 
-**Note:** `list` is fully implemented for both providers. `create`/`delete` are stubs.
+**Returns:** `list` -> `{"voices": [...]}`; `clone` -> `{"voice_id": "..."}`; `delete` -> `{"deleted": true}`.
 
 ---
 
-## Speech-to-Text (FunASR)
+## Speech-to-Text (STT)
 
 ### `transcribe_audio_file`
+`transcribe_audio_file(file_path, provider, language, ctx)` — `READ_ONLY`
 
-High-accuracy batch transcription via Alibaba FunASR (default) or cloud fallbacks.
+Batch transcription of a local audio file. **FunASR** default (VAD + ASR +
+punctuation + speaker diarization in one call), Gemini/Gemma fallbacks.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -66,163 +90,207 @@ High-accuracy batch transcription via Alibaba FunASR (default) or cloud fallback
 
 **Returns:** `{"success": true, "text": "...", "segments": [...], "formatted": "..."}`
 
-See [docs/providers/funasr.md](providers/funasr.md) for setup (`FUNASR_ENABLED`, sidecar mode).
+See [docs/providers/funasr.md](providers/funasr.md) for setup (`FUNASR_ENABLED`, sidecar mode on port 10914).
 
 ### `transcribe_stream_chunk`
+`transcribe_stream_chunk(audio_base64, provider, language, sample_rate, mime_type, ctx)` — `READ_ONLY`
 
-Stateless chunk transcription for stream bridges.
+Stateless chunk transcription for stream bridges (base64 audio in, transcript out).
+
+### `streaming_stt`
+`streaming_stt(action, audio_b64, sample_rate, ctx)` — `MUTATING`
+
+Streaming online ASR via **sherpa-onnx** (ja/en/de, CPU). Feed int16 PCM
+(16 kHz mono) chunks; returns partial transcripts plus an endpoint flag.
+Actions: `status`, `reset`, `feed`, `end`.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `audio_base64` | str | required | Base64-encoded audio chunk |
-| `provider` | str | `"funasr"` | STT backend |
-| `language` | str | `"auto"` | Language code |
-| `sample_rate` | int | `16000` | Input sample rate (informational) |
-| `mime_type` | str | `"audio/wav"` | Chunk MIME type |
+| `action` | str | required | `status`, `reset`, `feed`, or `end` |
+| `audio_b64` | str | `""` | Base64 int16 PCM (16 kHz mono), required for `feed` |
+| `sample_rate` | int | `16000` | Only 16000 supported by sherpa-onnx |
+
+Enable with `SHERPA_ASR_ENABLED=true` + `uv sync --extra sherpa`. Full guide:
+[docs/STREAMING_ASR.md](STREAMING_ASR.md).
+
+### `barge_in_feed`
+`barge_in_feed(audio_b64, ctx)` — `MUTATING`
+
+Feed mic audio for barge-in detection. A completed utterance in the return
+means the user spoke - interrupt the assistant.
 
 ---
 
-## Agentic
+## Agentic (sampling)
 
 ### `start_evi_session`
+`start_evi_session(ctx)` — `READ_ONLY`
 
-Returns WebSocket connection parameters for a Hume EVI real-time session.
-Requires `HUME_API_KEY`. `HUME_CONFIG_ID` must be set for a configured EVI persona.
+Returns WebSocket connection parameters for a Hume EVI real-time session
+(requires `HUME_API_KEY`; `HUME_CONFIG_ID` selects an EVI persona).
 
 ### `detect_wake_word`
+`detect_wake_word(ctx, session_id)` — `MUTATING`
 
-Arms Gemini Live VAD telemetry for a session. Returns activation configuration.
+Arms Gemini Multimodal Live VAD for voice activity detection.
 
 ### `orchestrate_alexa_pattern`
+`orchestrate_alexa_pattern(ctx, user_goal)` — `MUTATING`
 
-Alexa 2.0-style mission orchestrator. Uses `ctx.sample()` to generate a
-conversational strategy for a given `user_goal`.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `user_goal` | str | High-level objective for the session |
+Alexa 2.0-style proactive mission orchestration. Uses `ctx.sample()` to generate
+a conversational strategy for the goal, interleaving listening + emotional
+prosody + adaptive responding.
 
 ### `agentic_conversation_workflow`
+`agentic_conversation_workflow(goal, ctx)` — `MUTATING`
 
-SEP-1577 multi-step orchestrator. Elicits clarification if the goal is vague,
-samples a strategy, and returns a structured mission plan.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `goal` | str | Objective for the conversational mission |
-
----
-
-## RAG / Knowledge Base
-
-### `search_docs`
-
-Semantic vector search over the speech-mcp documentation corpus.
-Uses LanceDB + FastEmbed (`BAAI/bge-small-en-v1.5`). Model downloads ~25 MB on first run.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `query` | str | required | Natural language search query |
-| `limit` | int | `5` | Max results |
-
-**Returns:** List of `{filename, score, content}` chunks.
-
-### `ask_docs`
-
-RAG + LLM sampling. Retrieves relevant chunks then uses `ctx.sample()` to generate
-a grounded answer. Requires sampling support in the MCP host (Claude Desktop: yes).
-
-| Parameter | Type | Description |
-|---|---|---|
-| `question` | str | Natural language question |
-
-**Returns:** `{answer, sources[]}` — answer grounded in indexed docs.
-
----
-
-## Safety
-
-### `safety_validate_intent`
-
-Pattern-matches text against social-engineering triggers (money transfers,
-impersonation, credential phishing, accident-bail scenarios).
-
-| Parameter | Type | Description |
-|---|---|---|
-| `text` | str | Text to validate before synthesis |
-
-**Returns:** `{safe: bool, risk_level: "LOW"|"HIGH"|"CRITICAL", reason?}`
-
-### `safety_log_audit`
-
-Writes a forensic log entry for high-intensity emotional speech.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `text` | str | Synthesized text |
-| `provider` | str | Provider used |
-| `emotional_intensity` | float | 0.0–1.0 |
-
-### `safety_verify_auth`
-
-Validates a bearer token against `SPEECH_MCP_AUTH_TOKEN` env var.
-
----
-
-## Monitoring / IoT
-
-### `trigger_action`
-
-Proxy to Tapo smart home or UI notification bus.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `action_type` | str | `"light_on"`, `"light_off"`, `"notify"` |
-| `params` | dict | `{"room": "living_room"}` or `{"message": "..."}` |
+SEP-1577 autonomous conversation mission. Elicits clarification when the goal is
+vague, samples a strategy, and returns a structured mission plan. Requires a
+sampling-capable MCP host (Claude Desktop).
 
 ---
 
 ## Utility
 
 ### `manage_domestic_utility`
-
-Alexa-pattern timer, alarm, and weather gateway.
+`manage_domestic_utility(action, type, value, label, ctx)` — `MUTATING`
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `action` | str | required | `"set"`, `"cancel"`, `"query"` |
-| `type` | str | required | `"timer"`, `"alarm"`, `"weather"` |
-| `value` | str\|int | None | Seconds for timer, `"07:30"` for alarm, unused for weather |
-| `label` | str | `"Default"` | Human-readable label; location name for weather queries |
+| `action` | str | required | `"set"`, `"query"`, `"cancel"` |
+| `type` | str | required | `"timer"`, `"weather"` |
+| `value` | str\|int | None | Seconds for timers |
+| `label` | str | `"Default"` | Timer label; city name for weather |
 
-Weather fetches live from wttr.in. Timers run as asyncio tasks and log on expiry.
+Weather fetches live from wttr.in; timers run as asyncio tasks and log on expiry.
+
+### `trigger_action`
+`trigger_action(action_type, params, ctx)` — `MUTATING`
+
+Declared IoT bridge. Returns `pending_orchestration` with `requires_bridge` and
+`next_steps` - no fake device state. Use with a wired devices-mcp bridge.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `action_type` | str | `light_on`, `light_off`, `notify` |
+| `params` | dict | `{"room": "living_room"}` or `{"message": "..."}` |
+
+---
+
+## Runtime control
+
+### `configure_runtime`
+`configure_runtime(action, target, device, ctx)` — `MUTATING`
+
+Switch a speech provider between CPU and GPU at runtime without restarting.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `action` | str | required | `status` or `set_device` |
+| `target` | str | `"funasr"` | `funasr` or `sherpa` |
+| `device` | str | `"cpu"` | `cpu`, `cuda:0` (funasr); `cpu`, `cuda` (sherpa) |
+
+REST mirror: `GET/POST /api/v1/runtime`.
+
+---
+
+## RAG / Knowledge base
+
+### `search_docs`
+`search_docs(query, limit, ctx)` — `READ_ONLY`
+
+Semantic vector search over the speech-mcp documentation corpus (LanceDB +
+FastEmbed). Model downloads ~25 MB on first run.
+
+**Returns:** list of `{"filename", "score", "content"}` chunks.
+
+### `ask_docs`
+`ask_docs(question, ctx)` — `READ_ONLY`
+
+RAG + LLM sampling. Retrieves relevant chunks then uses `ctx.sample()` to
+generate a grounded answer.
+
+**Returns:** `{"answer": "...", "sources": [...]}`
+
+---
+
+## Safety
+
+### `safety_validate_intent`
+`safety_validate_intent(text)` — `READ_ONLY`
+
+Pattern-matches text against social-engineering triggers (money transfers,
+impersonation, credential phishing, accident-bail scenarios).
+
+**Returns:** `{"safe": bool, "risk_level": "LOW"|"HIGH"|"CRITICAL", "reason": str, "recommendation": str}`
+
+### `safety_log_audit`
+`safety_log_audit(text, provider, emotional_intensity)` — `MUTATING`
+
+Writes a forensic audit entry for high-intensity emotional speech. Returns a
+confirmation string with a `forensic_trace_id`.
+
+### `safety_verify_auth`
+`safety_verify_auth(token)` — `READ_ONLY`
+
+Validates a token against `SPEECH_MCP_AUTH_TOKEN`. Returns bool.
+
+---
+
+## Subtitle revision
+
+### `revise_subtitles`
+`revise_subtitles(srt_text, language, series, glossary, ctx)` — `MUTATING`
+
+Homophone / jukugo disambiguation pass over SRT text via a local LLM
+(Japanese-focused; `language="ja"`). Returns a change log (original/revised per
+cue, applied + flagged counts) a human can review.
+
+**Returns:** `{"success": bool, "revised_srt": str, "changes": [...], "applied_count": int, "flagged_count": int}`
+
+REST mirror: `POST /api/v1/subtitles/revise`; depot endpoints under `/api/v1/transcripts`.
+
+---
+
+## Wake word
+
+### `configure_local_wake_word`
+`configure_local_wake_word(ctx, keyword, sleep_keyword, sensitivity, action)` — `MUTATING`
+
+Configure the offline openWakeWord listener. No API key required.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `action` | str | required | `start`, `stop`, `status` |
+| `keyword` | str | `"hey_jarvis"` | Wake word (`hey_jarvis`, `computer`, `alexa`, ...) |
+| `sleep_keyword` | str | None | Separate stop keyword |
+| `sensitivity` | float | `0.5` | Detection sensitivity 0.0-1.0 |
+
+REST mirror: `POST /api/v1/wake_word`.
 
 ---
 
 ## UI (Prefab Apps)
 
-These tools render interactive inline UIs in Claude Desktop.
+These tools render interactive inline UIs in Claude Desktop (`@mcp.tool(app=True)`),
+all backed by real data:
 
-### `prosody_dashboard`
-
-Dashboard showing current emotional vector, engine performance metrics, and
-provider status. Uses `Metric`, `Badge`, `Row`, `Separator` components.
-
-### `speech_activity_chart`
-
-Bar chart of token usage across recent speech sessions. Uses `BarChart` +
-`ChartSeries` from `prefab_ui.components.charts`.
+| Tool | Content |
+|---|---|
+| `prosody_dashboard` | Per-provider configured / missing-key status |
+| `speech_activity_chart` | This session's TTS/STT interaction counts per provider |
+| `fleet_health_overview` | Providers, RAG sources, active timers |
+| `provider_capability_matrix` | TTS / STT / streaming / cloning / wake-word matrix |
+| `latency_benchmark_view` | Honest card: latency is not measured by this server |
 
 ---
 
-## Wake Word
+## Demos
 
-### `configure_local_wake_word`
+### `run_speech_demo`
+`run_speech_demo(demo, ctx)` — `MUTATING`
 
-Configures openWakeWord for local wake-word detection.
-No API key required — runs fully offline.
+Execute a hardware-specific speech or capability demo script (e.g. `weather`,
+`windows`, `shakespeare`, `price`). Runs the matching `scripts/demos/*.py`.
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `keyword` | str | `"computer"` | Built-in keyword: `"computer"`, `"jarvis"`, `"alexa"`, etc. |
-| `sensitivity` | float | `0.5` | Detection sensitivity 0.0–1.0 |
+**Returns:** `{"success": bool, "demo": str, "exit_code": int, "output": str}`

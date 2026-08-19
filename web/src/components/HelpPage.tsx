@@ -60,7 +60,7 @@ const HelpPage: React.FC = () => {
             "REST: POST /api/v1/transcribe?provider=funasr",
             "VAD + ASR + punctuation + speaker diarization in one pipeline",
             "Models: Fun-ASR-Nano-2512, SenseVoiceSmall (via FUNASR_MODEL)",
-            "Sidecar: FUNASR_OPENAI_URL → funasr-server on port 10910",
+            "Sidecar: FUNASR_OPENAI_URL → funasr-server on port 10914",
           ]}
           notes="Install: uv sync --extra funasr. Set FUNASR_ENABLED=true in .env (or sidecar URL). Fleet wake commands use FunASR when FLEET_VOICE_DELEGATE=1."
         />

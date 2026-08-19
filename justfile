@@ -240,6 +240,9 @@ test:
 # Alias: start the full stack (backend 10909 + frontend 10908)
 serve: start
 
+# Alias: start the full stack (README legacy name)
+dev: start
+
 # Alias: ruff format + autofix
 fmt: fix
 
