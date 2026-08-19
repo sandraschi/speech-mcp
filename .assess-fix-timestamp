@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-08-19T07:26:43.3438066+02:00",
-  "commit": "405183bb503b18c0cf92df423cdc84a2e0e8d114",
+  "commit": "a1ca4b37c4d1733eb57d00dc1e5fffc1ba31cc84",
   "host": "GOLIATH",
   "notes": "assfix 2026-08-19: tool surface complete (annotations + Return Format/Examples on all 28 tools, Args blocks removed), biome gate fixed, justfile serve/fmt/gates-green/ci added, mcpb/src untracked + mcpb staging dir excluded from bundle, prompts promoted to root assets/, glama+llms-full synced to 28 tools, gates green (ruff/format/pyright 0/pytest 29/tsc/biome/just gates-green). CI pipeline still not executing (2 runs queued 440h+, cancel -> HTTP 500) - needs GitHub-side fix."
 }
