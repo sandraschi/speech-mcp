@@ -6,10 +6,13 @@ from pydantic import Field
 from speech_mcp.sanitize import wrap_untrusted
 from speech_mcp.state import get_store
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_README_ONLY = {"readonly": True}
+
 
 def register_rag_tools(mcp: FastMCP):
 
-    @mcp.tool()
+    @mcp.tool(annotations=_README_ONLY)
     async def search_docs(
         query: Annotated[str, Field(description="Natural language search query.")],
         limit: Annotated[int, Field(description="Maximum number of results.")] = 5,
@@ -39,7 +42,7 @@ def register_rag_tools(mcp: FastMCP):
             ],
         }
 
-    @mcp.tool()
+    @mcp.tool(annotations=_README_ONLY)
     async def ask_docs(
         question: Annotated[str, Field(description="Natural language question about speech AI.")],
         ctx: Context,

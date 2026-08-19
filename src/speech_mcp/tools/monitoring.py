@@ -6,10 +6,13 @@ from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_MUTATING = {"readonly": False}
+
 
 def register_monitoring_tools(mcp: FastMCP):
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def trigger_action(
         action_type: Annotated[str, Field(description="Action type: light_on, light_off, notify")],
         params: Annotated[dict | None, Field(description="Action parameters, e.g. {'room': 'living_room'}")] = None,
@@ -22,6 +25,11 @@ def register_monitoring_tools(mcp: FastMCP):
 
         ## Return Format
         {"success": bool, "device"?: str, "state"?: str, "action_elicited"?: str, "status": str}
+
+        ## Examples
+        ``trigger_action(action_type="light_on", params={"room": "living_room"})``
+        -> returns ``{"success": True, "status": "pending_orchestration",
+        "requires_bridge": True, "next_steps": [...]}`` (no fake device state).
         """
         if ctx:
             await ctx.info(f"Eliciting action: {action_type}")

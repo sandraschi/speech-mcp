@@ -10,6 +10,9 @@ from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_MUTATING = {"readonly": False}
+
 
 class DemoName(StrEnum):
     WINDOWS = "windows"
@@ -46,7 +49,7 @@ DEMO_MAP = {
 def register_demo_tools(mcp: FastMCP):
     """Register tools for running expressive speech and capability demos."""
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def run_speech_demo(
         demo: Annotated[DemoName, Field(description="Demo name to execute.")],
         ctx: Context | None = None,
@@ -58,6 +61,11 @@ def register_demo_tools(mcp: FastMCP):
 
         ## Return Format
         {"success": bool, "demo": str, "exit_code"?: int, "output"?: str, "error"?: str}
+
+        ## Examples
+        ``run_speech_demo(demo="weather")`` -> runs the interactive weather demo,
+        returns ``{"success": True, "demo": "weather", "exit_code": 0,
+        "output": "..."}``.
         """
         script_filename = DEMO_MAP.get(demo)
         if not script_filename:

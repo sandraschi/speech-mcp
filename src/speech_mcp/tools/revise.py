@@ -20,6 +20,9 @@ from speech_mcp.providers.local import local_llm_provider
 
 logger = logging.getLogger(__name__)
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_MUTATING = {"readonly": False}
+
 _BLOCK_RE = re.compile(r"^(\d+)\s*\n(\d{1,2}:\d{2}:\d{2},\d{3}) --> (\d{1,2}:\d{2}:\d{2},\d{3})\s*(.*)$", re.M)
 
 
@@ -227,7 +230,7 @@ async def revise_srt(srt_text: str, *, series: str = "", glossary: str = "", lan
 
 
 def register_revise_tools(mcp: FastMCP) -> None:
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def revise_subtitles(
         srt_text: Annotated[str, Field(description="SRT subtitle text to revise.")],
         language: Annotated[str, Field(description="Language of the transcript (default ja).")] = "ja",

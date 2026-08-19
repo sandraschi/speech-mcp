@@ -11,11 +11,14 @@ from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_MUTATING = {"readonly": False}
+
 
 def register_streaming_asr_tools(mcp: FastMCP, sherpa_asr) -> None:
     """Register streaming STT tools. ``sherpa_asr`` is a SherpaStreamingASR or None."""
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def streaming_stt(
         action: Annotated[
             str,
@@ -89,7 +92,7 @@ def register_streaming_asr_tools(mcp: FastMCP, sherpa_asr) -> None:
             return {"success": True, "action": action, "text": text, "partial": text, "endpoint": True}
         return {"success": False, "error": f"Unknown action '{action}'. Use status/reset/feed/end."}
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def barge_in_feed(
         audio_b64: Annotated[str, Field(description="Base64 int16 PCM (16 kHz) from the live mic.")],
         ctx: Context | None = None,

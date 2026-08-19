@@ -4,6 +4,10 @@
 > **sherpa-onnx streaming STT + barge-in (ja/en/de)**, Gemini Live/TTS, Hume, ElevenLabs,
 > wake word, RAG, fleet voice command bus.
 
+## Full reference
+
+- [llms-full.txt](llms-full.txt) - complete tool/endpoint/env reference
+
 ## Core documentation
 
 - [FunASR local STT (full guide)](docs/providers/funasr.md) — MLT-Nano model, env, sidecar (10914), MCP tools, benchmarks

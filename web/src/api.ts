@@ -147,6 +147,123 @@ export async function transcribeBatch(
   return res.json();
 }
 
+export interface RevisionChange {
+  index: number;
+  original: string;
+  revised: string;
+  reading?: string;
+  reason?: string;
+  confidence?: number;
+  review?: boolean;
+  applied?: boolean;
+}
+
+export interface ReviseResult {
+  success: boolean;
+  error?: string;
+  revised_srt: string;
+  changes: RevisionChange[];
+  applied_count: number;
+  flagged_count: number;
+  language: string;
+  model?: string;
+}
+
+export async function reviseSubtitles(
+  srt: string,
+  series = "",
+  glossary = "",
+  language = "ja",
+): Promise<ReviseResult> {
+  const res = await fetch(`${BACKEND}/api/v1/subtitles/revise`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ srt, series, glossary, language }),
+  });
+  return res.json();
+}
+
+export interface TranscriptEntry {
+  id: number;
+  series: string;
+  season: number | null;
+  episode: number | null;
+  title: string;
+  source: string;
+  source_media_key: string;
+  language: string;
+  status: string;
+  model: string;
+  raw_srt_path: string;
+  revised_srt_path: string;
+  created_at: string;
+  updated_at: string;
+  raw_srt?: string;
+  revised_srt?: string;
+  changes?: RevisionChange[];
+}
+
+export async function transcribePlex(payload: {
+  media_key: string;
+  plex_mcp_url?: string;
+  series?: string;
+  season?: number | null;
+  episode?: number | null;
+  language?: string;
+}): Promise<{
+  success: boolean;
+  transcript?: TranscriptEntry;
+  info?: Record<string, unknown>;
+}> {
+  const res = await fetch(`${BACKEND}/api/v1/transcribe/plex`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Plex transcribe failed: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchTranscripts(limit = 50): Promise<{
+  success: boolean;
+  transcripts: TranscriptEntry[];
+  count: number;
+}> {
+  const res = await fetch(`${BACKEND}/api/v1/transcripts?limit=${limit}`, {
+    headers: authHeaders(),
+  });
+  return res.json();
+}
+
+export async function setTranscriptStatus(
+  id: number,
+  status: string,
+): Promise<{ success: boolean; transcript?: TranscriptEntry }> {
+  const res = await fetch(`${BACKEND}/api/v1/transcripts/${id}/status`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  return res.json();
+}
+
+export async function reviseTranscript(
+  id: number,
+  glossary = "",
+): Promise<{
+  success: boolean;
+  transcript?: TranscriptEntry;
+  applied_count?: number;
+  flagged_count?: number;
+}> {
+  const res = await fetch(`${BACKEND}/api/v1/transcripts/${id}/revise`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ glossary }),
+  });
+  return res.json();
+}
+
 export interface HealthData {
   status: string;
   version: string;
@@ -171,16 +288,16 @@ export interface HealthData {
   };
 }
 
-export async function request(
+export async function request<T = unknown>(
   path: string,
   options: RequestInit = {},
-): Promise<any> {
+): Promise<T> {
   const res = await fetch(`${BACKEND}${path}`, {
     ...options,
     headers: { ...authHeaders(), ...(options.headers || {}) },
   });
   if (!res.ok) throw new Error(`Request failed: ${res.statusText}`);
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 export interface StatsData {

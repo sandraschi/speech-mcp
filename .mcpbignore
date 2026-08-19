@@ -31,9 +31,35 @@ MANIFEST.md
 AGENTS.md
 CLAUDE.md
 GEMINI.md
+glama.json
 pyproject.toml.bak
 arazzo.yaml
 uv.lock
 test_gemini.wav
 *.wav
 scratch/
+
+# MCPB pack staging dir (pack happens from repo root - never ship the twin)
+mcpb/
+
+# Backup patterns (sneak-in backups - both patterns required)
+*.bak
+*.bak.*
+
+# Dev/tooling files that must not ship in the bundle
+start.ps1
+start.bat
+justfile
+release.ps1
+fleet-start.config.ps1
+.cursorrules
+.windsurfrules
+.pre-commit-config.yaml
+.gitattributes
+.claude-plugin/
+hooks/
+.opencode/
+.assess-fix-timestamp
+logs.txt
+reports/
+cua-reports/

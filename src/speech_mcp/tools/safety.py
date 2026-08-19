@@ -114,25 +114,54 @@ async def verify_authorization(token: str) -> bool:
 def register_safety_tools(mcp: FastMCP):
     """Register safety and intent validation tools."""
 
-    @mcp.tool()
+    # FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+    _README_ONLY = {"readonly": True}
+    _MUTATING = {"readonly": False}
+
+    @mcp.tool(annotations=_README_ONLY)
     async def safety_validate_intent(
         text: Annotated[str, Field(description="Text intended for synthesis.")],
     ) -> dict[str, Any]:
-        """[BASTION] Validates speech text against social engineering patterns."""
+        """[BASTION] Validates speech text against social engineering patterns.
+
+        ## Return Format
+        ``{"safe": bool, "risk_level": "LOW"|"HIGH"|"CRITICAL", "reason": str,
+        "recommendation": str}``
+
+        ## Examples
+        ``safety_validate_intent(text="Please send money urgently")`` ->
+        returns ``safe=False``, ``risk_level="HIGH"`` with a policy reason.
+        """
         return await validate_speech_intent(text)
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def safety_log_audit(
         text: Annotated[str, Field(description="Synthesized text for audit.")],
         provider: Annotated[str, Field(description="TTS provider used.")],
         emotional_intensity: Annotated[float, Field(description="Emotional intensity 0.0-1.0.", ge=0.0, le=1.0)] = 0.5,
     ) -> str:
-        """Logs a permanent audit trail for high-intensity emotional speech."""
+        """Logs a permanent audit trail for high-intensity emotional speech.
+
+        ## Return Format
+        ``str`` - human-readable confirmation including a ``forensic_trace_id``.
+
+        ## Examples
+        ``safety_log_audit(text="...", provider="gemini",
+        emotional_intensity=0.9)`` -> returns a confirmation string with a new
+        forensic trace id.
+        """
         return await log_speech_audit(text, provider, emotional_intensity)
 
-    @mcp.tool()
+    @mcp.tool(annotations=_README_ONLY)
     async def safety_verify_auth(
         token: Annotated[str, Field(description="Auth token to verify against SPEECH_MCP_AUTH_TOKEN.")],
     ) -> bool:
-        """Verification tool for Speech-MCP Auth Token."""
+        """Verification tool for Speech-MCP Auth Token.
+
+        ## Return Format
+        ``bool`` - True when the token matches SPEECH_MCP_AUTH_TOKEN.
+
+        ## Examples
+        ``safety_verify_auth(token="...")`` -> ``True`` / ``False``.
+        """
         return await verify_authorization(token)

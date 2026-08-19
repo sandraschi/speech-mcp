@@ -10,6 +10,9 @@ from speech_mcp.state import _timers, run_timer
 
 logger = logging.getLogger(__name__)
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_MUTATING = {"readonly": False}
+
 
 async def _weather_report(location: str) -> dict:
     """Real-time weather via wttr.in. Honest failure when the service is unreachable."""
@@ -45,7 +48,7 @@ async def _weather_report(location: str) -> dict:
 
 def register_utility_tools(mcp: FastMCP):
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def manage_domestic_utility(
         action: Annotated[str, Field(description="Operation: set, cancel, query")],
         type: Annotated[str, Field(description="Utility type: timer, alarm, weather")],

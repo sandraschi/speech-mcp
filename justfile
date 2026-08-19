@@ -1,5 +1,7 @@
 set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+
 import 'scripts/just/fleet.just'
+
 set shell := ["powershell.exe", "-NoProfile", "-Command"]
 set dotenv-load := true
 
@@ -13,7 +15,7 @@ default:
 
 # Install / sync all dependencies + pre-commit + web frontend
 bootstrap:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     uv sync --group dev
     uv run pre-commit install
     Set-Location web; npm ci; if ($LASTEXITCODE -ne 0) { npm install }
@@ -23,17 +25,17 @@ install: bootstrap
 
 # Start the FastAPI webapp backend (port 10909)
 backend:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     $env:SPEECH_MCP_PORT = '10909'; uv run python -m speech_mcp.webapp
 
 # Start the Vite frontend (port 10908)
 frontend:
-    Set-Location '{{justfile_directory()}}\web'
+    Set-Location '{{ justfile_directory() }}\web'
     npm run dev -- --port 10908
 
 # Start both backend and frontend (two tabs)
 start:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     .\start.ps1
 
 # --- Demo  TTS ---
@@ -72,13 +74,13 @@ demo-price:
 
 # --- ElevenLabs TTS  play with a named voice  requires ELEVENLABS_API_KEY  voice ID ---
 demo-elevenlabs voice_id="":
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     uv run python -c " \
     import sys, os; sys.path.insert(0, 'src'); \
     from dotenv import load_dotenv; load_dotenv(); \
     from elevenlabs.client import ElevenLabs; \
     import tempfile, subprocess; \
-    vid = '{{voice_id}}' or os.environ.get('EL_DEFAULT_VOICE', ''); \
+    vid = '{{ voice_id }}' or os.environ.get('EL_DEFAULT_VOICE', ''); \
     if not vid: print('Usage: just demo-elevenlabs voice_id=<id>  (get IDs from: just demo-el-list)'); exit(1); \
     client = ElevenLabs(api_key=os.environ['ELEVENLABS_API_KEY']); \
     audio = bytearray([c for chunk in client.text_to_speech.convert(voice_id=vid, text='The reductionist universe has no room for miracles, but plenty of room for wonder.', output_format='mp3_44100_128') for c in chunk]); \
@@ -89,7 +91,7 @@ demo-elevenlabs voice_id="":
 
 # --- ElevenLabs  list all voices in your account ---
 demo-el-list:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     uv run python -c " \
     import sys, os; sys.path.insert(0, 'src'); \
     from dotenv import load_dotenv; load_dotenv(); \
@@ -100,13 +102,14 @@ demo-el-list:
     [print(f'  {v.voice_id}  {v.name}  ({getattr(v, \"category\", \"\")}') for v in sorted(voices.voices, key=lambda v: v.name)]"
 
 # --- ElevenLabs IVC  instant voice clone from an audio file ---
+
 # Usage: just demo-el-clone name="Benny" file="C:/path/to/sample.wav"
 demo-el-clone name="" file="":
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     uv run python -c " \
     import sys, os; sys.path.insert(0, 'src'); \
     from dotenv import load_dotenv; load_dotenv(); \
-    name = '{{name}}'; path = '{{file}}'; \
+    name = '{{ name }}'; path = '{{ file }}'; \
     if not name or not path: print('Usage: just demo-el-clone name=\"MyVoice\" file=\"C:/path/to/audio.wav\"'); exit(1); \
     from elevenlabs.client import ElevenLabs; \
     client = ElevenLabs(api_key=os.environ['ELEVENLABS_API_KEY']); \
@@ -115,13 +118,14 @@ demo-el-clone name="" file="":
     print(f'Use: just demo-elevenlabs voice_id={result.voice_id}')"
 
 # --- ElevenLabs text_to_dialogue  two voices in a natural conversation ---
+
 # Requires two voice IDs from your account
 demo-el-dialogue v1="" v2="":
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     uv run python -c " \
     import sys, os; sys.path.insert(0, 'src'); \
     from dotenv import load_dotenv; load_dotenv(); \
-    v1 = '{{v1}}'; v2 = '{{v2}}'; \
+    v1 = '{{ v1 }}'; v2 = '{{ v2 }}'; \
     if not v1 or not v2: print('Usage: just demo-el-dialogue v1=<voice_id> v2=<voice_id>'); exit(1); \
     from elevenlabs.client import ElevenLabs; from elevenlabs import DialogueInput; \
     import tempfile, subprocess; \
@@ -146,9 +150,10 @@ demo-wake-keywords:
     @Write-Host 'Use the configure_local_wake_word MCP tool in a Claude session to activate.' -ForegroundColor Gray
 
 # Run the interactive weather demo with Gemini voice (Optional city parameter)
+
 # Usage: just demo-weather city="London"
 demo-weather city="Vienna":
-    @uv run python scripts/demos/demo_weather.py "{{city}}"
+    @uv run python scripts/demos/demo_weather.py "{{ city }}"
 
 # Interactive weather demo that asks for a city first
 demo-weather-ask:
@@ -180,22 +185,22 @@ demo-live-ui:
 
 # Build Vite webapp only (dev proxy; Tauri sets VITE_API_BASE in build.ps1)
 build-webapp:
-    Set-Location '{{justfile_directory()}}\web'
+    Set-Location '{{ justfile_directory() }}\web'
     npm install
     npm run build
 
 # --- Full local release  wheel  mcpb  Tauri upload to GitHub Releases ---
 publish-release-local tag="v0.6.3":
-    Set-Location '{{justfile_directory()}}'
-    powershell.exe -NoProfile -File scripts/publish-release-local.ps1 -Tag "{{tag}}"
+    Set-Location '{{ justfile_directory() }}'
+    powershell.exe -NoProfile -File scripts/publish-release-local.ps1 -Tag "{{ tag }}"
 
 # --- Tauri native installer  Windows NSIS  MSI web  PyInstaller sidecar  bundle ---
 build-native:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     powershell.exe -NoProfile -File native/build.ps1
 
 build-native-debug:
-    Set-Location '{{justfile_directory()}}\native'
+    Set-Location '{{ justfile_directory() }}\native'
     $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
     npx @tauri-apps/cli build --debug
 
@@ -203,38 +208,58 @@ build-native-debug:
 
 # Lint everything (Python + Justfile)
 lint:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     just --fmt --check
     just --list > $null
     uv run ruff check src/
 
 # Biome lint (Web)
 lint-web:
-    Set-Location '{{justfile_directory()}}\web'
+    Set-Location '{{ justfile_directory() }}\web'
     npx -y @biomejs/biome check src/
 
 # Ruff format + autofix
 fix:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     uv run ruff check src/ --fix --unsafe-fixes
     uv run ruff format src/
 
 # Biome format + fix
 fix-web:
-    Set-Location '{{justfile_directory()}}\web'
+    Set-Location '{{ justfile_directory() }}\web'
     npx -y @biomejs/biome check --write src/
 
 # Run mock-based test suite (suitable for GitHub CI)
 test:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     # BUG-026 guard: prove pytest imports YOUR source, not a stale site-packages copy.
     # Exit 1 -> `uv pip install -e .` then re-run.
     pwsh -NoProfile -File 'D:\Dev\repos\mcp-central-docs\scripts\check-editable-install.ps1' -RepoRoot (Get-Location).Path
     uv run pytest tests/ -v -m "not live"
 
+# Alias: start the full stack (backend 10909 + frontend 10908)
+serve: start
+
+# Alias: ruff format + autofix
+fmt: fix
+
+# Local five-gate quality gate (ruff/biome style, pyright + tsc types, pytest behavior)
+gates-green:
+    Set-Location '{{ justfile_directory() }}'
+    uv run ruff check src/ run_server.py
+    uv run ruff format src/ --check
+    uv run pyright src/
+    pwsh -NoProfile -File 'D:\Dev\repos\mcp-central-docs\scripts\check-editable-install.ps1' -RepoRoot (Get-Location).Path
+    uv run pytest tests/ -q -m "not live"
+    Set-Location '{{ justfile_directory() }}\web'; npx tsc --noEmit
+    Set-Location '{{ justfile_directory() }}\web'; npx biome check src
+
+# Local CI equivalent (private/public parity - GITHUB_ACTIONS_NO_PRIVATE_CI)
+ci: gates-green
+
 # Run high-fidelity audio integration tests (Local only, produces sound)
 verify-speech:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     uv run pytest tests/live/ -s -v --live
 
 # --- Orchestration ---
@@ -244,20 +269,21 @@ probe:
     @uv run python scripts/utils/hardware_probe.py
 
 # Optimized launch for multi-screen workflows (app defaults to blender)
+
 # Usage: just dual-launch app="blender" monitor=1
 dual-launch app="blender" monitor="1":
-    @uv run python scripts/utils/orchestrator.py --app "{{app}}" --monitor {{monitor}}
+    @uv run python scripts/utils/orchestrator.py --app "{{ app }}" --monitor {{ monitor }}
 
 # --- Maintenance ---
 
 # Re-index the RAG knowledge base from docs/
 reindex:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     uv run python scripts/reindex_docs.py
 
 # Wipe and rebuild the LanceDB vector store
 reindex-clean:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     Remove-Item -Recurse -Force data\lancedb -ErrorAction SilentlyContinue
     uv run python scripts/reindex_docs.py
 
@@ -273,7 +299,7 @@ sherpa-download:
 
 # Download just one language model (e.g. just sherpa-download-lang de)
 sherpa-download-lang lang="en":
-    @uv run python scripts/download_sherpa_models.py "{{lang}}"
+    @uv run python scripts/download_sherpa_models.py "{{ lang }}"
 
 rag-gpu-install:
     @powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/just/rag-gpu-install.ps1
@@ -287,7 +313,7 @@ versions:
 
 # Clean build artefacts and backup files
 clean:
-    Set-Location '{{justfile_directory()}}'
+    Set-Location '{{ justfile_directory() }}'
     Get-ChildItem -Recurse -Filter '*.bak' | Remove-Item -Force -ErrorAction SilentlyContinue
     Get-ChildItem -Recurse -Filter '__pycache__' -Directory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     Get-ChildItem -Recurse -Filter '*.pyc' | Remove-Item -Force -ErrorAction SilentlyContinue
@@ -299,7 +325,7 @@ clean:
 
 # Speak some text via TTS
 speak text="Hello from the fleet":
-    curl -s -X POST http://127.0.0.1:10909/api/v1/tts -H "Content-Type: application/json" -d '{"text":"{{text}}"}' | python -c "import sys,json; d=json.load(sys.stdin); print('Spoken' if d.get('success') else d.get('error',''))"
+    curl -s -X POST http://127.0.0.1:10909/api/v1/tts -H "Content-Type: application/json" -d '{"text":"{{ text }}"}' | python -c "import sys,json; d=json.load(sys.stdin); print('Spoken' if d.get('success') else d.get('error',''))"
 
 # List available voices
 voices:

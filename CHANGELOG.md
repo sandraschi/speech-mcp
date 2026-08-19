@@ -1,4 +1,18 @@
 
+# Changelog - Speech-MCP
+
+All notable changes to this project will be documented in this file.
+
+## [Unreleased] - 2026-08-19
+
+### Changed - assfix quality pass
+
+- Tool surface: `annotations=` (READ_ONLY / MUTATING / DESTRUCTIVE) on all 28 MCP tools, `## Return Format` + `## Examples` added where missing, `Args:` blocks removed (docstrings_sota).
+- Webapp lint gate fixed (biome green): a11y label/input associations, unused vars, generic `request<T>` (no explicit `any`).
+- justfile: added `serve`, `fmt`, `gates-green`, `ci` recipes; justfile formatter-clean.
+- CI: added `check`/`typecheck` npm scripts so the fleet-ci type gate can run; flagged fleet-ci `web/` frontend detection gap upstream.
+- Cleanup: removed tracked `.bak` dross, gitignored `logs.txt`/`logs/`, `llms.txt` links `llms-full.txt`.
+
 ## [0.6.5] — 2026-08-17
 
 ### Added — Streaming STT & barge-in (sherpa-onnx) + assfix
@@ -31,10 +45,7 @@
 - CUA-NSIS: local certification — all 11 phases pass locally (2026-06-14)
 
 ### Changed
-- CORS: llow_origins=["*"] → explicit origins list for Tauri webview compatibility
-# Changelog — Speech-MCP
-
-All notable changes to this project will be documented in this file.
+- CORS: allow_origins=["*"] → explicit origins list for Tauri webview compatibility
 
 ## [0.6.3] - 2026-05-31 (beta)
 

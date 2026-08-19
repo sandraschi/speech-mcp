@@ -13,6 +13,10 @@ from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_MUTATING = {"readonly": False}
+_DESTRUCTIVE = {"readonly": False, "destructive": True}
+
 
 async def _play_wav_file(path: str) -> None:
     """Play a WAV file via winsound (stdlib, zero dependencies)."""
@@ -141,7 +145,7 @@ def register_speech_tools(
     gemma_client: Any | None = None,
 ):
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def play_audio_file(
         path: Annotated[str, Field(description="Absolute path to the audio file.")],
         ctx: Context | None = None,
@@ -152,6 +156,10 @@ def register_speech_tools(
 
         ## Return Format
         {"success": bool, "path"?: str, "error"?: str}
+
+        ## Examples
+        ``play_audio_file(path="C:/sounds/alert.wav")`` -> plays the file and
+        returns ``{"success": True, "path": "C:/sounds/alert.wav"}``.
         """
         if not os.path.exists(path):
             return {"success": False, "error": f"File not found: {path}"}
@@ -176,7 +184,7 @@ def register_speech_tools(
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def text_to_speech(
         text: Annotated[str, Field(description="Text to synthesize and play.")],
         provider: Annotated[
@@ -332,7 +340,7 @@ def register_speech_tools(
                 "error": f"Unknown provider '{provider}'. Use 'windows', 'hume', 'gemini', or 'elevenlabs'.",
             }
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def text_to_dialogue(
         lines: list[dict],
         ctx: Context | None = None,
@@ -345,16 +353,21 @@ def register_speech_tools(
 
         Requires ELEVENLABS_API_KEY and valid voice IDs. Use manage_voice_clones
         action='list' provider='elevenlabs' to see your available voices.
-
-        Args:
-            lines: List of {text, voice_id} dicts. Example:
-                   [
-                     {"text": "Good morning, Benny.", "voice_id": "abc123"},
-                     {"text": "Woof.", "voice_id": "def456"}
-                   ]
+        ``lines`` is a list of ``{text, voice_id}`` dicts, e.g.
+        ``[{"text": "Good morning, Benny.", "voice_id": "abc123"}, ...]`` (max 10 voices).
 
         Example use:
             Ask two different cloned voices to have a short philosophical exchange.
+
+        ## Return Format
+        ``{"success": bool, "provider": str, "lines": int, "voices_used": int,
+        "bytes_played": int, "status": "played"}`` — or ``{"success": False,
+        "error": str}`` on failure.
+
+        ## Examples
+        ``text_to_dialogue(lines=[{"text": "Hello.", "voice_id": "v1"},
+        {"text": "Hi.", "voice_id": "v2"}])`` -> plays both voices, returns
+        ``{"success": True, "lines": 2, "voices_used": 2, ...}``.
         """
         if not eleven_client:
             return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
@@ -407,7 +420,7 @@ def register_speech_tools(
                 except OSError:
                     pass
 
-    @mcp.tool()
+    @mcp.tool(annotations=_DESTRUCTIVE)
     async def manage_voice_clones(
         action: str,
         provider: str = "elevenlabs",
@@ -426,13 +439,17 @@ def register_speech_tools(
                     (requires name + audio_path)
           delete  — delete a voice by voice_id
 
-        Args:
-            action:     'list', 'clone', or 'delete'
-            provider:   'elevenlabs' or 'hume'
-            name:       Display name for a new clone
-            audio_path: Absolute path to audio file for cloning (WAV/MP3/M4A)
-            voice_id:   Target voice ID for delete
-            language:   Language code for IVC, e.g. 'en', 'de', 'ja'
+        ## Return Format
+        ``{"success": bool, "action": str, "provider": str, ...}`` — ``list``
+        returns ``voices``; ``clone`` returns ``voice_id``; ``delete`` returns
+        ``deleted``. ``{"success": False, "error": str}`` on failure.
+
+        ## Examples
+        ``manage_voice_clones(action="list", provider="elevenlabs")`` -> lists
+        your ElevenLabs voices.
+        ``manage_voice_clones(action="clone", name="Benny",
+        audio_path="C:/samples/benny.wav")`` -> creates an IVC clone and returns
+        its ``voice_id``.
         """
         if ctx:
             await ctx.info(f"Voice management: {action} via {provider}")

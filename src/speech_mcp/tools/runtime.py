@@ -10,9 +10,12 @@ from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_MUTATING = {"readonly": False}
+
 
 def register_runtime_tools(mcp: FastMCP, sherpa_asr) -> None:
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def configure_runtime(
         action: Annotated[str, Field(description="Operation: status or set_device.")],
         target: Annotated[str, Field(description="Provider to configure: funasr or sherpa.")] = "funasr",

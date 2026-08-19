@@ -7,6 +7,10 @@ from pydantic import Field
 
 from speech_mcp.sanitize import wrap_untrusted
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_README_ONLY = {"readonly": True}
+_MUTATING = {"readonly": False}
+
 
 def _local_proxy_url() -> str:
     base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10909")
@@ -15,7 +19,7 @@ def _local_proxy_url() -> str:
 
 def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
-    @mcp.tool()
+    @mcp.tool(annotations=_README_ONLY)
     async def start_evi_session(ctx: Context | None = None) -> dict:
         """
         Initializes a real-time Empathic Voice Interface session.
@@ -24,6 +28,10 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
         ## Return Format
         {"success": bool, "websocket_url": str, "status": str, "next_steps": list}
+
+        ## Examples
+        ``start_evi_session()`` -> connects Hume EVI, returns the side-channel
+        ``local_proxy`` websocket URL and ``next_steps`` for the frontend.
         """
         if ctx:
             await ctx.info("Initializing Hume EVI session via standard relay.")
@@ -39,7 +47,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
             "next_steps": ["Initialize frontend WebSocket connection to local_proxy"],
         }
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def detect_wake_word(
         ctx: Context,
         session_id: Annotated[str | None, Field(description="Optional session ID for VAD scoping.")] = None,
@@ -53,6 +61,10 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
         ## Return Format
         {"success": bool, "status": str, "provider": str, "trigger_mode": str}
+
+        ## Examples
+        ``detect_wake_word(session_id="abc")`` -> arms Gemini Live VAD, returns
+        ``{"success": True, "status": "armed", "trigger_mode": "native_barge_in"}``.
         """
         if ctx:
             await ctx.info(f"Arming Gemini Live VAD telemetry for session: {session_id or 'default'}")
@@ -71,7 +83,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
             "quality_metrics": {"vad_latency_ms": 10, "activation_fidelity": "precise"},
         }
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def orchestrate_alexa_pattern(
         ctx: Context,
         user_goal: Annotated[str, Field(description="The user's high-level goal for the interaction.")],
@@ -84,6 +96,11 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
         ## Return Format
         {"success": bool, "status": str, "mission_strategy": str, "next_steps": list}
+
+        ## Examples
+        ``orchestrate_alexa_pattern(user_goal="Check the weather and plan my
+        commute")`` -> returns an ``orchestration_active`` status with the sampled
+        mission strategy and next steps.
         """
         if ctx:
             await ctx.info(f"Orchestrating modern conversational pattern for goal: {user_goal}")
@@ -117,7 +134,7 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
             },
         }
 
-    @mcp.tool()
+    @mcp.tool(annotations=_MUTATING)
     async def agentic_conversation_workflow(
         goal: Annotated[str, Field(description="High-level objective for the conversational mission.")],
         ctx: Context | None = None,
@@ -131,6 +148,11 @@ def register_agentic_tools(mcp: FastMCP, hume_client: HumeClient | None):
 
         ## Return Format
         {"success": bool, "goal": str, "strategy_adopted": str, "status": str, "next_steps": list}
+
+        ## Examples
+        ``agentic_conversation_workflow(goal="Plan a voice-only dinner
+        reminder")`` -> returns ``{"success": True, "status": "in_progress",
+        "strategy_adopted": "...", "next_steps": [...]}``.
         """
         if not ctx:
             return {"success": False, "error": "Context required for agentic workflow"}

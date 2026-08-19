@@ -1,4 +1,4 @@
-# Cursor Rules — speech-mcp
+# GitHub Copilot Instructions — speech-mcp
 
 - Python: `uv run ruff check src/ --fix` before commit; line length 120.
 - Type hints: `Annotated[T, Field(description="...")]` — no `Args:` blocks.

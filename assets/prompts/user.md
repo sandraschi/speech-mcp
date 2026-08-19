@@ -1,4 +1,4 @@
-# Speech-MCP — User Guide & Tutorials
+# Speech-MCP ÔÇö User Guide & Tutorials
 
 This document teaches end users and AI agents how to accomplish common speech tasks through speech-mcp. Every task includes: the tool to call, required arguments, expected output, and troubleshooting tips.
 
@@ -61,7 +61,7 @@ Open `http://localhost:10908`
 {"success": true, "provider": "Windows SAPI5", "bytes_played": 12345, "status": "played"}
 ```
 
-**How it works:** Windows SAPI5 is always available — no API key needed. The server renders text through `pyttsx3`, saves to a temporary WAV file, and plays via `winsound`.
+**How it works:** Windows SAPI5 is always available ÔÇö no API key needed. The server renders text through `pyttsx3`, saves to a temporary WAV file, and plays via `winsound`.
 
 **Troubleshooting:** If playback is silent, check your Windows sound settings. Ensure a default playback device is configured.
 
@@ -121,12 +121,12 @@ Open `http://localhost:10908`
 
 **Goal:** Clone a voice from a recording and then use it.
 
-**Step 1 — List existing voices:**
+**Step 1 ÔÇö List existing voices:**
 ```json
 {"action": "list", "provider": "elevenlabs"}
 ```
 
-**Step 2 — Clone from audio file:**
+**Step 2 ÔÇö Clone from audio file:**
 ```json
 {"action": "clone", "provider": "elevenlabs", "name": "My Voice", "audio_path": "C:/recordings/clean_sample.wav", "language": "en"}
 ```
@@ -136,7 +136,7 @@ Open `http://localhost:10908`
 {"success": true, "voice_id": "abc123def456", "name": "My Voice", "status": "cloned", "note": "Use this voice_id with text_to_speech provider='elevenlabs'"}
 ```
 
-**Step 3 — Speak with cloned voice:**
+**Step 3 ÔÇö Speak with cloned voice:**
 ```json
 {"text": "This is my cloned voice speaking.", "provider": "elevenlabs", "voice_id": "abc123def456"}
 ```
@@ -209,7 +209,7 @@ Open `http://localhost:10908`
 }
 ```
 
-**How it works:** FunASR runs VAD → ASR → punctuation → speaker diarization in a single pipeline. The `segments` array provides per-speaker timestamps. The `formatted` field is a human-readable transcript.
+**How it works:** FunASR runs VAD ÔåÆ ASR ÔåÆ punctuation ÔåÆ speaker diarization in a single pipeline. The `segments` array provides per-speaker timestamps. The `formatted` field is a human-readable transcript.
 
 **Supported formats:** WAV, MP3, FLAC.
 
@@ -217,7 +217,7 @@ Open `http://localhost:10908`
 
 **Prerequisites:** `FUNASR_ENABLED=true` or `FUNASR_OPENAI_URL` for sidecar mode. GPU recommended for speed.
 
-**Troubleshooting:** "FunASR not configured" — set `FUNASR_ENABLED=true` in `.env` and run `uv sync --extra funasr`.
+**Troubleshooting:** "FunASR not configured" ÔÇö set `FUNASR_ENABLED=true` in `.env` and run `uv sync --extra funasr`.
 
 ---
 
@@ -262,7 +262,7 @@ Open `http://localhost:10908`
 - Real-time captioning (via WebSocket bridge)
 - IoT device audio analysis
 
-**Note:** Each call is stateless — no session state is retained between chunks.
+**Note:** Each call is stateless ÔÇö no session state is retained between chunks.
 
 ---
 
@@ -272,7 +272,7 @@ Open `http://localhost:10908`
 
 **Tool:** `configure_local_wake_word`
 
-**Step 1 — Start listening:**
+**Step 1 ÔÇö Start listening:**
 ```json
 {"keyword": "hey_jarvis", "sensitivity": 0.5, "action": "start"}
 ```
@@ -284,13 +284,13 @@ Open `http://localhost:10908`
 
 **How it works:** A background daemon thread captures microphone audio at 16kHz, runs ONNX inference with openWakeWord models, and fires a `ctx.info` notification on detection. The listener survives across MCP tool calls.
 
-**Step 2 — Check status:**
+**Step 2 ÔÇö Check status:**
 ```json
 {"action": "status"}
 ```
 Returns: `{"success": true, "listening": true, "engine": "openWakeWord"}`
 
-**Step 3 — Stop listening:**
+**Step 3 ÔÇö Stop listening:**
 ```json
 {"action": "stop"}
 ```
@@ -298,18 +298,18 @@ Returns: `{"success": true, "listening": true, "engine": "openWakeWord"}`
 **Available keywords:** `alexa`, `hey_jarvis`, `hey_mycroft`, `hey_rhasspy`, `timers`, `weather`
 
 **Sensitivity guide:**
-- 0.3 — High sensitivity, more false positives
-- 0.5 — Balanced (recommended)
-- 0.8 — Low sensitivity, fewer false positives, may miss quiet speech
+- 0.3 ÔÇö High sensitivity, more false positives
+- 0.5 ÔÇö Balanced (recommended)
+- 0.8 ÔÇö Low sensitivity, fewer false positives, may miss quiet speech
 
 **Prerequisites:** `openwakeword`, `onnxruntime`, `pyaudio` installed (`uv add openwakeword onnxruntime pyaudio`).
 
-**Fleet mode:** Set `FLEET_VOICE_DELEGATE=1` to route wake word detections to the Fleet Voice Command Bus → fleet-agent-mcp for cross-server orchestration. In fleet mode, spoken commands after the wake word are transcribed and routed.
+**Fleet mode:** Set `FLEET_VOICE_DELEGATE=1` to route wake word detections to the Fleet Voice Command Bus ÔåÆ fleet-agent-mcp for cross-server orchestration. In fleet mode, spoken commands after the wake word are transcribed and routed.
 
 **Troubleshooting:**
-- "No module named 'pyaudio'" — run `uv add pyaudio`
-- No microphone detected — check Windows sound settings
-- Constant false triggers — increase sensitivity to 0.7+
+- "No module named 'pyaudio'" ÔÇö run `uv add pyaudio`
+- No microphone detected ÔÇö check Windows sound settings
+- Constant false triggers ÔÇö increase sensitivity to 0.7+
 
 ---
 
@@ -357,7 +357,7 @@ Returns: `{"success": true, "listening": true, "engine": "openWakeWord"}`
 }
 ```
 
-**Advanced — Ask with LLM grounding:**
+**Advanced ÔÇö Ask with LLM grounding:**
 ```json
 {"question": "What providers does speech-mcp support and what are their tradeoffs?"}
 ```
@@ -393,14 +393,14 @@ Returns: `{"success": true, "active_timers": 2, "timer_ids": ["timer_Pasta_...",
 ```json
 {"action": "query", "type": "weather", "label": "Vienna"}
 ```
-Returns: `{"success": true, "location": "Vienna", "condition_report": "Partly cloudy +18°C", "source": "wttr.in"}`
+Returns: `{"success": true, "location": "Vienna", "condition_report": "Partly cloudy +18┬░C", "source": "wttr.in"}`
 
 **Get weather for another city:**
 ```json
 {"action": "query", "type": "weather", "label": "Tokyo"}
 ```
 
-**Note:** Weather queries go to `wttr.in` — no API key required. Falls back to cached stub on network failure.
+**Note:** Weather queries go to `wttr.in` ÔÇö no API key required. Falls back to cached stub on network failure.
 
 ---
 
@@ -448,7 +448,7 @@ Returns: `{"success": true, "location": "Vienna", "condition_report": "Partly cl
 {
   "success": true,
   "status": "orchestration_active",
-  "mission_strategy": "Set hourly timer → on expiry, TTS stretch suggestion via Hume with encouraging tone → repeat",
+  "mission_strategy": "Set hourly timer ÔåÆ on expiry, TTS stretch suggestion via Hume with encouraging tone ÔåÆ repeat",
   "next_steps": ["Initialize high-bandwidth stream", "Apply sampled emotional persona", "Enable wake-word re-arming"]
 }
 ```
@@ -570,7 +570,7 @@ $env:FLEET_VOICE_WAKE_KEYWORD = "computer"
 
 **Example flow:**
 - User says: "Computer, what's on my calendar today?"
-- Wake word detected → transcription → `POST /api/voice/intent {"text": "what's on my calendar today"}`
+- Wake word detected ÔåÆ transcription ÔåÆ `POST /api/voice/intent {"text": "what's on my calendar today"}`
 - fleet-agent routes to email-mcp or alexa-mcp
 
 **Disable fleet mode:** Set `FLEET_VOICE_DELEGATE=0` or unset the variable.
@@ -636,9 +636,9 @@ Returns:
 Supported formats: `.wav` (via winsound), `.mp3` (via Windows Media Player).
 
 **Troubleshooting:**
-- "File not found" — verify the absolute path
-- "Unsupported format" — use .wav or .mp3 only
-- No sound — check Windows playback device
+- "File not found" ÔÇö verify the absolute path
+- "Unsupported format" ÔÇö use .wav or .mp3 only
+- No sound ÔÇö check Windows playback device
 
 ---
 
@@ -716,7 +716,7 @@ First run downloads models from HuggingFace (~1-2 GB). Subsequent runs are fast.
 
 ## Advanced: Multi-Provider Workflow Patterns
 
-### Pattern 1: Wake → Transcribe → Respond
+### Pattern 1: Wake ÔåÆ Transcribe ÔåÆ Respond
 
 This is the core voice assistant pattern:
 
@@ -730,7 +730,7 @@ This is the core voice assistant pattern:
 
 Use Hume for empathetic conversation flows:
 
-1. **Start session:** `start_evi_session()` — get WebSocket URL
+1. **Start session:** `start_evi_session()` ÔÇö get WebSocket URL
 2. **Connect frontend** to the EVI WebSocket
 3. **Listen** for emotional cues via Hume's real-time analysis
 4. **Respond** with matched emotional tone: `text_to_speech(text="...", provider="hume", description="warm and understanding")`
@@ -758,7 +758,7 @@ For processing multiple audio files:
 
 Always validate before synthesizing sensitive communications:
 
-1. `safety_validate_intent(text="...")` — check for social engineering
+1. `safety_validate_intent(text="...")` ÔÇö check for social engineering
 2. If `safe: true`, proceed with TTS
 3. If `safe: false`, report the risk to the user and refuse synthesis
 4. For high-intensity speech, `safety_log_audit(...)` creates a forensic trail
@@ -767,7 +767,7 @@ Always validate before synthesizing sensitive communications:
 
 The WebSocket endpoints provide real-time capabilities beyond simple tool calls:
 
-### `/ws/stream` — Bidirectional Audio
+### `/ws/stream` ÔÇö Bidirectional Audio
 
 The stream endpoint supports multiple provider backends:
 - **Gemini Live:** Uses the Google GenAI SDK's live connection. The server acts as a relay between the client and Gemini's GRPC audio endpoint.
@@ -775,14 +775,14 @@ The stream endpoint supports multiple provider backends:
 
 The stream endpoint is designed for long-running sessions. It handles client disconnection gracefully and logs streaming metrics.
 
-### `/ws/stt` — Real-Time Transcription
+### `/ws/stt` ÔÇö Real-Time Transcription
 
 The STT WebSocket accepts audio chunks as binary messages and returns JSON transcription results:
 - Each audio chunk is processed independently (stateless)
 - Language can be specified per-session or auto-detected
 - FunASR is the preferred backend for streaming STT due to its VAD + diarization pipeline
 
-### `/ws/logs` — Live Monitoring
+### `/ws/logs` ÔÇö Live Monitoring
 
 The logs WebSocket broadcasts structured JSON log entries:
 ```json
@@ -795,16 +795,16 @@ Clients can filter client-side and display a live log viewer. The web dashboard 
 ### Gemini Voice Tags
 
 Full list of supported emotional voice tags:
-- `[excited]` — Raised pitch, faster pace
-- `[whispers]` — Reduced volume, breathy
-- `[laughs]` — Laughter insertion
-- `[sad]` — Lowered pitch, slower pace
-- `[angry]` — Increased volume, sharp articulation
-- `[breathing]` — Audible breath sounds
-- `[surprised]` — Pitch variation, emphasis
-- `[whispering]` — Sustained whisper mode
-- `[shouting]` — Elevated volume, projected
-- `[singing]` — Melodic prosody
+- `[excited]` ÔÇö Raised pitch, faster pace
+- `[whispers]` ÔÇö Reduced volume, breathy
+- `[laughs]` ÔÇö Laughter insertion
+- `[sad]` ÔÇö Lowered pitch, slower pace
+- `[angry]` ÔÇö Increased volume, sharp articulation
+- `[breathing]` ÔÇö Audible breath sounds
+- `[surprised]` ÔÇö Pitch variation, emphasis
+- `[whispering]` ÔÇö Sustained whisper mode
+- `[shouting]` ÔÇö Elevated volume, projected
+- `[singing]` ÔÇö Melodic prosody
 
 Tags can be nested and combined: `[excited] This is [whispers] incredible! [laughs]`
 
@@ -826,7 +826,7 @@ Best practices for ElevenLabs:
 - Use `manage_voice_clones(action="list")` to discover available voices before synthesis
 - Clone voices from high-quality, single-speaker recordings (no background noise)
 - For multi-voice dialogue, assign distinct voice IDs to each character
-- ElevenLabs charges per character — keep text concise for cost efficiency
+- ElevenLabs charges per character ÔÇö keep text concise for cost efficiency
 
 ## Performance Benchmarks
 
@@ -944,7 +944,7 @@ sttWs.onmessage = (event) => {
 ### Local Development
 
 ```powershell
-# Minimal setup — Windows SAPI5 only, no cloud keys needed
+# Minimal setup ÔÇö Windows SAPI5 only, no cloud keys needed
 uv sync
 uv run python -m speech_mcp
 ```

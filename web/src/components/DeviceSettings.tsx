@@ -35,7 +35,7 @@ const DeviceSettings: React.FC = () => {
 
   const fetchHardware = useCallback(async () => {
     try {
-      const resp = await request("/api/v1/hardware");
+      const resp = await request<HardwareData>("/api/v1/hardware");
       setData(resp);
     } catch (err) {
       console.error("Hardware probe failed", err);

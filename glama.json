@@ -116,6 +116,14 @@
             "description": "Log a permanent audit trail for high-intensity emotional speech."
         },
         {
+            "name": "configure_runtime",
+            "description": "Switch a speech provider (funasr/sherpa) between CPU and GPU at runtime without restarting."
+        },
+        {
+            "name": "revise_subtitles",
+            "description": "Homophone / jukugo disambiguation pass over SRT subtitle text via a local LLM."
+        },
+        {
             "name": "prosody_dashboard",
             "description": "Real-time prosody and emotional status dashboard (Prefab card)."
         },

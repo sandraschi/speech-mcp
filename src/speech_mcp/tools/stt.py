@@ -7,6 +7,9 @@ from pydantic import Field
 
 logger = logging.getLogger(__name__)
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_README_ONLY = {"readonly": True}
+
 
 def register_stt_tools(
     mcp: FastMCP,
@@ -16,7 +19,7 @@ def register_stt_tools(
 ):
     """Register speech-to-text tools (FunASR native, cloud fallbacks)."""
 
-    @mcp.tool()
+    @mcp.tool(annotations=_README_ONLY)
     async def transcribe_audio_file(
         file_path: Annotated[str, Field(description="Absolute path to a local audio file (WAV, MP3, FLAC).")],
         provider: Annotated[
@@ -90,7 +93,7 @@ def register_stt_tools(
             "error": f"Unknown provider '{provider}'. Use funasr, gemini, or gemma.",
         }
 
-    @mcp.tool()
+    @mcp.tool(annotations=_README_ONLY)
     async def transcribe_stream_chunk(
         audio_base64: Annotated[str, Field(description="Base64-encoded audio chunk (WAV or MP3).")],
         provider: Annotated[str, Field(description="STT backend: funasr (default), gemini, gemma.")] = "funasr",

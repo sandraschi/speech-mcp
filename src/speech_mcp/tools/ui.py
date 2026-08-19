@@ -7,6 +7,9 @@ from prefab_ui.components.charts import BarChart, ChartSeries
 
 logger = logging.getLogger(__name__)
 
+# FastMCP tool annotations (TOOL_DESIGN_STANDARDS §9) - dict format works with all 3.x.
+_README_ONLY = {"readonly": True}
+
 PROVIDER_LABELS = {
     "hume": "Hume AI (EVI/Octave)",
     "elevenlabs": "ElevenLabs",
@@ -32,9 +35,17 @@ def register_ui_tools(mcp: FastMCP, providers: dict[str, bool] | None = None) ->
         "windows": True,
     }
 
-    @mcp.tool(app=True)
+    @mcp.tool(app=True, annotations=_README_ONLY)
     def prosody_dashboard() -> PrefabApp:
-        """Voice provider status: which speech providers are configured."""
+        """Voice provider status: which speech providers are configured.
+
+        ## Return Format
+        ``PrefabApp`` - a Prefab UI card listing each provider with a
+        ``configured`` / ``missing key`` badge.
+
+        ## Examples
+        ``prosody_dashboard()`` -> Prefab card showing provider config state.
+        """
         with Column(gap=4) as view:
             Heading("Voice Provider Status")
             Text("Configuration state reported by the backend (set API keys in .env).")
@@ -50,9 +61,18 @@ def register_ui_tools(mcp: FastMCP, providers: dict[str, bool] | None = None) ->
 
         return PrefabApp(title="Voice Provider Status", view=view)
 
-    @mcp.tool(app=True)
+    @mcp.tool(app=True, annotations=_README_ONLY)
     def speech_activity_chart() -> PrefabApp:
-        """Session activity: interaction counts by provider from this session's history."""
+        """Session activity: interaction counts by provider from this session's history.
+
+        ## Return Format
+        ``PrefabApp`` - a bar chart of TTS/STT interactions per provider this
+        session, or a "no activity" message.
+
+        ## Examples
+        ``speech_activity_chart()`` -> Prefab bar chart of this session's
+        provider activity.
+        """
         from speech_mcp.state import _history
 
         counts: dict[str, int] = {}
@@ -76,9 +96,18 @@ def register_ui_tools(mcp: FastMCP, providers: dict[str, bool] | None = None) ->
 
         return PrefabApp(title="Session Activity", view=view)
 
-    @mcp.tool(app=True)
+    @mcp.tool(app=True, annotations=_README_ONLY)
     def fleet_health_overview() -> PrefabApp:
-        """Fleet voice health: configured providers, RAG sources, active timers."""
+        """Fleet voice health: configured providers, RAG sources, active timers.
+
+        ## Return Format
+        ``PrefabApp`` - a card with provider-count, RAG-source and active-timer
+        metrics plus a per-provider configured/missing badge list.
+
+        ## Examples
+        ``fleet_health_overview()`` -> Prefab health card for all speech
+        providers.
+        """
         from speech_mcp.state import _timers, get_store
 
         try:
@@ -106,9 +135,18 @@ def register_ui_tools(mcp: FastMCP, providers: dict[str, bool] | None = None) ->
 
         return PrefabApp(title="Fleet Voice Health", view=view)
 
-    @mcp.tool(app=True)
+    @mcp.tool(app=True, annotations=_README_ONLY)
     def latency_benchmark_view() -> PrefabApp:
-        """Latency is not measured by this server - honest status."""
+        """Latency is not measured by this server - honest status.
+
+        ## Return Format
+        ``PrefabApp`` - an honest card stating latency is not captured and
+        pointing to ``GET /api/v1/health``.
+
+        ## Examples
+        ``latency_benchmark_view()`` -> Prefab card explaining the absence of
+        latency telemetry.
+        """
         with Column(gap=4) as view:
             Heading("Latency")
             Text(
@@ -118,9 +156,17 @@ def register_ui_tools(mcp: FastMCP, providers: dict[str, bool] | None = None) ->
 
         return PrefabApp(title="Latency", view=view)
 
-    @mcp.tool(app=True)
+    @mcp.tool(app=True, annotations=_README_ONLY)
     def provider_capability_matrix() -> PrefabApp:
-        """Which providers support which capabilities (static, factual)."""
+        """Which providers support which capabilities (static, factual).
+
+        ## Return Format
+        ``PrefabApp`` - a capability matrix card (TTS/STT/streaming/cloning/wake
+        word per provider).
+
+        ## Examples
+        ``provider_capability_matrix()`` -> Prefab capability matrix.
+        """
         with Column(gap=4) as view:
             Heading("Provider Capabilities")
             with Column(gap=2):

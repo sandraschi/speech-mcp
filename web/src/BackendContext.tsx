@@ -20,7 +20,7 @@ export type BackendContextValue = {
   health: HealthData | null;
   stats: StatsData | null;
   error: boolean;
-  request: (path: string, options?: RequestInit) => Promise<any>;
+  request: <T>(path: string, options?: RequestInit) => Promise<T>;
   emergencyStop: () => Promise<void>;
   restartBackend: () => Promise<void>;
 };
@@ -28,7 +28,9 @@ const BackendContext = createContext<BackendContextValue>({
   health: null,
   stats: null,
   error: true,
-  request: async () => {},
+  request: async (_path: string, _options?: RequestInit): Promise<never> => {
+    throw new Error("BackendProvider not mounted");
+  },
   emergencyStop: async () => {},
   restartBackend: async () => {},
 });
