@@ -118,7 +118,7 @@ export interface TranscriptSegment {
   start_s: number;
   end_s: number;
   text: string;
-  speaker?: number;
+  speaker?: number | string; // FunASR: numeric index. Muse: letter label ("A", "B").
 }
 
 export interface BatchTranscribeResult {
@@ -132,6 +132,7 @@ export interface BatchTranscribeResult {
 export async function transcribeBatch(
   files: File[],
   language = "auto",
+  provider = "funasr",
 ): Promise<{
   success: boolean;
   results: BatchTranscribeResult[];
@@ -139,10 +140,12 @@ export async function transcribeBatch(
 }> {
   const form = new FormData();
   for (const f of files) form.append("files", f, f.name);
-  const res = await fetch(
-    `${BACKEND}/api/v1/transcribe/batch?language=${encodeURIComponent(language)}`,
-    { method: "POST", headers: authHeaders(), body: form },
-  );
+  const params = new URLSearchParams({ language, provider });
+  const res = await fetch(`${BACKEND}/api/v1/transcribe/batch?${params}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
   if (!res.ok) throw new Error(`Batch transcription failed: ${res.statusText}`);
   return res.json();
 }

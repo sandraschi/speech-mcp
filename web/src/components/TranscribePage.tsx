@@ -95,6 +95,7 @@ export default function TranscribePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState("auto");
+  const [provider, setProvider] = useState("funasr");
   const inputRef = useRef<HTMLInputElement>(null);
 
   // revision state per result filename
@@ -135,7 +136,7 @@ export default function TranscribePage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await transcribeBatch(files, language);
+      const res = await transcribeBatch(files, language, provider);
       setResults(res.results);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -252,10 +253,10 @@ export default function TranscribePage() {
       <header>
         <h1 className="text-2xl font-black mb-1">Batch Transcription</h1>
         <p className="text-sm text-text-secondary">
-          Upload one or more audio files; FunASR transcribes each with
-          timestamps. Download per-file transcripts as SRT, VTT, or TXT, then
-          run the homophone revision pass (Japanese jukugo) or pull an episode
-          straight from Plex.
+          Upload one or more audio files; the selected provider transcribes each
+          with timestamps. Download per-file transcripts as SRT, VTT, or TXT,
+          then run the homophone revision pass (Japanese jukugo) or pull an
+          episode straight from Plex.
         </p>
       </header>
 
@@ -298,6 +299,23 @@ export default function TranscribePage() {
               <option value="zh">Chinese</option>
               <option value="fr">French</option>
               <option value="es">Spanish</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="transcribe-provider"
+              className="text-xs font-bold uppercase tracking-wider text-text-secondary block mb-2"
+            >
+              Provider
+            </label>
+            <select
+              id="transcribe-provider"
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+              className="bg-zinc-800 text-zinc-100 border border-zinc-600 rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="funasr">FunASR (local)</option>
+              <option value="muse">Muse Voice Transcribe (cloud)</option>
             </select>
           </div>
           <button

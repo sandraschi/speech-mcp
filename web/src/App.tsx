@@ -12,6 +12,7 @@ import HealthPage from "./components/HealthPage";
 import HelpPage from "./components/HelpPage";
 import HistoryPage from "./components/HistoryPage";
 import InteractionLab from "./components/InteractionLab";
+import LiveTranscribePage from "./components/LiveTranscribePage";
 import SemanticSearch from "./components/SemanticSearch";
 import ServiceLinkage from "./components/ServiceLinkage";
 import SkillsPage from "./components/SkillsPage";
@@ -31,6 +32,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   funasr: "FunASR (local STT)",
   windows: "Windows SAPI",
   sherpa_streaming: "Sherpa streaming (local)",
+  muse: "Muse Voice Transcribe (cloud)",
 };
 
 const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({
@@ -290,6 +292,8 @@ function App() {
           <SpeechToText />
         ) : activePage === "transcribe" ? (
           <TranscribePage />
+        ) : activePage === "live_transcribe" ? (
+          <LiveTranscribePage />
         ) : activePage === "history" || activePage === "analysis" ? (
           <HistoryPage />
         ) : activePage === "settings" ? (
