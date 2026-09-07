@@ -36,6 +36,7 @@ from pydantic import BaseModel
 from speech_mcp.providers.funasr import FunASRConfig, FunASRProvider
 from speech_mcp.providers.gemini import GeminiProvider
 from speech_mcp.providers.gemma import gemma_provider
+from speech_mcp.providers.muse import MuseConfig, MuseVoiceProvider
 from speech_mcp.skills import get_skill, list_skills, register_skill_resources
 from speech_mcp.state import _timers, get_store
 from speech_mcp.streaming import handle_websocket_stream
@@ -47,6 +48,7 @@ from speech_mcp.tools.demos import DemoName, register_demo_tools
 from speech_mcp.tools.macros import register_macro_tools
 from speech_mcp.tools.memory import register_memory_tools
 from speech_mcp.tools.monitoring import register_monitoring_tools
+from speech_mcp.tools.muse_voice import register_muse_tools
 from speech_mcp.tools.rag import register_rag_tools
 from speech_mcp.tools.readout import register_readout_tools
 from speech_mcp.tools.revise import register_revise_tools
@@ -89,6 +91,11 @@ FUNASR_HUB = os.getenv("FUNASR_HUB", "hf")
 FUNASR_VAD_MODEL = os.getenv("FUNASR_VAD_MODEL", "fsmn-vad")
 FUNASR_PUNC_MODEL = os.getenv("FUNASR_PUNC_MODEL", "ct-punc")
 FUNASR_SPK_MODEL = os.getenv("FUNASR_SPK_MODEL", "cam++")
+
+# --- Meta Muse Voice Transcribe (cloud, real-time diarized STT) ---
+MUSE_ENABLED = os.getenv("MUSE_ENABLED", "").lower() in ("1", "true", "yes")
+MUSE_API_KEY = os.getenv("MUSE_API_KEY", "").strip() or None
+MUSE_MODEL = os.getenv("MUSE_MODEL", "muse-voice-transcribe-1.0")
 
 # --- sherpa-onnx streaming STT (ja/en/de, CPU, barge-in) ---
 SHERPA_ASR_ENABLED = os.getenv("SHERPA_ASR_ENABLED", "").lower() in ("1", "true", "yes")
@@ -360,6 +367,14 @@ if FUNASR_ENABLED or FUNASR_OPENAI_URL:
         )
     )
 
+muse_provider: MuseVoiceProvider | None = None
+if MUSE_ENABLED and MUSE_API_KEY:
+    try:
+        muse_provider = MuseVoiceProvider(MuseConfig(api_key=MUSE_API_KEY, model=MUSE_MODEL))
+    except Exception as e:
+        logger.warning(f"Muse Voice Transcribe initialization skipped: {e}")
+        muse_provider = None
+
 # --- sherpa-onnx streaming STT (optional; auto-downloads model on first enable) ---
 sherpa_asr = None
 if SHERPA_ASR_ENABLED:
@@ -384,7 +399,7 @@ if SHERPA_ASR_ENABLED:
         sherpa_asr = None
 
 register_speech_tools(mcp, hume_client, eleven_client, gemini_client, gemma_client)
-register_stt_tools(mcp, funasr_provider, gemini_client, gemma_client)
+register_stt_tools(mcp, funasr_provider, gemini_client, gemma_client, muse_provider=muse_provider)
 register_agentic_tools(mcp, hume_client)
 register_utility_tools(mcp)
 register_monitoring_tools(mcp)
@@ -401,6 +416,7 @@ _providers = {
     "funasr": bool(funasr_provider),
     "windows": True,
     "sherpa_streaming": bool(sherpa_asr),
+    "muse": bool(muse_provider),
 }
 
 
@@ -421,6 +437,7 @@ async def _speak(
 
 register_ui_tools(mcp, providers=_providers)
 register_streaming_asr_tools(mcp, sherpa_asr)
+register_muse_tools(mcp, muse_provider)
 register_runtime_tools(mcp, sherpa_asr)
 register_revise_tools(mcp)
 register_demo_tools(mcp)
@@ -592,6 +609,7 @@ async def health_check():
             "funasr": bool(funasr_provider),
             "windows": True,
             "sherpa_streaming": bool(sherpa_asr),
+            "muse": bool(muse_provider),
         },
         "gpu": gpu,
         "devices": {
@@ -630,7 +648,7 @@ async def api_capabilities():
         "protocols": ["MCP SSE", "REST", "WebSocket"],
         "features": {
             "tts": ["windows", "gemini", "hume", "elevenlabs", "gemma"],
-            "stt": ["funasr", "gemini", "gemma", "sherpa_streaming"],
+            "stt": ["funasr", "gemini", "gemma", "sherpa_streaming", "muse"],
             "streaming": ["hume_evi", "gemini_live", "sherpa_streaming"],
             "barge_in": bool(getattr(sherpa_asr, "_barge_in", None)),
             "rag": True,
@@ -1121,15 +1139,28 @@ def _render_subtitles(segments: list[dict], fmt: str) -> str:
     raise HTTPException(status_code=400, detail="format must be srt, vtt, or txt")
 
 
+def _stt_provider_for(provider: str):
+    """Resolve provider name -> instance for the REST transcription endpoints.
+
+    Only funasr and muse are wired here (batch/file transcription); gemini and
+    gemma remain MCP-tool-only via transcribe_audio_file.
+    """
+    if provider == "muse":
+        return muse_provider, "MUSE_ENABLED=true and MUSE_API_KEY"
+    return funasr_provider, "FUNASR_ENABLED=true"
+
+
 @app.post("/api/v1/transcribe/file")
 async def api_transcribe_file(
     file: UploadFile = File(...),
     language: str = "auto",
     format: str = "json",
+    provider: str = "funasr",
 ):
     """Transcribe an uploaded audio file. format: json (segments), srt, vtt, or txt."""
-    if not funasr_provider:
-        raise HTTPException(status_code=503, detail="FunASR not configured — set FUNASR_ENABLED=true")
+    stt_provider, recovery = _stt_provider_for(provider)
+    if not stt_provider:
+        raise HTTPException(status_code=503, detail=f"{provider} not configured - set {recovery}")
     try:
         data = await file.read()
         if not data:
@@ -1142,7 +1173,7 @@ async def api_transcribe_file(
         with open(tmp_path, "wb") as fh:
             fh.write(data)
         try:
-            result = await funasr_provider.transcribe_file(tmp_path, language=language)
+            result = await stt_provider.transcribe_file(tmp_path, language=language)
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
         if not result.get("success"):
@@ -1151,7 +1182,7 @@ async def api_transcribe_file(
         if format == "json":
             return {
                 "success": True,
-                "provider": "funasr",
+                "provider": provider,
                 "text": result.get("text", ""),
                 "segments": segments,
             }
@@ -1167,10 +1198,12 @@ async def api_transcribe_file(
 async def api_transcribe_batch(
     files: list[UploadFile] = File(...),
     language: str = "auto",
+    provider: str = "funasr",
 ):
-    """Batch-transcribe multiple uploaded audio files (FunASR)."""
-    if not funasr_provider:
-        raise HTTPException(status_code=503, detail="FunASR not configured — set FUNASR_ENABLED=true")
+    """Batch-transcribe multiple uploaded audio files (FunASR or Muse)."""
+    stt_provider, recovery = _stt_provider_for(provider)
+    if not stt_provider:
+        raise HTTPException(status_code=503, detail=f"{provider} not configured - set {recovery}")
     import tempfile
 
     results: list[dict] = []
@@ -1183,7 +1216,7 @@ async def api_transcribe_batch(
             with open(tmp_path, "wb") as fh:
                 fh.write(data)
             try:
-                result = await funasr_provider.transcribe_file(tmp_path, language=language)
+                result = await stt_provider.transcribe_file(tmp_path, language=language)
             finally:
                 shutil.rmtree(tmpdir, ignore_errors=True)
             results.append(
@@ -1708,7 +1741,7 @@ async def api_read_aloud(req: ReadAloudRequest):
 
 @app.websocket("/ws/stream")
 async def websocket_stream(websocket: WebSocket):
-    await handle_websocket_stream(websocket, eleven_client, hume_client, gemini_client)
+    await handle_websocket_stream(websocket, eleven_client, hume_client, gemini_client, muse_provider)
 
 
 @app.websocket("/ws/stt")

@@ -40,6 +40,7 @@ async def handle_websocket_stream(
     eleven_client: ElevenLabs | None,
     hume_client: Any | None = None,
     gemini_client: Any | None = None,
+    muse_provider: Any | None = None,
 ):
     await websocket.accept()
     token = websocket.query_params.get("token")
@@ -85,6 +86,11 @@ async def handle_websocket_stream(
                 await websocket.close(code=1008, reason="GOOGLE key not configured")
                 return
             await _handle_stt_stream(websocket, api_key)
+        elif provider == "muse":
+            if not muse_provider:
+                await websocket.close(code=1008, reason="Muse Voice Transcribe not configured")
+                return
+            await _handle_muse_stream(websocket, muse_provider)
         else:
             await websocket.close(code=1008, reason=f"Unknown provider: {provider}")
     except WebSocketDisconnect:
@@ -353,3 +359,74 @@ async def _handle_gemini_live(
             await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
         except Exception:
             pass
+
+
+async def _handle_muse_stream(websocket: WebSocket, muse_provider: Any):
+    """
+    Realtime diarized transcription proxy (Meta Muse Voice Transcribe).
+
+    Browser  ──PCM 16kHz mono──>  this WS  ──PCM 16kHz mono──>  Muse realtime API
+                                  <──JSON events─────────────── (transcript/speaker/speechComplete)
+
+    Browser sends:
+      - binary frames: raw 16-bit PCM at 16kHz (mixed mic + call audio)
+      - JSON text frame: { type: "end_turn" }  (flush and close the session)
+
+    Browser receives Muse's normalized events verbatim as JSON text frames, e.g.
+      { type: "speechComplete", speaker: "A", turnId: 3, transcript: "..." }
+      { type: "error", message: "..." }
+    """
+    from speech_mcp.providers.muse import MuseRealtimeSession
+
+    session = MuseRealtimeSession(muse_provider.config)
+    try:
+        ack = await session.connect(mode="DIARIZATION", encoding="PCM_16KHZ")
+        await websocket.send_text(json.dumps({"type": "session", **ack}))
+
+        async def browser_to_muse():
+            while True:
+                try:
+                    msg = await websocket.receive()
+                    if msg["type"] == "websocket.disconnect":
+                        break
+                    if msg.get("bytes") is not None:
+                        await session.send_audio(msg["bytes"])
+                    elif msg.get("text") is not None:
+                        try:
+                            ctrl = json.loads(msg["text"])
+                            if ctrl.get("type") == "end_turn":
+                                await session.end_stream()
+                        except json.JSONDecodeError:
+                            pass
+                except WebSocketDisconnect:
+                    break
+                except Exception as e:
+                    logger.debug("browser_to_muse error: %s", e)
+                    break
+
+        async def muse_to_browser():
+            try:
+                while True:
+                    event = await session.recv_event()
+                    if event is None:
+                        break
+                    await websocket.send_text(json.dumps(event))
+            except Exception as e:
+                logger.debug("muse_to_browser error: %s", e)
+                try:
+                    await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
+                except Exception:
+                    pass
+
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(browser_to_muse)
+            tg.start_soon(muse_to_browser)
+
+    except Exception as e:
+        logger.exception("Muse stream session error: %s", e)
+        try:
+            await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
+        except Exception:
+            pass
+    finally:
+        await session.close()

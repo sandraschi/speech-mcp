@@ -16,6 +16,7 @@ def register_stt_tools(
     funasr_provider: Any | None,
     gemini_client: Any | None = None,
     gemma_client: Any | None = None,
+    muse_provider: Any | None = None,
 ):
     """Register speech-to-text tools (FunASR native, cloud fallbacks)."""
 
@@ -23,7 +24,7 @@ def register_stt_tools(
     async def transcribe_audio_file(
         file_path: Annotated[str, Field(description="Absolute path to a local audio file (WAV, MP3, FLAC).")],
         provider: Annotated[
-            str, Field(description="STT backend: funasr (local, recommended), gemini, gemma.")
+            str, Field(description="STT backend: funasr (local, recommended), gemini, gemma, muse.")
         ] = "funasr",
         language: Annotated[
             str, Field(description="Target language code (en, zh, ja, de, …) or 'auto' for detection.")
@@ -49,8 +50,18 @@ def register_stt_tools(
         await transcribe_audio_file("D:/recordings/meeting.wav")
         await transcribe_audio_file("/tmp/podcast.mp3", language="ja")
         await transcribe_audio_file("C:/audio/note.wav", provider="gemini")
+        await transcribe_audio_file("D:/calls/standup.wav", provider="muse")
         """
         logger.info("STT [%s]: %s", provider, file_path)
+
+        if provider == "muse":
+            if not muse_provider:
+                return {
+                    "success": False,
+                    "error": "Muse Voice Transcribe not configured.",
+                    "recovery": "Set MUSE_ENABLED=true and MUSE_API_KEY in .env.",
+                }
+            return await muse_provider.transcribe_file(file_path, language=language)
 
         if provider == "funasr":
             if not funasr_provider:
@@ -90,13 +101,13 @@ def register_stt_tools(
 
         return {
             "success": False,
-            "error": f"Unknown provider '{provider}'. Use funasr, gemini, or gemma.",
+            "error": f"Unknown provider '{provider}'. Use funasr, gemini, gemma, or muse.",
         }
 
     @mcp.tool(annotations=_README_ONLY)
     async def transcribe_stream_chunk(
         audio_base64: Annotated[str, Field(description="Base64-encoded audio chunk (WAV or MP3).")],
-        provider: Annotated[str, Field(description="STT backend: funasr (default), gemini, gemma.")] = "funasr",
+        provider: Annotated[str, Field(description="STT backend: funasr (default), gemini, gemma, muse.")] = "funasr",
         language: Annotated[str, Field(description="Language code or 'auto'.")] = "auto",
         sample_rate: Annotated[int, Field(description="Input sample rate in Hz (informational).")] = 16000,
         mime_type: Annotated[str, Field(description="MIME type of the chunk, e.g. audio/wav.")] = "audio/wav",
@@ -116,6 +127,20 @@ def register_stt_tools(
         await transcribe_stream_chunk(chunk_b64, language="zh", sample_rate=16000)
         """
         logger.info("STT chunk [%s] (%d b64 chars)", provider, len(audio_base64))
+
+        if provider == "muse":
+            if not muse_provider:
+                return {
+                    "success": False,
+                    "error": "Muse Voice Transcribe not configured.",
+                    "recovery": "Set MUSE_ENABLED=true and MUSE_API_KEY in .env.",
+                }
+            return await muse_provider.transcribe_chunk(
+                audio_base64,
+                sample_rate=sample_rate,
+                language=language,
+                mime_type=mime_type,
+            )
 
         if provider == "funasr":
             if not funasr_provider:
