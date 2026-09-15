@@ -224,7 +224,7 @@ def _probe_rag():
         store = get_store()
         store.list_sources()
     except Exception as e:
-        logger.warning("RAG store probe: %s — degraded mode, search will return empty.", e)
+        logger.warning("RAG store probe: %s - degraded mode, search will return empty.", e)
 
 
 def _probe_funasr(log: logging.Logger):
@@ -234,19 +234,19 @@ def _probe_funasr(log: logging.Logger):
     elif FUNASR_ENABLED:
         log.info("FunASR native mode: model=%s device=%s hub=%s", FUNASR_MODEL, FUNASR_DEVICE, FUNASR_HUB)
     else:
-        log.info("FunASR disabled — set FUNASR_ENABLED=true or FUNASR_OPENAI_URL to enable local STT.")
+        log.info("FunASR disabled - set FUNASR_ENABLED=true or FUNASR_OPENAI_URL to enable local STT.")
 
 
 def _probe_api_keys(log: logging.Logger):
     """Warn on missing API keys but allow degraded startup."""
     if not os.getenv("GOOGLE_API_KEY"):
-        log.warning("GOOGLE_API_KEY not set — Gemini TTS/STT disabled.")
+        log.warning("GOOGLE_API_KEY not set - Gemini TTS/STT disabled.")
     if not os.getenv("HUME_API_KEY"):
-        log.warning("HUME_API_KEY not set — Hume EVI/Octave disabled.")
+        log.warning("HUME_API_KEY not set - Hume EVI/Octave disabled.")
     if not os.getenv("ELEVENLABS_API_KEY"):
-        log.warning("ELEVENLABS_API_KEY not set — ElevenLabs TTS disabled.")
+        log.warning("ELEVENLABS_API_KEY not set - ElevenLabs TTS disabled.")
     if all(k not in os.environ for k in ("GOOGLE_API_KEY", "HUME_API_KEY", "ELEVENLABS_API_KEY")):
-        log.info("No TTS API keys configured — only Windows SAPI5 available.")
+        log.info("No TTS API keys configured - only Windows SAPI5 available.")
 
 
 def _probe_bridges():
@@ -259,7 +259,7 @@ def _probe_bridges():
             resp.raise_for_status()
             logger.info("Bridge probe OK: %s", url)
         except Exception as e:
-            logger.warning("Bridge probe failed for %s: %s — bridge will be unavailable.", url, e)
+            logger.warning("Bridge probe failed for %s: %s - bridge will be unavailable.", url, e)
 
 
 async def _log_broadcaster():
@@ -849,7 +849,7 @@ async def api_voices():
         providers.append({"name": "gemini", "status": "available", "voices": gemini_client.voices})
     if gemma_client:
         providers.append({"name": "gemma", "status": "available", "voices": gemma_client.voices})
-    # Windows SAPI5 — enumerate installed voices
+    # Windows SAPI5 - enumerate installed voices
     try:
         import pyttsx3
 
@@ -940,7 +940,8 @@ async def api_tts(req: TTSRequest):
                 raise HTTPException(status_code=503, detail="Gemini not configured")
             from speech_mcp.tools.speech import _play_wav_file
 
-            wav = await asyncio.to_thread(lambda: gemini.synthesize_wav(req.text, voice_name=req.voice_id or "Kore"))
+            effective_voice = req.voice_id if req.voice_id and req.voice_id != "default" else "Kore"
+            wav = await asyncio.to_thread(lambda: gemini.synthesize_wav(req.text, voice_name=effective_voice))
             if not wav:
                 raise HTTPException(status_code=500, detail="Gemini returned empty audio")
             import tempfile as _tf
@@ -956,7 +957,7 @@ async def api_tts(req: TTSRequest):
                         os.remove(tmp_path)
                     except OSError:
                         pass
-            return {"success": True, "provider": "gemini", "voice": req.voice_id}
+            return {"success": True, "provider": "gemini", "voice": effective_voice}
         if req.provider == "hume":
             hume = hume_client
             if not hume:
@@ -971,8 +972,11 @@ async def api_tts(req: TTSRequest):
                 raise HTTPException(status_code=503, detail="ElevenLabs not configured")
             from speech_mcp.tools.speech import _elevenlabs_speak
 
-            await asyncio.to_thread(lambda: _elevenlabs_speak(el, req.text, voice_id=req.voice_id))
-            return {"success": True, "provider": "elevenlabs", "voice": req.voice_id}
+            effective_voice = req.voice_id if req.voice_id and req.voice_id != "default" else None
+            if not effective_voice:
+                raise HTTPException(status_code=400, detail="voice_id required for ElevenLabs")
+            await _elevenlabs_speak(el, req.text, voice_id=effective_voice)
+            return {"success": True, "provider": "elevenlabs", "voice": effective_voice}
         # fallback: windows
         import pyttsx3
 
@@ -1005,6 +1009,34 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
             import pyttsx3
 
             engine = pyttsx3.init()
+            # Honor voice_id - Windows SAPI5 has multiple installed voices (Zira, David, Hazel, ...).
+            # The demo-vid-mcp fleet uses friendly aliases heart/sky/adam that must map to distinct
+            # SAPI5 voices so the selection is audibly different. Also supports direct id/name match.
+            if voice_id and voice_id != "default":
+                try:
+                    voices = engine.getProperty("voices") or []
+                    target_id = None
+                    for v in voices:
+                        vid = getattr(v, "id", "") or ""
+                        vname = getattr(v, "name", "") or ""
+                        if voice_id == vid or voice_id.lower() in vname.lower() or voice_id.lower() in vid.lower():
+                            target_id = vid
+                            break
+                    if not target_id:
+                        alias_map = {"heart": "zira", "sky": "hazel", "adam": "david"}
+                        alias = alias_map.get(voice_id.lower())
+                        if alias:
+                            for v in voices:
+                                if alias in (getattr(v, "name", "") or "").lower():
+                                    target_id = getattr(v, "id", "")
+                                    break
+                    if not target_id and voices:
+                        idx = abs(hash(voice_id)) % len(voices)
+                        target_id = getattr(voices[idx], "id", None)
+                    if target_id:
+                        engine.setProperty("voice", target_id)
+                except Exception:
+                    pass
             engine.save_to_file(text, tmp_path)
             engine.runAndWait()
 
@@ -1056,7 +1088,7 @@ async def api_transcribe(request: Request):
         if not funasr_provider:
             raise HTTPException(
                 status_code=503,
-                detail="FunASR not configured — set FUNASR_ENABLED=true or FUNASR_OPENAI_URL",
+                detail="FunASR not configured - set FUNASR_ENABLED=true or FUNASR_OPENAI_URL",
             )
         try:
             body = await request.body()
@@ -1175,7 +1207,7 @@ async def api_transcribe_file(
         try:
             result = await stt_provider.transcribe_file(tmp_path, language=language)
         finally:
-            shutil.rmtree(tmpdir, ignore_errors=True)
+            await asyncio.to_thread(shutil.rmtree, tmpdir, ignore_errors=True)
         if not result.get("success"):
             raise HTTPException(status_code=500, detail=result.get("error", "transcription failed"))
         segments = result.get("segments", [])
@@ -1218,7 +1250,7 @@ async def api_transcribe_batch(
             try:
                 result = await stt_provider.transcribe_file(tmp_path, language=language)
             finally:
-                shutil.rmtree(tmpdir, ignore_errors=True)
+                await asyncio.to_thread(shutil.rmtree, tmpdir, ignore_errors=True)
             results.append(
                 {
                     "filename": file.filename or "audio.wav",
@@ -1325,7 +1357,7 @@ async def api_transcribe_plex(req: PlexTranscribeRequest):
     from speech_mcp.tools.subtitles import fetch_audio_and_transcribe
 
     if not funasr_provider:
-        raise HTTPException(status_code=503, detail="FunASR not configured — set FUNASR_ENABLED=true")
+        raise HTTPException(status_code=503, detail="FunASR not configured - set FUNASR_ENABLED=true")
     try:
         result = await fetch_audio_and_transcribe(
             plex_mcp_url=req.plex_mcp_url,

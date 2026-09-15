@@ -124,4 +124,4 @@ async def fetch_audio_and_transcribe(
         logger.exception("Plex audio fetch/transcribe failed")
         return {"success": False, "error": str(e)}
     finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
+        await asyncio.to_thread(shutil.rmtree, tmpdir, ignore_errors=True)

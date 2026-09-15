@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import shutil
@@ -84,10 +85,15 @@ def register_demo_tools(mcp: FastMCP):
             await ctx.info(f"Executing Industrial Demo: {demo} ({script_filename})")
 
         try:
-            # Run using uv to ensure dependencies are loaded
+            # Run using uv to ensure dependencies are loaded (demos run minutes — off the loop)
             uv_path = shutil.which("uv") or "uv"
-            result = subprocess.run(
-                [uv_path, "run", "python", script_path], capture_output=True, text=True, check=False, cwd=cwd
+            result = await asyncio.to_thread(
+                subprocess.run,
+                [uv_path, "run", "python", script_path],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=cwd,
             )
             # Mask API keys if they leaked in output (unlikely but good practice)
             output = result.stdout + result.stderr
