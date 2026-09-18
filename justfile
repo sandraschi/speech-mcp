@@ -30,8 +30,7 @@ backend:
 
 # Start the Vite frontend (port 10908)
 frontend:
-    Set-Location '{{ justfile_directory() }}\web'
-    npm run dev -- --port 10908
+    Set-Location '{{ justfile_directory() }}\web'; npm run dev -- --port 10908
 
 # Start both backend and frontend (two tabs)
 start:
@@ -185,9 +184,7 @@ demo-live-ui:
 
 # Build Vite webapp only (dev proxy; Tauri sets VITE_API_BASE in build.ps1)
 build-webapp:
-    Set-Location '{{ justfile_directory() }}\web'
-    npm install
-    npm run build
+    Set-Location '{{ justfile_directory() }}\web'; npm install; npm run build
 
 # --- Full local release  wheel  mcpb  Tauri upload to GitHub Releases ---
 publish-release-local tag="v0.6.3":
@@ -200,9 +197,7 @@ build-native:
     powershell.exe -NoProfile -File native/build.ps1
 
 build-native-debug:
-    Set-Location '{{ justfile_directory() }}\native'
-    $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
-    npx @tauri-apps/cli build --debug
+    Set-Location '{{ justfile_directory() }}\native'; $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"; npx @tauri-apps/cli build --debug
 
 # --- Quality ---
 
@@ -215,8 +210,7 @@ lint:
 
 # Biome lint (Web)
 lint-web:
-    Set-Location '{{ justfile_directory() }}\web'
-    npx -y @biomejs/biome check src/
+    Set-Location '{{ justfile_directory() }}\web'; npx -y @biomejs/biome check src/
 
 # Ruff format + autofix
 fix:
@@ -226,8 +220,7 @@ fix:
 
 # Biome format + fix
 fix-web:
-    Set-Location '{{ justfile_directory() }}\web'
-    npx -y @biomejs/biome check --write src/
+    Set-Location '{{ justfile_directory() }}\web'; npx -y @biomejs/biome check --write src/
 
 # Run mock-based test suite (suitable for GitHub CI)
 test:
