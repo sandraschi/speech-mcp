@@ -31,6 +31,7 @@ all on ONNX/CPU (no GPU needed).
 | en | `csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26` | English streaming transducer |
 | ja | `csukuangfj/sherpa-onnx-streaming-zipformer-ar_en_id_ja_ru_th_vi_zh-2025-02-10` | Multilingual (ar/en/id/ja/ru/th/vi/zh); Japanese covered |
 | de | `csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06` | German streaming transducer (Kroko-ASR) |
+| zh | shares `ja` multilingual weights (model covers zh) | No second download - `zh` resolves to the `ja` dir |
 
 All three are **transducer** models (`encoder`/`decoder`/`joiner`). Files are
 auto-discovered by glob, so per-release filenames don't matter.
@@ -42,7 +43,7 @@ uv sync --extra sherpa
 uv run python scripts/download_sherpa_models.py   # en, ja, de
 # .env:
 # SHERPA_ASR_ENABLED=true
-# SHERPA_ASR_LANG=en        # en | ja | de
+# SHERPA_ASR_LANG=en        # en | ja | de | zh (zh shares ja weights)
 # SHERPA_BARGE_IN=true
 ```
 

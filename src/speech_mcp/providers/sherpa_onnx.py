@@ -1,4 +1,4 @@
-"""Streaming ASR via sherpa-onnx — Japanese / English / German on CPU, with VAD barge-in.
+"""Streaming ASR via sherpa-onnx - Japanese / English / German on CPU, with VAD barge-in.
 
 sherpa-onnx (k2-fsa) provides streaming online recognizers (transducer) plus a
 Silero-VAD segmenter. This provider wires both together so a voice loop can:
@@ -12,6 +12,8 @@ Model support is focused on the languages this server cares about:
 - ``en``: csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26
 - ``ja``: csukuangfj/sherpa-onnx-streaming-zipformer-ar_en_id_ja_ru_th_vi_zh-2025-02-10
 - ``de``: csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06
+- ``zh``: shares the ``ja`` multilingual weights (model covers zh) - no
+  second download, ``zh`` resolves to the ``ja`` model dir.
 
 All three are transducer models (encoder/decoder/joiner). Model files are
 resolved by glob so the exact per-release filenames don't matter.
@@ -31,6 +33,7 @@ logger = logging.getLogger(__name__)
 SHERPA_SAMPLE_RATE = 16000
 
 # Language -> default model repo (transducer: encoder/decoder/joiner + tokens)
+# ``zh`` shares the ``ja`` multilingual weights (covers zh) - see _SHARED_DIRS.
 LANG_MODELS: dict[str, dict[str, str]] = {
     "en": {
         "repo": "csukuangfj/sherpa-onnx-streaming-zipformer-en-2023-06-26",
@@ -41,7 +44,13 @@ LANG_MODELS: dict[str, dict[str, str]] = {
     "de": {
         "repo": "csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06",
     },
+    "zh": {
+        "repo": "csukuangfj/sherpa-onnx-streaming-zipformer-ar_en_id_ja_ru_th_vi_zh-2025-02-10",
+    },
 }
+
+# Languages that reuse another language's downloaded weights (no re-download).
+_SHARED_DIRS: dict[str, str] = {"zh": "ja"}
 
 SILERO_VAD_URL = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"
 
@@ -82,6 +91,7 @@ def resolve_model_files(model_dir: str | Path) -> SherpaModelSpec:
 
 def default_model_dir(lang: str, base: str | None = None) -> Path:
     """Default local dir for a language's model (downloads land here)."""
+    lang = _SHARED_DIRS.get(lang.lower(), lang.lower())
     base = base or os.environ.get(
         "SHERPA_MODEL_DIR", str(Path(__file__).parent.parent.parent.parent / "models" / "sherpa-onnx")
     )
