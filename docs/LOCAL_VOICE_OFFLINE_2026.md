@@ -48,7 +48,7 @@ sherpa streaming transcribes chunked, WER scored. No cherry-picking.
 
 | Lang | WER | Note |
 |---|---|---|
-| en | 0.286 / 0.111 / 0.300 | Real pipeline number. Errors are endpoint cutoffs (trailing words) + token splits (TO MORROW). Tuning headroom: endpoint rules, chunk size. |
+| en | 0.000 / 0.000 / 0.200 | Real pipeline number (kokoro -> sherpa streaming, CPU). Remaining error is transducer tokenization ("tomorrow" -> "TO MORROW"). Harness appends 0.8 s trailing silence (mimics utterance end) and normalizes case/punct before scoring. |
 | de | 0.714 / 1.000 | TTS-limited (kokoro is English-native), NOT a de-model score. Native DE audio needed. |
 | zh | plumbing only | Recognizer builds on shared ja dir, silence -> empty, no crash. No reference audio yet. |
 

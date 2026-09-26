@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import re
 import sys
 import wave
 from pathlib import Path
@@ -39,9 +40,13 @@ SENTENCES: dict[str, list[str]] = {
 SHERPA_LANG = {"en": "en", "de": "de"}
 
 
+def _norm(text: str) -> list[str]:
+    return re.sub(r"[^\w\s']", "", text.lower()).split()
+
+
 def _wer(ref: str, hyp: str) -> float:
-    r = ref.lower().split()
-    h = hyp.lower().split()
+    r = _norm(ref)
+    h = _norm(hyp)
     if not r:
         return 0.0 if not h else 1.0
     prev = list(range(len(h) + 1))
@@ -77,6 +82,8 @@ def bench_lang(lang: str) -> list[dict]:
     for text in SENTENCES[lang]:
         wav = koko.synthesize_wav(text)
         pcm = _wav_to_16k_mono(wav)
+        # Trailing silence mimics natural utterance end (endpoint needs it).
+        pcm = np.concatenate([pcm, np.zeros(12800, dtype=np.int16)])
         asr.reset()
         chunk = 8000  # 0.5 s chunks at 16 kHz
         for i in range(0, len(pcm), chunk):
