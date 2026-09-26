@@ -37,6 +37,7 @@ from speech_mcp.providers.funasr import FunASRConfig, FunASRProvider
 from speech_mcp.providers.gemini import GeminiProvider
 from speech_mcp.providers.gemma import gemma_provider
 from speech_mcp.providers.muse import MuseConfig, MuseVoiceProvider
+from speech_mcp.providers.voicestudio import VoiceStudioConfig, VoiceStudioProvider
 from speech_mcp.skills import get_skill, list_skills, register_skill_resources
 from speech_mcp.state import _timers, get_store
 from speech_mcp.streaming import handle_websocket_stream
@@ -91,6 +92,16 @@ FUNASR_HUB = os.getenv("FUNASR_HUB", "hf")
 FUNASR_VAD_MODEL = os.getenv("FUNASR_VAD_MODEL", "fsmn-vad")
 FUNASR_PUNC_MODEL = os.getenv("FUNASR_PUNC_MODEL", "ct-punc")
 FUNASR_SPK_MODEL = os.getenv("FUNASR_SPK_MODEL", "cam++")
+
+# --- VoiceStudio local TTS/clone sidecar (optional, disabled by default) ---
+VOICESTUDIO_ENABLED = os.getenv("VOICESTUDIO_ENABLED", "").lower() in ("1", "true", "yes")
+VOICESTUDIO_URL = os.getenv("VOICESTUDIO_URL", "http://127.0.0.1:3900").rstrip("/") or "http://127.0.0.1:3900"
+VOICESTUDIO_CLIENT_ID = os.getenv("VOICESTUDIO_CLIENT_ID", "speech-mcp").strip() or "speech-mcp"
+try:
+    VOICESTUDIO_TIMEOUT_S = max(10.0, float(os.getenv("VOICESTUDIO_TIMEOUT_S", "120")))
+except ValueError:
+    VOICESTUDIO_TIMEOUT_S = 120.0
+VOICESTUDIO_BASE_PATH = os.getenv("VOICESTUDIO_BASE_PATH", "").strip() or None
 
 # --- Meta Muse Voice Transcribe (cloud, real-time diarized STT) ---
 MUSE_ENABLED = os.getenv("MUSE_ENABLED", "").lower() in ("1", "true", "yes")
@@ -375,6 +386,24 @@ if MUSE_ENABLED and MUSE_API_KEY:
         logger.warning(f"Muse Voice Transcribe initialization skipped: {e}")
         muse_provider = None
 
+voicestudio_provider: VoiceStudioProvider | None = None
+if VOICESTUDIO_ENABLED:
+    try:
+        voicestudio_provider = VoiceStudioProvider(
+            VoiceStudioConfig(
+                base_url=VOICESTUDIO_URL,
+                client_id=VOICESTUDIO_CLIENT_ID,
+                timeout_s=VOICESTUDIO_TIMEOUT_S,
+                base_path=VOICESTUDIO_BASE_PATH,
+            )
+        )
+        logger.info("VoiceStudio sidecar enabled: %s (client=%s)", VOICESTUDIO_URL, VOICESTUDIO_CLIENT_ID)
+    except Exception as e:
+        logger.warning("VoiceStudio provider disabled: %s", e)
+        voicestudio_provider = None
+else:
+    logger.info("VoiceStudio disabled - set VOICESTUDIO_ENABLED=true to enable local TTS/clone sidecar.")
+
 # --- sherpa-onnx streaming STT (optional; auto-downloads model on first enable) ---
 sherpa_asr = None
 if SHERPA_ASR_ENABLED:
@@ -398,7 +427,9 @@ if SHERPA_ASR_ENABLED:
         logger.warning("sherpa-onnx streaming ASR disabled: %s", e)
         sherpa_asr = None
 
-register_speech_tools(mcp, hume_client, eleven_client, gemini_client, gemma_client)
+register_speech_tools(
+    mcp, hume_client, eleven_client, gemini_client, gemma_client, voicestudio_client=voicestudio_provider
+)
 register_stt_tools(mcp, funasr_provider, gemini_client, gemma_client, muse_provider=muse_provider)
 register_agentic_tools(mcp, hume_client)
 register_utility_tools(mcp)
@@ -417,6 +448,9 @@ _providers = {
     "windows": True,
     "sherpa_streaming": bool(sherpa_asr),
     "muse": bool(muse_provider),
+    "voicestudio": bool(voicestudio_provider),
+    "qwen": True,
+    "kokoro": True,
 }
 
 
@@ -432,6 +466,7 @@ async def _speak(
         eleven_client=eleven_client,
         hume_client=hume_client,
         gemma_client=gemma_client,
+        voicestudio_client=voicestudio_provider,
     )
 
 
@@ -489,6 +524,7 @@ class TTSRequest(BaseModel):
     provider: str = "windows"
     voice_id: str = "default"
     emotion: str | None = None
+    model: str | None = None
 
 
 class AgenticRequest(BaseModel):
@@ -610,6 +646,9 @@ async def health_check():
             "windows": True,
             "sherpa_streaming": bool(sherpa_asr),
             "muse": bool(muse_provider),
+            "voicestudio": bool(voicestudio_provider),
+            "qwen": True,
+            "kokoro": True,
         },
         "gpu": gpu,
         "devices": {
@@ -628,6 +667,7 @@ async def health_check():
             },
         },
         "funasr": await funasr_provider.health_probe() if funasr_provider else {"available": False},
+        "voicestudio": await voicestudio_provider.health_probe() if voicestudio_provider else {"available": False},
     }
 
 
@@ -647,8 +687,8 @@ async def api_capabilities():
         "fastmcp": _fastmcp_version(),
         "protocols": ["MCP SSE", "REST", "WebSocket"],
         "features": {
-            "tts": ["windows", "gemini", "hume", "elevenlabs", "gemma"],
-            "stt": ["funasr", "gemini", "gemma", "sherpa_streaming", "muse"],
+            "tts": ["windows", "gemini", "hume", "elevenlabs", "gemma", "voicestudio", "qwen", "kokoro"],
+            "stt": ["funasr", "gemini", "gemma", "sherpa_streaming", "muse", "voicestudio"],
             "streaming": ["hume_evi", "gemini_live", "sherpa_streaming"],
             "barge_in": bool(getattr(sherpa_asr, "_barge_in", None)),
             "rag": True,
@@ -846,9 +886,35 @@ async def api_voices():
             el_voices = []
         providers.append({"name": "elevenlabs", "status": "available", "voices": el_voices})
     if gemini_client:
-        providers.append({"name": "gemini", "status": "available", "voices": gemini_client.voices})
+        providers.append(
+            {
+                "name": "gemini",
+                "status": "available",
+                "voices": gemini_client.voices,
+                "models": gemini_client.models,
+                "default_model": getattr(gemini_client, "default_model", "gemini-3.8-flash-tts"),
+            }
+        )
     if gemma_client:
         providers.append({"name": "gemma", "status": "available", "voices": gemma_client.voices})
+    from speech_mcp.providers.kokoro import KokoroProvider
+    from speech_mcp.providers.qwen_tts import QwenTTSProvider
+
+    providers.append({"name": "qwen", "status": "available", "voices": QwenTTSProvider.VOICES})
+    providers.append({"name": "kokoro", "status": "available", "voices": KokoroProvider.VOICES})
+    if voicestudio_provider:
+        try:
+            vs_voices = await voicestudio_provider.list_voices()
+            vs_names = []
+            for v in vs_voices.get("voices", []) or []:
+                if isinstance(v, dict):
+                    vs_names.append(str(v.get("name") or v.get("id") or v.get("profile_id")))
+                else:
+                    vs_names.append(str(v))
+            providers.append({"name": "voicestudio", "status": "available", "voices": vs_names})
+        except Exception as e:
+            logger.warning(f"VoiceStudio voices fetch failed: {e}")
+            providers.append({"name": "voicestudio", "status": "available", "voices": []})
     # Windows SAPI5 - enumerate installed voices
     try:
         import pyttsx3
@@ -870,14 +936,18 @@ async def api_voices():
 
 @app.post("/api/v1/voices/clone")
 async def api_voices_clone(request: Request):
-    """Instant Voice Clone via ElevenLabs IVC. Accepts multipart/form-data: name (str) + file (audio)."""
+    """Voice clone via ElevenLabs IVC (default) or local VoiceStudio sidecar.
+
+    Accepts multipart/form-data: name (str) + file (audio) + provider (str, optional,
+    'elevenlabs'|'voicestudio') + transcript (str, optional, voicestudio conditioning).
+    """
     from fastapi import UploadFile
 
-    if not eleven_client:
-        raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY not configured")
     form = await request.form()
     name = form.get("name")
     file = form.get("file")
+    provider = form.get("provider") if isinstance(form.get("provider"), str) else "elevenlabs"
+    transcript = form.get("transcript") if isinstance(form.get("transcript"), str) else ""
     if not isinstance(name, str) or not name:
         raise HTTPException(status_code=400, detail="name field required")
     if not isinstance(file, UploadFile):
@@ -889,6 +959,25 @@ async def api_voices_clone(request: Request):
             tmp_path = tmp.name
             tmp.write(await file.read())
 
+        if provider == "voicestudio":
+            if not voicestudio_provider:
+                raise HTTPException(status_code=503, detail="VoiceStudio not configured - set VOICESTUDIO_ENABLED=true")
+            result = await voicestudio_provider.clone_voice(name, tmp_path)
+            if transcript.strip() and result.get("success"):
+                logger.info("VoiceStudio clone '%s' with supplied transcript (%d chars)", name, len(transcript))
+            if not result.get("success"):
+                raise HTTPException(status_code=500, detail=result.get("error", "VoiceStudio clone failed"))
+            return {
+                "success": True,
+                "voice_id": result.get("profile_id"),
+                "profile_id": result.get("profile_id"),
+                "name": name,
+                "provider": "voicestudio",
+                "status": "cloned",
+            }
+
+        if not eleven_client:
+            raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY not configured")
         el = eleven_client
 
         def _clone():
@@ -941,7 +1030,16 @@ async def api_tts(req: TTSRequest):
             from speech_mcp.tools.speech import _play_wav_file
 
             effective_voice = req.voice_id if req.voice_id and req.voice_id != "default" else "Kore"
-            wav = await asyncio.to_thread(lambda: gemini.synthesize_wav(req.text, voice_name=effective_voice))
+            _default_model = getattr(gemini, "default_model", None)
+            _default_model = _default_model if isinstance(_default_model, str) else "gemini-3.8-flash-tts"
+            effective_model = req.model or _default_model
+            if req.model:
+                wav = await asyncio.to_thread(
+                    lambda: gemini.synthesize_wav(req.text, voice_name=effective_voice, model=effective_model)
+                )
+            else:
+                # Backwards-compat call shape (existing test pins this exact signature).
+                wav = await asyncio.to_thread(lambda: gemini.synthesize_wav(req.text, voice_name=effective_voice))
             if not wav:
                 raise HTTPException(status_code=500, detail="Gemini returned empty audio")
             import tempfile as _tf
@@ -957,7 +1055,7 @@ async def api_tts(req: TTSRequest):
                         os.remove(tmp_path)
                     except OSError:
                         pass
-            return {"success": True, "provider": "gemini", "voice": effective_voice}
+            return {"success": True, "provider": "gemini", "voice": effective_voice, "model": effective_model}
         if req.provider == "hume":
             hume = hume_client
             if not hume:
@@ -977,6 +1075,82 @@ async def api_tts(req: TTSRequest):
                 raise HTTPException(status_code=400, detail="voice_id required for ElevenLabs")
             await _elevenlabs_speak(el, req.text, voice_id=effective_voice)
             return {"success": True, "provider": "elevenlabs", "voice": effective_voice}
+        if req.provider == "voicestudio":
+            if not voicestudio_provider:
+                raise HTTPException(status_code=503, detail="VoiceStudio not configured - set VOICESTUDIO_ENABLED=true")
+            from speech_mcp.storage import voice_profile_get
+            from speech_mcp.tools.speech import _play_wav_file
+
+            profile_id = req.voice_id
+            if req.voice_id and req.voice_id != "default":
+                profile = voice_profile_get(req.voice_id)
+                if profile and profile.get("provider") == "voicestudio":
+                    profile_id = profile.get("voice_id") or req.voice_id
+            result = await voicestudio_provider.synthesize(req.text, profile_id)
+            if not result.get("success"):
+                raise HTTPException(status_code=500, detail=result.get("error", "VoiceStudio synthesis failed"))
+            import tempfile as _tf2
+
+            with _tf2.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(result["wav_bytes"])
+                tmp_path = tmp.name
+            try:
+                await _play_wav_file(tmp_path)
+            finally:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+            return {"success": True, "provider": "voicestudio", "voice": profile_id}
+        if req.provider == "qwen":
+            from speech_mcp.providers.qwen_tts import QwenTTSProvider
+            from speech_mcp.tools.speech import _play_wav_file as _play_qwen
+
+            try:
+                wav = await asyncio.to_thread(lambda: QwenTTSProvider().synthesize_wav(req.text, voice=req.voice_id))
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
+            if not wav:
+                raise HTTPException(status_code=500, detail="Qwen-TTS returned empty audio")
+            import tempfile as _tf3
+
+            with _tf3.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(wav)
+                tmp_path = tmp.name
+            try:
+                await _play_qwen(tmp_path)
+            finally:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+            return {"success": True, "provider": "qwen", "voice": req.voice_id}
+        if req.provider == "kokoro":
+            from speech_mcp.providers.kokoro import KokoroProvider
+            from speech_mcp.tools.speech import _play_wav_file as _play_koko
+
+            try:
+                wav = await asyncio.to_thread(lambda: KokoroProvider().synthesize_wav(req.text, voice=req.voice_id))
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e)) from e
+            if not wav:
+                raise HTTPException(status_code=500, detail="Kokoro returned empty audio")
+            import tempfile as _tf4
+
+            with _tf4.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(wav)
+                tmp_path = tmp.name
+            try:
+                await _play_koko(tmp_path)
+            finally:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+            return {"success": True, "provider": "kokoro", "voice": req.voice_id}
         # fallback: windows
         import pyttsx3
 
@@ -995,7 +1169,7 @@ async def api_tts(req: TTSRequest):
 
 
 @app.get("/api/v1/tts/wav")
-async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "default"):
+async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "default", model: str | None = None):
     from speech_mcp.state import add_history
 
     add_history("tts", text, provider)
@@ -1070,11 +1244,50 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
         if not gemini:
             raise HTTPException(status_code=503, detail="Gemini not configured")
         effective_voice = voice_id if voice_id and voice_id != "default" else "Kore"
+        _default_model = getattr(gemini, "default_model", None)
+        _default_model = _default_model if isinstance(_default_model, str) else "gemini-3.8-flash-tts"
+        effective_model = model or _default_model
 
         def _synth_gemini():
+            if model:
+                return gemini.synthesize_wav(text, voice_name=effective_voice, model=effective_model)
             return gemini.synthesize_wav(text, voice_name=effective_voice)
 
         wav_bytes = await asyncio.to_thread(_synth_gemini)
+        return Response(content=wav_bytes, media_type="audio/wav")
+    if provider == "voicestudio":
+        if not voicestudio_provider:
+            raise HTTPException(status_code=503, detail="VoiceStudio not configured - set VOICESTUDIO_ENABLED=true")
+        from speech_mcp.storage import voice_profile_get as _vs_resolve
+
+        profile_id = voice_id
+        if voice_id and voice_id != "default":
+            profile = _vs_resolve(voice_id)
+            if profile and profile.get("provider") == "voicestudio":
+                profile_id = profile.get("voice_id") or voice_id
+        result = await voicestudio_provider.synthesize(text, profile_id)
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail=result.get("error", "VoiceStudio synthesis failed"))
+        return Response(content=result["wav_bytes"], media_type="audio/wav")
+    if provider == "qwen":
+        from speech_mcp.providers.qwen_tts import QwenTTSProvider
+
+        try:
+            wav_bytes = await asyncio.to_thread(lambda: QwenTTSProvider().synthesize_wav(text, voice=voice_id))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e)) from e
+        if not wav_bytes:
+            raise HTTPException(status_code=500, detail="Qwen-TTS returned empty audio")
+        return Response(content=wav_bytes, media_type="audio/wav")
+    if provider == "kokoro":
+        from speech_mcp.providers.kokoro import KokoroProvider
+
+        try:
+            wav_bytes = await asyncio.to_thread(lambda: KokoroProvider().synthesize_wav(text, voice=voice_id))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e)) from e
+        if not wav_bytes:
+            raise HTTPException(status_code=500, detail="Kokoro returned empty audio")
         return Response(content=wav_bytes, media_type="audio/wav")
     raise HTTPException(status_code=400, detail=f"provider '{provider}' not supported")
 

@@ -1,4 +1,4 @@
-"""Persistent local stores: voice memory, voice macros, analytics, voice bank.
+"""Persistent local stores: voice memory, voice macros, analytics, voice bank, confirm queue.
 
 Single SQLite database at ``data/speech_mcp.db`` (stdlib sqlite3 only, no heavy
 deps). Every store uses short-lived connections guarded by a module lock -
@@ -9,6 +9,7 @@ Stores:
   voice_macros     - spoken-phrase -> action bindings
   analytics_samples- per-call latency/cost telemetry
   voice_profiles   - voice bank (provider-routed voice profiles)
+  voice_confirms   - pending voice confirmations (spoken readback gate)
 """
 
 from __future__ import annotations
@@ -71,6 +72,18 @@ CREATE TABLE IF NOT EXISTS voice_profiles (
   meta_json TEXT DEFAULT '{}',
   created_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS voice_confirms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts REAL NOT NULL,
+  expires_at REAL NOT NULL,
+  action TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  speaker TEXT DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  meta_json TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_confirms_status ON voice_confirms (status);
 """
 
 
@@ -396,3 +409,87 @@ def voice_profile_delete(name: str) -> bool:
             return cur.rowcount > 0
         finally:
             conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Voice confirm queue (spoken readback gate for irreversible/external actions)
+# ---------------------------------------------------------------------------
+
+CONFIRM_TTL_S = 300.0
+
+
+def _confirm_row(d: dict) -> dict:
+    d["meta"] = json.loads(d.pop("meta_json", "{}"))
+    d["expired"] = d["status"] == "pending" and time.time() > d["expires_at"]
+    return d
+
+
+def confirm_create(action: str, summary: str, speaker: str = "", meta: dict | None = None) -> dict:
+    """Create a pending confirmation. Returns id + spoken readback sentence."""
+    now = time.time()
+    with _lock:
+        conn = _connect()
+        try:
+            cur = conn.execute(
+                "INSERT INTO voice_confirms (ts, expires_at, action, summary, speaker, status, meta_json)"
+                " VALUES (?, ?, ?, ?, ?, 'pending', ?)",
+                (now, now + CONFIRM_TTL_S, action.strip(), summary.strip(), speaker, _dumps(meta or {})),
+            )
+            conn.commit()
+            cid = cur.lastrowid
+        finally:
+            conn.close()
+    return {
+        "success": True,
+        "id": cid,
+        "action": action.strip(),
+        "readback": f"Confirm: {summary.strip()} Say yes to proceed, or no to cancel.",
+        "expires_in_s": int(CONFIRM_TTL_S),
+    }
+
+
+def confirm_list(pending_only: bool = True) -> list[dict]:
+    sql = "SELECT * FROM voice_confirms"
+    if pending_only:
+        sql += " WHERE status = 'pending'"
+    sql += " ORDER BY id DESC LIMIT 50"
+    with _lock:
+        conn = _connect()
+        try:
+            rows = conn.execute(sql).fetchall()
+            out = [_confirm_row(dict(r)) for r in rows]
+        finally:
+            conn.close()
+    return out
+
+
+def confirm_resolve(cid: int, decision: str) -> dict:
+    """Resolve pending confirmation: yes/no. Expired or unknown -> success False."""
+    want = (decision or "").strip().lower()
+    if want in ("yes", "y", "confirm", "proceed", "ja"):
+        verdict = "confirmed"
+    elif want in ("no", "n", "cancel", "deny", "nein"):
+        verdict = "cancelled"
+    else:
+        return {"success": False, "error": f"decision must be yes/no, got '{decision}'"}
+    with _lock:
+        conn = _connect()
+        try:
+            row = conn.execute("SELECT * FROM voice_confirms WHERE id = ?", (cid,)).fetchone()
+            if row is None:
+                return {"success": False, "error": f"confirm id {cid} not found"}
+            d = dict(row)
+            if d["status"] != "pending":
+                return {"success": False, "error": f"confirm id {cid} already {d['status']}"}
+            if time.time() > d["expires_at"]:
+                conn.execute("UPDATE voice_confirms SET status = 'expired' WHERE id = ?", (cid,))
+                conn.commit()
+                return {"success": False, "error": f"confirm id {cid} expired - request again"}
+            conn.execute("UPDATE voice_confirms SET status = ? WHERE id = ?", (verdict, cid))
+            conn.commit()
+        finally:
+            conn.close()
+    out = {"success": True, "id": cid, "verdict": verdict, "action": d["action"], "summary": d["summary"]}
+    if verdict == "confirmed":
+        out["meta"] = json.loads(d.get("meta_json", "{}"))
+    return out

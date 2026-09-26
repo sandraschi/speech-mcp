@@ -13,7 +13,7 @@
   <a href="docs/HUMANOID_VOICE.md"><img src="https://img.shields.io/badge/Humanoid_voice-thesis-8b5cf6?style=flat-square" alt="Humanoid voice thesis"></a>
 </p>
 
-A modern multi-provider speech gateway featuring **Alibaba FunASR local STT**, **Gemini Live real-time voice chat**, **Gemini 3.1 Flash TTS**, **Hume AI Octave**, and **ElevenLabs** voice cloning — built for **embodied agents and humanoid-scale voice** (wake → understand → fleet act → speak).
+A modern multi-provider speech gateway featuring **Alibaba FunASR local STT**, **Gemini Live real-time voice chat**, **Gemini 3.8 Flash TTS**, **Qwen3-TTS + Kokoro local TTS**, **Hume AI Octave**, and **ElevenLabs** voice cloning — built for **embodied agents and humanoid-scale voice** (wake → understand → fleet act → speak).
 
 ### Why this repo matters — humanoids and open speech
 
@@ -99,7 +99,9 @@ speech-mcp is a **gateway**: cloud TTS/live voice plus **local STT via FunASR**.
 | **`funasr`** | **Batch + chunk STT (local)** | **Highest local speed** | **`FUNASR_ENABLED`** |
 | `gemini_live` | Real-time conversation | Very good | `GOOGLE_API_KEY` |
 | `gemini` | Batch TTS | Highest | `GOOGLE_API_KEY` |
-| `gemma` | Batch TTS/STT | SOTA Local | None |
+| `gemma` | Batch TTS/STT | Stub (STT raises, TTS falls back to SAPI5) | None |
+| `qwen` | Batch TTS (local) | Good (0.6B, realtime-capable via endpoint) | `QWEN_TTS_URL` or `qwen-tts` extra |
+| `kokoro` | Batch TTS (local) | Good small (82M Apache, CPU-friendly) | `kokoro` extra + espeak-ng |
 | `hume` | Batch TTS (Octave) | High | `HUME_API_KEY` |
 | `elevenlabs` | Batch TTS + voice cloning | High | `ELEVENLABS_API_KEY` |
 | `windows` | Batch TTS (SAPI5) | Low | None |
@@ -112,7 +114,7 @@ speech-mcp is a **gateway**: cloud TTS/live voice plus **local STT via FunASR**.
 
 **Gemma 4 Native Multimodal** — SOTA 2026 local engine integration. Features native audio/vision encoders for low-latency conversational reasoning. Supports prosody-aware interaction and local-first Zero-STT fallback. Optimized for A4B throughput (100+ t/s).
 
-**Gemini 3.1 Flash TTS** — Highest-quality cloud synthesis (`gemini-3.1-flash-tts-preview`). 31 prebuilt voices, 100+ languages, expressive audio tags (`[whispers]`, `[excited]`, etc.).
+**Gemini 3.8 Flash TTS** — Highest-quality cloud synthesis (`gemini-3.8-flash-tts`, Lite: `gemini-3.8-flash-lite-tts`). 31 prebuilt voices + custom/saved 3.8 voices, 100+ languages, voice design from text, expressive audio tags (`[whispers]`, `[excited]`, etc.).
 
 **Creative Labs** — Polyglot synthesis demo with 19 languages (European, Slavic, Classical, Experimental, Global), literary samples, voice selection, prosody slider, and tongue-twister panel.
 

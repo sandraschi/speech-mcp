@@ -165,3 +165,61 @@ def register_safety_tools(mcp: FastMCP):
         ``safety_verify_auth(token="...")`` -> ``True`` / ``False``.
         """
         return await verify_authorization(token)
+
+    @mcp.tool(annotations=_MUTATING)
+    async def voice_confirm_request(
+        action: Annotated[str, Field(description="Machine action id, e.g. 'send_email'.")],
+        summary: Annotated[str, Field(description="Plain-language summary to read back aloud.")],
+        speaker: Annotated[str, Field(description="Who asked (speaker tag).")] = "",
+    ) -> dict[str, Any]:
+        """Create a pending voice confirmation. Speak the returned readback.
+
+        The voice loop speaks ``readback`` via TTS, the user answers yes/no,
+        then call ``voice_confirm_resolve``. Pending items expire after 300s.
+
+        ## Return Format
+        ``{"success": bool, "id": int, "readback": str, "expires_in_s": int}``
+
+        ## Examples
+        ``voice_confirm_request(action="send_email", summary="Send email to Erich?")``
+        -> ``{"id": 3, "readback": "Confirm: Send email to Erich? ..."}``
+        """
+        if not action.strip() or not summary.strip():
+            return {"success": False, "error": "action and summary are required"}
+        from speech_mcp.storage import confirm_create
+
+        return confirm_create(action, summary, speaker=speaker)
+
+    @mcp.tool(annotations=_MUTATING)
+    async def voice_confirm_resolve(
+        confirm_id: Annotated[int, Field(description="Pending confirm id from voice_confirm_request.")],
+        decision: Annotated[str, Field(description="User answer: yes/no (ja/nein accepted).")],
+    ) -> dict[str, Any]:
+        """Resolve a pending voice confirmation. Only 'confirmed' may execute.
+
+        ## Return Format
+        ``{"success": bool, "verdict": "confirmed"|"cancelled", "action": str}``
+        - or ``{"success": False, "error": str}`` on unknown/expired/already-resolved.
+
+        ## Examples
+        ``voice_confirm_resolve(confirm_id=3, decision="yes")`` -> verdict confirmed.
+        """
+        from speech_mcp.storage import confirm_resolve
+
+        return confirm_resolve(confirm_id, decision)
+
+    @mcp.tool(annotations=_README_ONLY)
+    async def voice_confirm_list(
+        pending_only: Annotated[bool, Field(description="Only unresolved items.")] = True,
+    ) -> dict[str, Any]:
+        """List voice confirmations (audit + pending queue).
+
+        ## Return Format
+        ``{"success": bool, "confirms": [...]}`` - items carry expired flag.
+
+        ## Examples
+        ``voice_confirm_list()`` -> pending queue for the Inbox/Hub page.
+        """
+        from speech_mcp.storage import confirm_list
+
+        return {"success": True, "confirms": confirm_list(pending_only=pending_only)}
