@@ -143,6 +143,7 @@ def register_speech_tools(
     eleven_client: ElevenLabs | None,
     gemini_client: Any | None = None,
     gemma_client: Any | None = None,
+    voicestudio_client: Any | None = None,
 ):
 
     @mcp.tool(annotations=_MUTATING)
@@ -188,11 +189,19 @@ def register_speech_tools(
     async def text_to_speech(
         text: Annotated[str, Field(description="Text to synthesize and play.")],
         provider: Annotated[
-            str, Field(description="TTS provider: windows, hume, gemini, gemma, elevenlabs.")
+            str, Field(description="TTS provider: windows, hume, gemini, gemma, elevenlabs, voicestudio, qwen, kokoro.")
         ] = "windows",
         voice_id: Annotated[str, Field(description="Provider-specific voice identifier.")] = "default",
         description: Annotated[
             str | None, Field(description="Hume-only: prose style prompt driving Octave prosody.")
+        ] = None,
+        model: Annotated[
+            str | None,
+            Field(
+                description="Gemini-only: TTS model override (gemini-3.8-flash-tts, "
+                "gemini-3.8-flash-lite-tts, gemini-3.1-flash-tts-preview). "
+                "Defaults to provider default (3.8 Flash)."
+            ),
         ] = None,
         ctx: Context | None = None,
     ) -> dict:
@@ -203,11 +212,21 @@ def register_speech_tools(
           - 'windows'     Windows SAPI5, no API key, always works
           - 'hume'        Hume AI Octave REST (HUME_API_KEY). Use `description`
                           for prose style.
-          - 'gemini'      Gemini 3.1 Flash TTS (GOOGLE_API_KEY). Embed audio
-                          tags in text: [excited], [whispers], [laughs], etc.
+          - 'gemini'      Gemini 3.8 Flash / Flash-Lite TTS (GOOGLE_API_KEY).
+                          Embed audio tags in text: [excited], [whispers],
+                          [laughs], <laughs>/<sigh>/<gasp>, |mhm|/|yeah|.
+                          voice_id accepts base 31 voices AND custom/saved
+                          3.8 voices. Use `model` to pick Flash vs Flash-Lite.
           - 'gemma'       Gemma 4 Native Local (No API Key).
           - 'elevenlabs'  ElevenLabs (ELEVENLABS_API_KEY). voice_id must be a
                           valid voice ID from your account.
+          - 'voicestudio' Local VoiceStudio sidecar (VOICESTUDIO_ENABLED=true).
+                          voice_id is a profile_id or voice-bank name. Requires
+                          the VoiceStudio backend on VOICESTUDIO_URL.
+          - 'qwen'        Qwen3-TTS local (QWEN_TTS_URL endpoint or
+                          `uv sync --extra qwen-tts`). No API key.
+          - 'kokoro'      Kokoro 82M local (`uv sync --extra kokoro`).
+                          No API key, CPU-friendly fallback.
 
         ## Return Format
         {"success": bool, "provider": str, "voice_id": str}
@@ -215,6 +234,7 @@ def register_speech_tools(
         ## Examples
         await text_to_speech("Hello world", provider="windows")
         await text_to_speech("[excited] Great job!", provider="gemini", voice_id="Kore")
+        await text_to_speech("Dub this at scale", provider="gemini", model="gemini-3.8-flash-lite-tts")
         """
         if ctx:
             await ctx.info(f"TTS [{provider}/{voice_id}]: {text[:60]}")
@@ -228,6 +248,35 @@ def register_speech_tools(
 
                 def _synth():
                     engine = pyttsx3.init()
+                    if voice_id and voice_id != "default":
+                        try:
+                            voices = engine.getProperty("voices") or []
+                            target_id = None
+                            for v in voices:
+                                vid = getattr(v, "id", "") or ""
+                                vname = getattr(v, "name", "") or ""
+                                if (
+                                    voice_id == vid
+                                    or voice_id.lower() in vname.lower()
+                                    or voice_id.lower() in vid.lower()
+                                ):
+                                    target_id = vid
+                                    break
+                            if not target_id:
+                                alias_map = {"heart": "zira", "sky": "hazel", "adam": "david"}
+                                alias = alias_map.get(voice_id.lower())
+                                if alias:
+                                    for v in voices:
+                                        if alias in (getattr(v, "name", "") or "").lower():
+                                            target_id = getattr(v, "id", "")
+                                            break
+                            if not target_id and voices:
+                                idx = abs(hash(voice_id)) % len(voices)
+                                target_id = getattr(voices[idx], "id", None)
+                            if target_id:
+                                engine.setProperty("voice", target_id)
+                        except Exception:
+                            pass
                     engine.save_to_file(text, tmp_path)
                     engine.runAndWait()
 
@@ -255,23 +304,29 @@ def register_speech_tools(
                 return {"success": False, "error": "HUME_API_KEY not configured"}
             return await _hume_speak(hume_client, text, description)
 
-        # ── Gemini 3.1 Flash TTS ───────────────────────────────────────────────
+        # ── Gemini 3.8 Flash / Flash-Lite TTS ────────────────────────────────────
         elif provider == "gemini":
             gemini = gemini_client
             if not gemini:
                 return {
                     "success": False,
-                    "error": "Gemini TTS not available — GOOGLE_API_KEY not set.",
+                    "error": "Gemini TTS not available - GOOGLE_API_KEY not set.",
                     "recovery": "Add GOOGLE_API_KEY to .env (free at aistudio.google.com/apikey) and restart.",
                 }
             effective_voice = voice_id if voice_id and voice_id.lower() != "default" else "Kore"
+            _default_model = getattr(gemini, "default_model", None)
+            _default_model = _default_model if isinstance(_default_model, str) else "gemini-3.8-flash-tts"
+            effective_model = model or _default_model
             tmp_path = None
             try:
                 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
                     tmp_path = tmp.name
 
-                def _synth_gemini():
-                    wav = gemini.synthesize_wav(text, voice_name=effective_voice)
+                def _synth_gemini(_text=text, _voice=effective_voice, _model=effective_model):
+                    if _model is None:
+                        wav = gemini.synthesize_wav(_text, voice_name=_voice)
+                    else:
+                        wav = gemini.synthesize_wav(_text, voice_name=_voice, model=_model)
                     with open(tmp_path, "wb") as f:
                         f.write(wav)
 
@@ -284,8 +339,8 @@ def register_speech_tools(
                 await _play_wav_file(tmp_path)
                 return {
                     "success": True,
-                    "provider": "Gemini 3.1 Flash TTS",
-                    "model": "gemini-3.1-flash-tts-preview",
+                    "provider": "Gemini 3.8 Flash TTS",
+                    "model": effective_model,
                     "voice": effective_voice,
                     "bytes_played": size,
                     "status": "played",
@@ -320,6 +375,82 @@ def register_speech_tools(
                 logger.exception("Gemma TTS failed")
                 return {"success": False, "error": str(e)}
 
+        # ── Qwen3-TTS local ──────────────────────────────────────────────────
+        elif provider == "qwen":
+            try:
+                from speech_mcp.providers.qwen_tts import QwenTTSProvider
+
+                qwen = QwenTTSProvider()
+                tmp_path = None
+                try:
+                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                        tmp_path = tmp.name
+
+                    def _synth_qwen(_text=text, _voice=voice_id):
+                        wav = qwen.synthesize_wav(_text, voice=_voice)
+                        with open(tmp_path, "wb") as f:
+                            f.write(wav)
+
+                    await asyncio.to_thread(_synth_qwen)
+                    if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+                        return {"success": False, "error": "Qwen-TTS returned empty audio"}
+                    size = os.path.getsize(tmp_path)
+                    await _play_wav_file(tmp_path)
+                    return {
+                        "success": True,
+                        "provider": "Qwen3-TTS (local)",
+                        "voice": voice_id,
+                        "bytes_played": size,
+                        "status": "played",
+                    }
+                finally:
+                    if tmp_path and os.path.exists(tmp_path):
+                        try:
+                            os.remove(tmp_path)
+                        except OSError:
+                            pass
+            except Exception as e:
+                logger.exception("Qwen-TTS failed")
+                return {"success": False, "error": str(e)}
+
+        # ── Kokoro local ─────────────────────────────────────────────────────
+        elif provider == "kokoro":
+            try:
+                from speech_mcp.providers.kokoro import KokoroProvider
+
+                koko = KokoroProvider()
+                tmp_path = None
+                try:
+                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                        tmp_path = tmp.name
+
+                    def _synth_kokoro(_text=text, _voice=voice_id):
+                        wav = koko.synthesize_wav(_text, voice=_voice)
+                        with open(tmp_path, "wb") as f:
+                            f.write(wav)
+
+                    await asyncio.to_thread(_synth_kokoro)
+                    if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+                        return {"success": False, "error": "Kokoro returned empty audio"}
+                    size = os.path.getsize(tmp_path)
+                    await _play_wav_file(tmp_path)
+                    return {
+                        "success": True,
+                        "provider": "Kokoro (local)",
+                        "voice": voice_id,
+                        "bytes_played": size,
+                        "status": "played",
+                    }
+                finally:
+                    if tmp_path and os.path.exists(tmp_path):
+                        try:
+                            os.remove(tmp_path)
+                        except OSError:
+                            pass
+            except Exception as e:
+                logger.exception("Kokoro TTS failed")
+                return {"success": False, "error": str(e)}
+
         # ── ElevenLabs ─────────────────────────────────────────────────────────
         elif provider == "elevenlabs":
             if not eleven_client:
@@ -328,57 +459,176 @@ def register_speech_tools(
                 return {
                     "success": False,
                     "error": (
-                        "voice_id required for ElevenLabs — use manage_voice_clones "
+                        "voice_id required for ElevenLabs - use manage_voice_clones "
                         "action='list' to see available voices"
                     ),
                 }
             return await _elevenlabs_speak(eleven_client, text, voice_id)
 
+        # ── VoiceStudio local sidecar ────────────────────────────────────────
+        elif provider == "voicestudio":
+            if not voicestudio_client:
+                return {
+                    "success": False,
+                    "error": "VoiceStudio not configured - set VOICESTUDIO_ENABLED=true and restart.",
+                    "recovery": "Start the VoiceStudio backend (Electron app or Docker) on VOICESTUDIO_URL.",
+                }
+            from speech_mcp.storage import voice_profile_get
+
+            profile_id = voice_id
+            if voice_id and voice_id != "default":
+                profile = voice_profile_get(voice_id)
+                if profile and profile.get("provider") == "voicestudio":
+                    profile_id = profile.get("voice_id") or voice_id
+            try:
+                result = await voicestudio_client.synthesize(text, profile_id)
+                if not result.get("success"):
+                    return result
+                wav_bytes = result.get("wav_bytes")
+                if not wav_bytes:
+                    return {"success": False, "provider": "voicestudio", "error": "VoiceStudio returned empty audio"}
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                    tmp.write(wav_bytes)
+                    tmp_path = tmp.name
+                try:
+                    await _play_wav_file(tmp_path)
+                finally:
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+                return {
+                    "success": True,
+                    "provider": "VoiceStudio (local)",
+                    "voice": profile_id,
+                    "bytes_played": len(wav_bytes),
+                    "status": "played",
+                }
+            except Exception as e:
+                logger.exception("VoiceStudio TTS failed")
+                return {"success": False, "provider": "voicestudio", "error": str(e)}
+
         else:
             return {
                 "success": False,
-                "error": f"Unknown provider '{provider}'. Use 'windows', 'hume', 'gemini', or 'elevenlabs'.",
+                "error": (
+                    f"Unknown provider '{provider}'. "
+                    "Use 'windows', 'hume', 'gemini', 'gemma', 'elevenlabs', 'voicestudio', 'qwen', or 'kokoro'."
+                ),
             }
 
     @mcp.tool(annotations=_MUTATING)
     async def text_to_dialogue(
         lines: list[dict],
+        provider: Annotated[str, Field(description="Dialogue provider: elevenlabs or gemini.")] = "elevenlabs",
+        model: Annotated[
+            str | None,
+            Field(
+                description="Gemini-only: TTS model override (gemini-3.8-flash-tts, "
+                "gemini-3.8-flash-lite-tts, gemini-3.1-flash-tts-preview)."
+            ),
+        ] = None,
         ctx: Context | None = None,
     ) -> dict:
         """
-        Multi-voice dialogue synthesis via ElevenLabs — plays on the PC speaker.
+        Multi-voice dialogue synthesis - plays on the PC speaker.
 
-        Each line is assigned a different voice ID, producing natural conversational
-        audio with consistent pacing in a single API call (up to 10 voices).
-
-        Requires ELEVENLABS_API_KEY and valid voice IDs. Use manage_voice_clones
-        action='list' provider='elevenlabs' to see your available voices.
-        ``lines`` is a list of ``{text, voice_id}`` dicts, e.g.
-        ``[{"text": "Good morning, Benny.", "voice_id": "abc123"}, ...]`` (max 10 voices).
-
-        Example use:
-            Ask two different cloned voices to have a short philosophical exchange.
+        Providers:
+          - 'elevenlabs'  ElevenLabs text_to_dialogue (ELEVENLABS_API_KEY).
+                          ``lines`` is ``[{text, voice_id}]`` (max 10 voices).
+          - 'gemini'      Gemini 3.8 two-speaker staging (GOOGLE_API_KEY).
+                          ``lines`` is ``[{text, voice_id, speaker?}]`` -
+                          voice_id accepts base 31 AND custom/saved 3.8
+                          voices; speaker labels the script turn. Audio tags
+                          (``[laughs]``, ``<sigh>``, ``|mhm|``) allowed per line.
 
         ## Return Format
         ``{"success": bool, "provider": str, "lines": int, "voices_used": int,
-        "bytes_played": int, "status": "played"}`` — or ``{"success": False,
+        "bytes_played": int, "status": "played"}`` - or ``{"success": False,
         "error": str}`` on failure.
 
         ## Examples
         ``text_to_dialogue(lines=[{"text": "Hello.", "voice_id": "v1"},
-        {"text": "Hi.", "voice_id": "v2"}])`` -> plays both voices, returns
-        ``{"success": True, "lines": 2, "voices_used": 2, ...}``.
+        {"text": "Hi.", "voice_id": "v2"}])`` -> ElevenLabs dialogue.
+        ``text_to_dialogue(lines=[{"text": "Welcome.", "voice_id": "Aoede", "speaker": "Ava"},
+        {"text": "Thanks!", "voice_id": "Charon", "speaker": "Ben"}], provider="gemini")``
+        -> Gemini two-speaker scene.
         """
-        if not eleven_client:
-            return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
-
         if not lines:
             return {"success": False, "error": "lines list is empty"}
+        if len(lines) > 10:
+            return {"success": False, "error": "max 10 dialogue lines"}
+
+        if provider == "gemini":
+            gemini = gemini_client
+            if not gemini:
+                return {
+                    "success": False,
+                    "error": "Gemini TTS not available - GOOGLE_API_KEY not set.",
+                    "recovery": "Add GOOGLE_API_KEY to .env (free at aistudio.google.com/apikey) and restart.",
+                }
+            try:
+                turns = []
+                for i, line in enumerate(lines):
+                    text = str(line.get("text") or "").strip()
+                    if not text:
+                        return {"success": False, "error": f"line {i} has empty text"}
+                    turns.append(
+                        {
+                            "speaker": str(line.get("speaker") or f"Speaker {i + 1}"),
+                            "text": text,
+                            "voice": str(line.get("voice_id") or line.get("voice") or "Kore"),
+                        }
+                    )
+                _default = getattr(gemini, "default_model", None)
+                effective_model = model or (_default if isinstance(_default, str) else "gemini-3.8-flash-tts")
+                tmp_path = None
+                try:
+                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                        tmp_path = tmp.name
+
+                    def _synth_gemini_dialogue():
+                        wav = gemini.synthesize_dialogue_wav(turns, model=effective_model)
+                        with open(tmp_path, "wb") as f:
+                            f.write(wav)
+
+                    await asyncio.to_thread(_synth_gemini_dialogue)
+
+                    if not os.path.exists(tmp_path) or os.path.getsize(tmp_path) == 0:
+                        return {"success": False, "error": "Gemini dialogue returned empty audio"}
+                    size = os.path.getsize(tmp_path)
+                    await _play_wav_file(tmp_path)
+                    return {
+                        "success": True,
+                        "provider": "Gemini 3.8 dialogue",
+                        "model": effective_model,
+                        "lines": len(turns),
+                        "voices_used": len({t["voice"] for t in turns}),
+                        "bytes_played": size,
+                        "status": "played",
+                    }
+                finally:
+                    if tmp_path and os.path.exists(tmp_path):
+                        try:
+                            os.remove(tmp_path)
+                        except OSError:
+                            pass
+            except Exception as e:
+                logger.exception("Gemini dialogue failed")
+                return {"success": False, "error": str(e)}
+
+        if provider != "elevenlabs":
+            return {"success": False, "error": f"Unknown dialogue provider '{provider}'. Use 'elevenlabs' or 'gemini'."}
+        if not eleven_client:
+            return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
 
         from elevenlabs import DialogueInput
 
         el = eleven_client
-        inputs = [DialogueInput(text=line["text"], voice_id=line["voice_id"]) for line in lines]
+        try:
+            inputs = [DialogueInput(text=line["text"], voice_id=line["voice_id"]) for line in lines]
+        except KeyError as e:
+            return {"success": False, "error": f"each line needs text + voice_id (missing {e})"}
 
         tmp_path = None
         try:
@@ -434,13 +684,13 @@ def register_speech_tools(
         Manage voice clones across providers.
 
         Actions:
-          list    — list all voices in your account
-          clone   — create an Instant Voice Clone from a local audio file
+          list    - list all voices in your account
+          clone   - create an Instant Voice Clone from a local audio file
                     (requires name + audio_path)
-          delete  — delete a voice by voice_id
+          delete  - delete a voice by voice_id
 
         ## Return Format
-        ``{"success": bool, "action": str, "provider": str, ...}`` — ``list``
+        ``{"success": bool, "action": str, "provider": str, ...}`` - ``list``
         returns ``voices``; ``clone`` returns ``voice_id``; ``delete`` returns
         ``deleted``. ``{"success": False, "error": str}`` on failure.
 
@@ -526,5 +776,22 @@ def register_speech_tools(
                 except Exception as e:
                     return {"success": False, "error": str(e)}
             return {"success": False, "error": f"Action '{action}' not implemented for Hume"}
+
+        elif provider == "voicestudio":
+            if not voicestudio_client:
+                return {
+                    "success": False,
+                    "error": "VoiceStudio not configured - set VOICESTUDIO_ENABLED=true and restart.",
+                }
+            if action == "list":
+                return await voicestudio_client.list_voices()
+            if action == "clone":
+                if not name or not audio_path:
+                    return {"success": False, "error": "name and audio_path required for clone"}
+                result = await voicestudio_client.clone_voice(name, audio_path)
+                if result.get("success"):
+                    result["note"] = "Use profile_id with text_to_speech provider='voicestudio'"
+                return result
+            return {"success": False, "error": f"Action '{action}' not implemented for voicestudio (use list/clone)"}
 
         return {"success": False, "error": f"Unknown provider '{provider}'"}

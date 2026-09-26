@@ -47,6 +47,22 @@ sherpa = [
     "huggingface_hub>=0.24.0",
 ]
 
+qwen-tts = [
+    "transformers>=4.40.0",
+    "modelscope>=1.18.0",
+    "soundfile>=0.12.0",
+    "numpy>=1.26.0",
+    "requests>=2.31.0",
+]
+
+kokoro = [
+    "kokoro>=0.9.0",
+    "soundfile>=0.12.0",
+    "numpy>=1.26.0",
+]
+# Note: kokoro also needs the espeak-ng system binary
+# (winget install espeak-ng / apt install espeak-ng), not a PyPI package.
+
 [dependency-groups]
 dev = [
     "pytest>=7.0.0",
@@ -56,6 +72,8 @@ dev = [
     "pre-commit>=4.6.1",
     "ruff>=0.16.0,<0.17",
     "pyright>=1.1.390",
+    "pyinstaller>=6.22.2",
+    "pywin32>=311",
 ]
 
 [project.scripts]
