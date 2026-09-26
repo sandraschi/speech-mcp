@@ -1,4 +1,4 @@
-"""Fleet Voice Command Bus — post STT intents to fleet-agent."""
+"""Fleet Voice Command Bus - post STT intents to fleet-agent."""
 
 from __future__ import annotations
 
@@ -88,13 +88,14 @@ def transcribe_wav(path: Path) -> str:
             pass
 
 
-def post_speech_intent(*, wake: str, transcript: str) -> dict[str, Any]:
+def post_speech_intent(*, wake: str, transcript: str, speaker: str = "") -> dict[str, Any]:
     import urllib.error
     import urllib.request
 
     payload = {
         "wake": wake,
         "transcript": transcript,
+        "speaker": speaker or speaker_tag(),
         "timestamp": datetime.now(UTC).isoformat(),
         "source": "speech-mcp",
     }
@@ -138,10 +139,19 @@ def wake_greeting() -> str:
 def sleep_keyword() -> str:
     """Second openWakeWord model that stops the listener (sleep word).
 
-    Stock placeholder until a custom 'sleepsleep' ONNX is trained — any
+    Stock placeholder until a custom 'sleepsleep' ONNX is trained - any
     openWakeWord model name works (alexa, hey_jarvis, hey_mycroft, ...).
     """
     return os.environ.get("FLEET_VOICE_SLEEP_KEYWORD", "hey_mycroft").strip()
+
+
+def speaker_tag() -> str:
+    """Who is speaking (for per-member memory routing on the fritz side).
+
+    Set FLEET_VOICE_SPEAKER=sandra per node. Empty = unidentified speaker.
+    Future: diarization / voice-print fills this automatically.
+    """
+    return os.environ.get("FLEET_VOICE_SPEAKER", "").strip()
 
 
 def is_stop_request(transcript: str) -> bool:
@@ -151,7 +161,7 @@ def is_stop_request(transcript: str) -> bool:
 
 
 def speak_sync(text: str) -> None:
-    """Blocking TTS (SAPI5 fallback) — used by the listener thread so the
+    """Blocking TTS (SAPI5 fallback) - used by the listener thread so the
     greeting/stop confirmation finishes before mic capture resumes."""
     if not text.strip():
         return
