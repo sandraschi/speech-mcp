@@ -7,7 +7,7 @@ built, the honest numbers, and what is still scaffold.
 
 | Provider | Role | State | Key |
 |---|---|---|---|
-| `qwen` | Qwen3-TTS 0.6B local TTS | Scaffold - endpoint works, in-process wiring pending | `QWEN_TTS_URL` or `qwen-tts` extra |
+| `qwen` | Qwen3-TTS 0.6B local TTS | **Working, verified** (official `qwen-tts` pkg, Base voice-clone from 3 s ref audio) | `qwen-tts` extra + `QWEN_TTS_REF_AUDIO/_TEXT` |
 | `kokoro` | Kokoro 82M local TTS (Apache, CPU) | **Working, verified** | `kokoro` extra + espeak-ng binary |
 | `gemma` | Gemma 4 native audio | Stub (STT raises, TTS falls back SAPI5) - README says so | None |
 
@@ -57,7 +57,10 @@ Suite: 52 passed, 6 skipped (`pytest -m "not live"`). Ruff clean.
 
 ## Still open
 
-1. Qwen-TTS in-process wiring (needs weight vendoring) - endpoint path works.
+1. ~~Qwen-TTS in-process wiring~~ DONE 2026-09-26 (188 KB cloned wav, local). Left: CustomVoice/VoiceDesign variants not wired; stock transformers has no Qwen3TTS class (official `qwen-tts` pkg is the path).
 2. Native DE/ZH reference audio for true model scores.
-3. Endpoint-rule tuning to fix trailing-word cutoffs (biggest EN WER driver).
+3. ~~Endpoint-rule tuning~~ DONE (trailing silence + normalized WER).
 4. Fritz-side voice-loop e2e (other repo).
+
+Ops lesson: `uv sync` prunes extras not named - always sync all together
+(`uv sync --extra kokoro --extra qwen-tts`), or kokoro vanishes.

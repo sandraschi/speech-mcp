@@ -48,12 +48,14 @@ sherpa = [
 ]
 
 qwen-tts = [
-    "transformers>=4.40.0",
-    "modelscope>=1.18.0",
+    "qwen-tts",
     "soundfile>=0.12.0",
     "numpy>=1.26.0",
     "requests>=2.31.0",
 ]
+# Official inference: `from qwen_tts import Qwen3TTSModel`
+# (stock transformers has no Qwen3TTS class - do NOT use transformers here).
+# Model: Qwen/Qwen3-TTS-12Hz-0.6B-Base (Apache-2.0). Exact version pinned in uv.lock.
 
 kokoro = [
     "kokoro>=0.9.0",
