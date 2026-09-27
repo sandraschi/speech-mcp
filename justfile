@@ -156,7 +156,7 @@ demo-weather city="Vienna":
 
 # Interactive weather demo that asks for a city first
 demo-weather-ask:
-    @pwsh -Command "$city = Read-Host 'Which city do you want to check?'; just demo-weather $city"
+    @powershell.exe -Command "$city = Read-Host 'Which city do you want to check?'; just demo-weather $city"
 
 # Semantic search over the RAG knowledge base
 demo-rag:
@@ -227,7 +227,7 @@ test:
     Set-Location '{{ justfile_directory() }}'
     # BUG-026 guard: prove pytest imports YOUR source, not a stale site-packages copy.
     # Exit 1 -> `uv pip install -e .` then re-run.
-    pwsh -NoProfile -File 'D:\Dev\repos\mcp-central-docs\scripts\check-editable-install.ps1' -RepoRoot (Get-Location).Path
+    powershell.exe -NoProfile -File 'D:\Dev\repos\mcp-central-docs\scripts\check-editable-install.ps1' -RepoRoot (Get-Location).Path
     uv run pytest tests/ -v -m "not live"
 
 # Alias: start the full stack (backend 10909 + frontend 10908)
@@ -245,7 +245,7 @@ gates-green:
     uv run ruff check src/ run_server.py
     uv run ruff format src/ --check
     uv run pyright src/
-    pwsh -NoProfile -File 'D:\Dev\repos\mcp-central-docs\scripts\check-editable-install.ps1' -RepoRoot (Get-Location).Path
+    powershell.exe -NoProfile -File 'D:\Dev\repos\mcp-central-docs\scripts\check-editable-install.ps1' -RepoRoot (Get-Location).Path
     uv run pytest tests/ -q -m "not live"
     Set-Location '{{ justfile_directory() }}\web'; npx tsc --noEmit
     Set-Location '{{ justfile_directory() }}\web'; npx biome check src
