@@ -293,7 +293,7 @@ async def lifespan(app: FastAPI):
     _probe_rag()
     _probe_api_keys(logger)
     _probe_funasr(logger)
-    _probe_bridges()
+    await asyncio.to_thread(_probe_bridges)
 
     broadcaster = asyncio.create_task(_log_broadcaster())
     logger.info("Speech-MCP backend started on port %s", os.getenv("SPEECH_MCP_PORT", "10909"))
