@@ -4,7 +4,13 @@
 
 Gemini Live is Google's full-duplex, low-latency voice conversation API. Unlike the batch TTS pipeline (`gemini-3.1-flash-tts-preview`), it maintains a persistent WebSocket session where audio streams in both directions simultaneously. The model listens, understands, and speaks without the traditional STT → LLM → TTS latency stack.
 
-Current model: **`gemini-3.1-flash-live-preview`**
+Current default model: **`gemini-3.1-flash-live-preview`**
+
+Also available (verified working against this project's API key, September 2026):
+- **`gemini-3.8-live`** — successor model, 97-language auto-switch mid-conversation, better agentic tool-call reliability (τ-Voice 68.6%)
+- **`gemini-3.8-live-extended-thinking`** — reasons and speaks simultaneously; **requires an explicit `thinking_level`** (`LOW`/`MEDIUM`/`HIGH`) or the session is rejected with `Thinking level must be specified for this model`
+
+Select via WebSocket query params `model=` and `thinking=`, or set `SPEECH_MCP_GEMINI_LIVE_MODEL` in `.env` to change the default without touching URLs. See [Configuration](#configuration) below.
 
 Key capabilities:
 - Sub-second response latency (no STT/TTS pipeline — native audio-to-audio)
@@ -120,7 +126,14 @@ Optional URL parameters on the WebSocket:
 provider=gemini_live     (required — selects this handler)
 voice=Kore               (any Gemini Live voice name, default: Kore)
 system=You are...        (system instruction / persona, URL-encoded)
+model=gemini-3.8-live    (overrides SPEECH_MCP_GEMINI_LIVE_MODEL / the built-in default)
+thinking=HIGH            (LOW|MEDIUM|HIGH — required in practice for *-extended-thinking models)
 token=...                (SPEECH_MCP_AUTH_TOKEN if set)
+```
+
+Optional in `.env` to change the default model fleet-wide without editing URLs:
+```
+SPEECH_MCP_GEMINI_LIVE_MODEL=gemini-3.8-live
 ```
 
 ---

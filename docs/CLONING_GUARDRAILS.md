@@ -29,6 +29,17 @@ Instead of direct cloning (which triggers guardrails), a Advanced approach invol
 - **Prosody Transfer**: Using a neutral voice model but applying Werner's specific prosodic envelope (pitch variance, speed, intensity).
 - **Latent Control**: Adjusting "Style" and "Stability" sliders in ElevenLabs or "Prosody" weights in Hume to emulate the "cutting" quality.
 
+## 🆕 Gemini 3.8 Flash TTS replication rules (Sept 2026)
+
+Source: https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-8-text-to-speech/
+
+- **30-second reference:** recreate a vocal profile from a 30s sample of a voice you have the rights to use (5s hard floor in speech-mcp, 30s recommended).
+- **Consent verification:** the voice owner must provide a verbal consent recording that matches the reference speaker before the voice can be created. No consent file = no replication, no exceptions.
+- **Transparency by default:** every Gemini-generated clip carries an imperceptible SynthID watermark + C2PA credentials. Model card: Gemini 3.8 Audio.
+- **speech-mcp enforcement:** `manage_voice_bank(operation="replicate")` requires `reference_audio_path` + `consent_audio_path` + `confirm_consent=True` + a written `rights_statement`, runs the safety bastion (`safety_validate_intent`), and registers `status="pending_ai_studio"` - the actual replication is completed in Google AI Studio, then the saved voice_id is registered via `operation="register"` with `source="gemini-studio"`. Nothing is silently cloned.
+- **Remixing:** AI Studio voice remixing ("add subtle Southern US accent") is rolling out as coming-soon; speech-mcp tracks remix intents in profile meta (`remixes[]`, `remix_status`) until the remixed voice_id exists.
+- **Private by default:** reference/consent audio stays on local disk; only the saved voice_id + design prompt live in the voice bank. See `docs/VOICE_CLONE_BANK_PLAN.md`.
+
 ## ⚖️ Legal & Ethical Boundaries
 - **Right of Publicity**: Estates (like Vincent Price's) own the commercial rights to the voice indefinitely in many jurisdictions.
 - **Detection in 2026**: Detection is multi-modal. Systems don't just look at the audio; they analyze the *intent* (via the LLM prompt) to see if the user is attempting impersonation.

@@ -1,11 +1,19 @@
-# Gemini 3.1 Flash TTS: Advanced Emotional Synthesis
+# Gemini 3.8 Flash TTS: Creative Voice Studio (3.1 legacy supported)
 
-Gemini 3.1 Flash TTS is the cornerstone of the Project AG speech fleet. While other providers offer high fidelity, Gemini **wipes the floor** with the competition when it comes to raw **emotional intelligence and dynamic prosody**.
+Gemini 3.8 Flash TTS is the cornerstone of the Project AG speech fleet. While other providers offer high fidelity, Gemini **wipes the floor** with the competition when it comes to raw **emotional intelligence and dynamic prosody**.
+
+Models (Sept 2026, blog: `gemini-3-8-text-to-speech`):
+- `gemini-3.8-flash-tts` (default) - creative direction, voice design, character voices
+- `gemini-3.8-flash-lite-tts` - high-volume dubbing, voice agents, cost-efficient scale
+- `gemini-3.1-flash-tts-preview` - legacy, backwards compat
+
+Select via `text_to_speech(..., provider="gemini", model="gemini-3.8-flash-lite-tts")`,
+`POST /api/v1/tts {"model": ...}`, `GET /api/v1/tts/wav?model=...`, or env `GEMINI_TTS_MODEL`.
 
 ---
 
 ## 🎭 The Power of Emotion
-Unlike traditional TTS that requires complex SSML or separate "style" parameters, Gemini 3.1 parses **Natural Language Emotion Tags** directly within your text stream. This allows for extremely granular, context-aware performance.
+Unlike traditional TTS that requires complex SSML or separate "style" parameters, Gemini parses **Natural Language Emotion Tags** directly within your text stream. 3.8 adds `<laughs>/<sigh>/<gasp>` vocal bursts and `|mhm|/|yeah|` backchanneling plus line-by-line stage directions.
 
 ### Standard Emotional Tags
 Simply wrap any segment in square brackets to shift the model's psychological state:
@@ -25,9 +33,11 @@ Simply wrap any segment in square brackets to shift the model's psychological st
 ---
 
 ## 🎙️ Prebuilt Voices
-Gemini 3.1 provides 31+ high-fidelity voices, each with a distinct personality:
+Gemini provides 31 base voices plus 2,000+ 3.8 production voices (Mexican Spanish, Quebec French, Scots English, 100+ languages). Custom/saved 3.8 voices pass through as arbitrary `voice_id` strings.
 
 Key voices include **Aoede** (warm, expressive), **Charon** (deep, authoritative), **Fenrir** (energetic), **Kore** (precise), **Orion** (friendly), and **Puck** (playful). See the full list at `docs/configuration.md`.
+
+Voice replication (30s sample, consent-gated, SynthID + C2PA) must go through `CLONING_GUARDRAILS.md` - no silent cloning.
 
 ---
 

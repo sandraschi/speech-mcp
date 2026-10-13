@@ -22,8 +22,8 @@ Synthesize speech and play it immediately on the PC speaker.
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `text` | str | required | Text to speak. Gemini supports inline audio tags: `[excited]`, `[whispers]`, `[laughs]`, `[sighs]`, `[fast]`, `[slow]` |
-| `provider` | str | `"windows"` | `windows`, `hume`, `gemini`, `gemma`, `elevenlabs` |
-| `voice_id` | str | `"default"` | Provider-specific voice name |
+| `provider` | str | `"windows"` | `windows`, `hume`, `gemini`, `gemma`, `elevenlabs`, `voicestudio` |
+| `voice_id` | str | `"default"` | Provider-specific voice name (voicestudio: profile_id or voice-bank name) |
 | `description` | str | None | **Hume only.** Prose style prompt (e.g. `"warm, slightly melancholic female voice"`) |
 
 **Providers:**
@@ -35,6 +35,7 @@ Synthesize speech and play it immediately on the PC speaker.
 | `gemini` | `GOOGLE_API_KEY` | `Kore`, `Aoede`, `Charon`, `Fenrir`, `Orion`, `Puck`, `Leda`, `Zephyr` + more | Gemini 3.1 Flash TTS, inline audio tags |
 | `gemma` | No | local | Gemma 4 local, SAPI5 fallback |
 | `elevenlabs` | `ELEVENLABS_API_KEY` | account voices | High-fidelity synthesis |
+| `voicestudio` | No (needs `VOICESTUDIO_ENABLED=true` + backend on :3900) | profile_id / voice-bank name | Local TTS/clone sidecar — see [providers/voicestudio.md](providers/voicestudio.md) |
 
 **Returns:** `{"success": true, "provider": "...", "bytes_played": N, "status": "played"}`
 
@@ -65,10 +66,10 @@ Play a `.wav` or `.mp3` file on the system speaker.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `action` | str | required | `"list"`, `"clone"`, `"delete"` |
-| `provider` | str | `"elevenlabs"` | `"elevenlabs"` or `"hume"` |
+| `action` | str | required | `"list"`, `"clone"`, `"delete"` (delete: elevenlabs only) |
+| `provider` | str | `"elevenlabs"` | `"elevenlabs"`, `"hume"` (list only), or `"voicestudio"` (list/clone) |
 | `name` | str | None | Display name for a new clone |
-| `audio_path` | str | None | Absolute path to the audio sample (WAV/MP3/M4A, >= 5 s) |
+| `audio_path` | str | None | Absolute path to the audio sample (WAV/MP3/M4A, >= 5 s; voicestudio sweet spot 3–10 s + transcript) |
 | `voice_id` | str | None | Target voice for delete |
 | `language` | str | `"en"` | IVC language code (`en`, `de`, `ja`, ...) |
 
@@ -405,8 +406,9 @@ REST: `POST /api/v1/readout`, `POST /api/v1/read`.
 
 Named voice profiles routed to a provider + voice id. Register a profile, then
 use its `name` directly as `voice_id` in `text_to_speech`. `source` marks the
-origin (`elevenlabs`, `cosyvoice`, `gpt-sovits`, `custom`); local cloning needs
-the optional model install and is never silently faked.
+origin (`elevenlabs`, `cosyvoice`, `gpt-sovits`, `voicestudio`, `custom`); local cloning needs
+the optional model install and is never silently faked. Web clone UI lives on the
+Voice Library page (ElevenLabs IVC + VoiceStudio sidecar with transcript field).
 
 ### `voice_bank_resolve`
 `voice_bank_resolve(name)` — `READ_ONLY`
