@@ -194,6 +194,38 @@
         {
             "name": "speech_analytics",
             "description": "Summarize measured synthesis telemetry (calls, latency, errors)."
+        },
+        {
+            "name": "shutdown_server",
+            "description": "Gracefully terminate the speech-mcp server process (confirm=True required)."
+        },
+        {
+            "name": "dub_audio_track",
+            "description": "Dub a video/audio file: extract dialogue, transcribe with timestamps and speakers."
+        },
+        {
+            "name": "make_audiobook",
+            "description": "Narrate a text/markdown file with sentence-aware chunking and per-chunk synthesis."
+        },
+        {
+            "name": "muse_transcribe_stream",
+            "description": "Realtime diarized speech recognition via Meta Muse Voice Transcribe (cloud)."
+        },
+        {
+            "name": "synthesize_to_file",
+            "description": "Files-mode synthesis: text to WAV file on disk, no base64 in context."
+        },
+        {
+            "name": "voice_confirm_list",
+            "description": "List voice confirmations (audit and pending queue)."
+        },
+        {
+            "name": "voice_confirm_request",
+            "description": "Create a pending voice confirmation; speak the returned readback."
+        },
+        {
+            "name": "voice_confirm_resolve",
+            "description": "Resolve a pending voice confirmation (only 'confirmed' may execute)."
         }
     ],
     "runtime": "python>=3.11",

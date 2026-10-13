@@ -182,9 +182,33 @@ For Claude Desktop MCP integration see [docs/configuration.md](docs/configuratio
 
 ## Distribution (MCPB + Tauri)
 
+**Claude Desktop (Windows)** — one-liner (Claude only):
+
+```powershell
+irm https://github.com/sandraschi/speech-mcp/releases/latest/download/install.ps1 | iex
+```
+
+(Or download `speech-mcp.mcpb` from
+[Releases](https://github.com/sandraschi/speech-mcp/releases/latest) and drop it
+into Claude Desktop Extensions. `install.ps1` is generated at pack time by
+`just mcpb-pack`.)
+
+**Every other client** (Cursor, Windsurf, opencode, Claude Code) — stdio via uvx:
+
+```json
+{
+  "mcpServers": {
+    "speech-mcp": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/sandraschi/speech-mcp", "speech-mcp"]
+    }
+  }
+}
+```
+
 | Channel | Command / artifact |
 |---------|-------------------|
-| **Claude Desktop** | Release `.mcpb` or `just mcpb-pack` |
+| **Claude Desktop** | One-liner above, release `.mcpb`, or `just mcpb-pack` |
 | **Windows app** | Release NSIS/MSI or `just build-native` |
 | **Developers** | `just start` (backend **10909** + Vite **10908**) |
 

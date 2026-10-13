@@ -3,6 +3,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2026-10-13 (assfix)
+
+### Fixed (fleet audit 2026-10-13, cold-context)
+- **MCPB manifest** — `${PWD}` → `${__dirname}` in root + `mcpb/manifest.json`
+  (Claude Desktop never expanded `${PWD}`; bundles failed on real installs).
+- **Pack pipeline** — new `scripts/mcpb-pack.ps1` fleet shim; `mcpb/pack.ps1` is now
+  a delegate; `just mcpb-pack` routes through the shim (was VENDORED).
+- **HTTP mount** — single mount owner (`server.py`): `mcp.http_app(path="/")` at
+  `/mcp` with composed lifespan (`mcp_app.lifespan`, BUG-038) + bare-`/mcp`
+  rewrite middleware; `webapp.py` / `run_server.py` no longer double-mount.
+- **Stdio split-brain guard** — `main()` probes `/api/v1/health` and proxies the
+  live daemon via `create_proxy()` instead of starting a second writer.
+- **Ruff S110/S112** — removed from `ignore`; all 10 silent swallows now log.
+- **Pyright clean** — 21 errors → 0 (typed SAPI5 voice lists, form-field narrowing,
+  close-code guard); removed remaining `Args:` docstring blocks.
+- **Biome gate** — `web/biome.json` `preset` → `recommended` (config error broke
+  `biome check` and the pre-commit hook).
+- **Docs sync** — `glama.json` / `llms-full.txt` / `llms.txt` / `docs/tools-reference.md`
+  updated 41 → 49 tools (studio, files-mode, muse stream, voice-confirm were unlisted);
+  new `docs/ONBOARDING.md`; README carries the Claude one-liner + uvx config.
+- **Coverage ratchet** — `[tool.coverage]` with `fail_under = 25` (measured 27.5%).
+- **Justfile** — dead bare `Set-Location` lines removed (subdirectory joins kept).
+- **Session skill** — `.opencode` injection skill gains `name:`/`description:` frontmatter.
+
+### Added
+- **`shutdown_server` MCP tool** (`DESTRUCTIVE`, `confirm=True`) — mirrors
+  `POST /api/v1/shutdown` for agents (was REST-only).
+- **`speech_expert` MCP prompt** — serves the skill guide to sampling-capable clients.
+- **`_error_response()` helper** — dialogic error envelope with auto-logging.
+
+### Deferred (needs its own session — see report `docs/assess-reports/2026-10-13.md`)
+- Cloud keys in `localStorage` → backend keystore migration (HIGH, security).
+- Zustand LLM store, chat streaming, `/api/llm/*` discovery endpoints, RAG sweep tool.
+- Playwright/e2e harness, coverage above ratchet, font/contrast design sweep.
+- npm → bun migration (`bun.lock`), Apps-Hub fleet discovery, `output_schema` rollout.
+
 ## [Unreleased] - 2026-08-19
 
 ### Added - Voice intelligence feature set (spec: docs/FEATURE_SPEC_2026.md)

@@ -95,7 +95,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "S", "UP", "RUF", "T20"]
-ignore = ["S101", "B008", "S110", "S106", "S112", "RUF012", "S603", "S607", "S324", "E402", "E501"]
+ignore = ["S101", "B008", "S106", "RUF012", "S603", "S607", "S324", "E402", "E501"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -107,6 +107,21 @@ pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
     "live: marks tests requiring live API keys or hardware (deselect with '-m \"not live\"')",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+# Ratchet: measured 27.5% on 2026-10-13. Guards against regression — raise as
+# tests are added (target: 60). Do NOT lower without a reason in CHANGELOG.
+fail_under = 25
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -15,7 +15,6 @@ default:
 
 # Install / sync all dependencies + pre-commit + web frontend
 bootstrap:
-    Set-Location '{{ justfile_directory() }}'
     uv sync --group dev
     uv run pre-commit install
     Set-Location web; npm ci; if ($LASTEXITCODE -ne 0) { npm install }
@@ -25,7 +24,6 @@ install: bootstrap
 
 # Start the FastAPI webapp backend (port 10909)
 backend:
-    Set-Location '{{ justfile_directory() }}'
     $env:SPEECH_MCP_PORT = '10909'; uv run python -m speech_mcp.webapp
 
 # Start the Vite frontend (port 10908)
@@ -34,7 +32,6 @@ frontend:
 
 # Start both backend and frontend (two tabs)
 start:
-    Set-Location '{{ justfile_directory() }}'
     .\start.ps1
 
 # --- Demo  TTS ---
@@ -73,7 +70,6 @@ demo-price:
 
 # --- ElevenLabs TTS  play with a named voice  requires ELEVENLABS_API_KEY  voice ID ---
 demo-elevenlabs voice_id="":
-    Set-Location '{{ justfile_directory() }}'
     uv run python -c " \
     import sys, os; sys.path.insert(0, 'src'); \
     from dotenv import load_dotenv; load_dotenv(); \
@@ -90,7 +86,6 @@ demo-elevenlabs voice_id="":
 
 # --- ElevenLabs  list all voices in your account ---
 demo-el-list:
-    Set-Location '{{ justfile_directory() }}'
     uv run python -c " \
     import sys, os; sys.path.insert(0, 'src'); \
     from dotenv import load_dotenv; load_dotenv(); \
@@ -104,7 +99,6 @@ demo-el-list:
 
 # Usage: just demo-el-clone name="Benny" file="C:/path/to/sample.wav"
 demo-el-clone name="" file="":
-    Set-Location '{{ justfile_directory() }}'
     uv run python -c " \
     import sys, os; sys.path.insert(0, 'src'); \
     from dotenv import load_dotenv; load_dotenv(); \
@@ -120,7 +114,6 @@ demo-el-clone name="" file="":
 
 # Requires two voice IDs from your account
 demo-el-dialogue v1="" v2="":
-    Set-Location '{{ justfile_directory() }}'
     uv run python -c " \
     import sys, os; sys.path.insert(0, 'src'); \
     from dotenv import load_dotenv; load_dotenv(); \
@@ -188,12 +181,10 @@ build-webapp:
 
 # --- Full local release  wheel  mcpb  Tauri upload to GitHub Releases ---
 publish-release-local tag="v0.6.3":
-    Set-Location '{{ justfile_directory() }}'
     powershell.exe -NoProfile -File scripts/publish-release-local.ps1 -Tag "{{ tag }}"
 
 # --- Tauri native installer  Windows NSIS  MSI web  PyInstaller sidecar  bundle ---
 build-native:
-    Set-Location '{{ justfile_directory() }}'
     powershell.exe -NoProfile -File native/build.ps1
 
 build-native-debug:
@@ -203,7 +194,6 @@ build-native-debug:
 
 # Lint everything (Python + Justfile)
 lint:
-    Set-Location '{{ justfile_directory() }}'
     just --fmt --check
     just --list > $null
     uv run ruff check src/
@@ -214,7 +204,6 @@ lint-web:
 
 # Ruff format + autofix
 fix:
-    Set-Location '{{ justfile_directory() }}'
     uv run ruff check src/ --fix --unsafe-fixes
     uv run ruff format src/
 
@@ -224,7 +213,6 @@ fix-web:
 
 # Run mock-based test suite (suitable for GitHub CI)
 test:
-    Set-Location '{{ justfile_directory() }}'
     # BUG-026 guard: prove pytest imports YOUR source, not a stale site-packages copy.
     # Exit 1 -> `uv pip install -e .` then re-run.
     powershell.exe -NoProfile -File 'D:\Dev\repos\mcp-central-docs\scripts\check-editable-install.ps1' -RepoRoot (Get-Location).Path
@@ -241,7 +229,6 @@ fmt: fix
 
 # Local five-gate quality gate (ruff/biome style, pyright + tsc types, pytest behavior)
 gates-green:
-    Set-Location '{{ justfile_directory() }}'
     uv run ruff check src/ run_server.py
     uv run ruff format src/ --check
     uv run pyright src/
@@ -255,7 +242,6 @@ ci: gates-green
 
 # Run high-fidelity audio integration tests (Local only, produces sound)
 verify-speech:
-    Set-Location '{{ justfile_directory() }}'
     uv run pytest tests/live/ -s -v --live
 
 # --- Orchestration ---
@@ -274,12 +260,10 @@ dual-launch app="blender" monitor="1":
 
 # Re-index the RAG knowledge base from docs/
 reindex:
-    Set-Location '{{ justfile_directory() }}'
     uv run python scripts/reindex_docs.py
 
 # Wipe and rebuild the LanceDB vector store
 reindex-clean:
-    Set-Location '{{ justfile_directory() }}'
     Remove-Item -Recurse -Force data\lancedb -ErrorAction SilentlyContinue
     uv run python scripts/reindex_docs.py
 
@@ -309,7 +293,6 @@ versions:
 
 # Clean build artefacts and backup files
 clean:
-    Set-Location '{{ justfile_directory() }}'
     Get-ChildItem -Recurse -Filter '*.bak' | Remove-Item -Force -ErrorAction SilentlyContinue
     Get-ChildItem -Recurse -Filter '__pycache__' -Directory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     Get-ChildItem -Recurse -Filter '*.pyc' | Remove-Item -Force -ErrorAction SilentlyContinue

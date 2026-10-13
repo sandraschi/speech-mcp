@@ -54,6 +54,9 @@ htmlcov/
 reports/
 cua-reports/
 
+# MCPB bundles (release artifacts, published to GitHub Releases, never committed)
+*.mcpb
+
 # Node/Web
 web/node_modules/
 web/dist/

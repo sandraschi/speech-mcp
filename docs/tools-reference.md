@@ -449,3 +449,64 @@ translate calls and the REST endpoints.
 
 REST: `GET /api/v1/analytics`. The `latency_benchmark_view` Prefab card renders
 the same real numbers.
+
+---
+
+## Studio (dubbing + audiobooks)
+
+### `dub_audio_track`
+`dub_audio_track(...)` — `MUTATING`
+
+Dub a video/audio file: extract dialogue, transcribe with timestamps + speakers,
+re-synthesize. Long-form; prefer `synthesize_to_file` for plain narration.
+
+### `make_audiobook`
+`make_audiobook(...)` — `MUTATING`
+
+Narrate a text/markdown file: sentence-aware chunking, per-chunk synthesis,
+concatenated output.
+
+---
+
+## Files-mode synthesis
+
+### `synthesize_to_file`
+`synthesize_to_file(text, provider, voice_id)` — `MUTATING`
+
+VoiceStudio-style files mode: text -> WAV file on disk, returns `output_path`.
+Use instead of `text_to_speech` when the caller needs audio bytes without
+base64 in context. See `.well-known/speech-mcp` `files_mode`.
+
+---
+
+## Streaming cloud STT
+
+### `muse_transcribe_stream`
+`muse_transcribe_stream(action, audio_b64)` — `MUTATING`
+
+Realtime diarized transcription via Meta Muse Voice Transcribe (cloud,
+`MUSE_ENABLED=true`). Actions `start`/`feed`/`end`/`status` over one continuous
+session so speaker identity persists across the whole call. Full guide:
+`docs/providers/muse.md`.
+
+---
+
+## Voice confirmations
+
+### `voice_confirm_request` / `voice_confirm_resolve` / `voice_confirm_list`
+`MUTATING` / `MUTATING` / `READ_ONLY`
+
+Spoken readback gate for risky actions: request returns `{id, readback}` (speak
+it via TTS), resolve only executes on `confirmed`, list shows the pending queue
+(300 s TTL) plus audit trail. Storage: `voice_confirms` table.
+
+---
+
+## Server lifecycle
+
+### `shutdown_server`
+`shutdown_server(confirm)` — `DESTRUCTIVE`
+
+Graceful self-termination of the MCP server process (same contract as
+`POST /api/v1/shutdown`: responds immediately, exits ~500 ms later).
+`confirm=True` required.

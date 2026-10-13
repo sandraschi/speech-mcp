@@ -42,7 +42,7 @@ openWakeWord   <-  offline wake word
 | 10909 | Backend (FastAPI + MCP SSE `/mcp`, WebSocket `/ws/stream`, `/ws/stt`, `/ws/logs`) |
 | 10914 | FunASR OpenAI-compatible sidecar (optional, `scripts/start_funasr_sidecar.py`) |
 
-## MCP Tools (41)
+## MCP Tools (49)
 
 | Tool | Purpose |
 |------|---------|
@@ -74,6 +74,11 @@ openWakeWord   <-  offline wake word
 | `manage_voice_bank` / `voice_bank_resolve` | Voice profile bank (provider-routed) |
 | `chat_message` | Skill-first local LLM chat with personalities |
 | `speech_analytics` | Measured latency/cost telemetry summary |
+| `shutdown_server` | Graceful self-termination (confirm=True) |
+| `dub_audio_track` / `make_audiobook` | Studio: dubbing + audiobook narration |
+| `muse_transcribe_stream` | Realtime diarized STT (Meta Muse, cloud) |
+| `synthesize_to_file` | Files-mode TTS: text -> WAV on disk |
+| `voice_confirm_request` / `voice_confirm_resolve` / `voice_confirm_list` | Voice confirmations (audit + pending queue) |
 
 REST surface: `/api/v1/health`, `/api/v1/status`, `/api/health`, `/api/capabilities`,
 `/api/tools`, `/api/skills`, `/api/skills/{name}`, `/api/v1/diagnostics`,

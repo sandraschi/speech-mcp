@@ -1,3 +1,8 @@
+---
+name: speech-mcp-session-context
+description: Session-start injection for speech-mcp — provider check, doc search, close-of-work save.
+---
+
 ## Session Context (Speech MCP)
 
 You have access to a multi-provider speech gateway with TTS, STT, wake word, RAG, and fleet voice command bus.
