@@ -14,8 +14,12 @@ interface Voice {
 
 const VoicesPage: React.FC = () => {
   const [provider, setProvider] = useState<
-    "windows" | "elevenlabs" | "hume" | "gemini"
+    "windows" | "elevenlabs" | "hume" | "gemini" | "voicestudio"
   >("windows");
+  const [cloneProvider, setCloneProvider] = useState<
+    "elevenlabs" | "voicestudio"
+  >("elevenlabs");
+  const [cloneTranscript, setCloneTranscript] = useState("");
   const [voices, setVoices] = useState<Voice[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState<string | null>(null);
@@ -92,6 +96,10 @@ const VoicesPage: React.FC = () => {
       const formData = new FormData();
       formData.append("name", cloneName);
       formData.append("file", cloneFile);
+      formData.append("provider", cloneProvider);
+      if (cloneProvider === "voicestudio" && cloneTranscript.trim()) {
+        formData.append("transcript", cloneTranscript.trim());
+      }
       const res = await fetch(`${BACKEND}/api/v1/voices/clone`, {
         method: "POST",
         headers: token ? { "X-Speech-MCP-Auth": token } : {},
@@ -100,10 +108,13 @@ const VoicesPage: React.FC = () => {
       const data = await res.json();
       if (!res.ok || !data.success)
         throw new Error(data.detail || data.error || "Clone failed");
-      setCloneSuccess(`Cloned OK — voice_id: ${data.voice_id}`);
+      setCloneSuccess(
+        `Cloned OK — voice_id: ${data.voice_id ?? data.profile_id}`,
+      );
       setTtsError("");
       setCloneName("");
       setCloneFile(null);
+      setCloneTranscript("");
       // Refresh voice list
       const fresh = await fetchVoices();
       const all: Voice[] = [];
@@ -165,7 +176,15 @@ const VoicesPage: React.FC = () => {
         <div className="lg:col-span-2 glass-card p-8 space-y-6">
           {/* Provider tabs */}
           <div className="flex flex-wrap gap-2">
-            {(["windows", "hume", "elevenlabs", "gemini"] as const).map((p) => (
+            {(
+              [
+                "windows",
+                "hume",
+                "elevenlabs",
+                "gemini",
+                "voicestudio",
+              ] as const
+            ).map((p) => (
               <button
                 key={p}
                 type="button"
@@ -182,7 +201,9 @@ const VoicesPage: React.FC = () => {
                     ? "Octave"
                     : p === "elevenlabs"
                       ? "ElevenLabs"
-                      : "Gemini 3.1"}
+                      : p === "voicestudio"
+                        ? "VoiceStudio"
+                        : "Gemini 3.1"}
               </button>
             ))}
           </div>
@@ -264,6 +285,29 @@ const VoicesPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Clone engine switch */}
+          <div className="flex gap-2">
+            {(["elevenlabs", "voicestudio"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setCloneProvider(p)}
+                className={`flex-1 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                  cloneProvider === p
+                    ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20"
+                    : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                {p === "elevenlabs" ? "ElevenLabs" : "VoiceStudio"}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold leading-relaxed">
+            {cloneProvider === "elevenlabs"
+              ? "IVC: 30s–3min clean single-speaker. 5s minimum; past ~5min gains flatten."
+              : "Local: 3–10s sweet spot (+ transcript ≤20s). Trim movie scenes; score/reverb hurts."}
+          </p>
+
           <button
             type="button"
             className="flex-1 w-full border-2 border-dashed border-white/5 rounded-2xl p-8 text-center hover:border-violet-500/20 transition-all bg-white/[0.01]"
@@ -286,6 +330,25 @@ const VoicesPage: React.FC = () => {
                 : "MP3, WAV, M4A — 5s minimum"}
             </p>
           </button>
+
+          {cloneProvider === "voicestudio" && (
+            <div>
+              <label
+                htmlFor="clone-transcript"
+                className="block text-xs font-black text-white/40 uppercase tracking-widest mb-3"
+              >
+                Ref transcript (optional, ≤20s match)
+              </label>
+              <textarea
+                id="clone-transcript"
+                value={cloneTranscript}
+                onChange={(e) => setCloneTranscript(e.target.value)}
+                placeholder="Exact words in the clip — improves conditioning"
+                rows={3}
+                className="w-full bg-white/[0.03] border border-white/5 rounded-xl p-4 text-white text-sm outline-none focus:border-violet-500/30 transition-all font-mono resize-y"
+              />
+            </div>
+          )}
 
           <div>
             <label
