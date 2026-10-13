@@ -117,7 +117,7 @@ def register_stt_tools(
         Stateless transcription of a single audio fragment from a stream bridge.
 
         Designed for chunked input from microphones, WebSocket bridges, or robot
-        audio pipelines. Each call is independent — no session state retained.
+        audio pipelines. Each call is independent - no session state retained.
 
         ## Return Format
         Same as transcribe_audio_file.

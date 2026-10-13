@@ -73,6 +73,12 @@ CREATE TABLE IF NOT EXISTS voice_profiles (
   created_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS client_voice_binds (
+  client_id TEXT NOT NULL PRIMARY KEY,
+  profile_name TEXT NOT NULL,
+  updated_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS voice_confirms (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   ts REAL NOT NULL,
@@ -409,6 +415,77 @@ def voice_profile_delete(name: str) -> bool:
             return cur.rowcount > 0
         finally:
             conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Per-agent voice bindings (client_id -> voice bank profile, VoiceStudio-style)
+# ---------------------------------------------------------------------------
+
+
+def client_voice_bind(client_id: str, profile_name: str) -> dict:
+    """Bind a client/agent id to a voice bank profile. Returns the binding."""
+    client_id = (client_id or "").strip()
+    profile_name = (profile_name or "").strip()
+    if not client_id:
+        return {"error": "client_id is required"}
+    if voice_profile_get(profile_name) is None:
+        return {"error": f"no voice profile named '{profile_name}'"}
+    with _lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                "INSERT INTO client_voice_binds (client_id, profile_name, updated_at)"
+                " VALUES (?, ?, ?) ON CONFLICT(client_id) DO UPDATE SET profile_name=excluded.profile_name,"
+                " updated_at=excluded.updated_at",
+                (client_id, profile_name, _now()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    return {"success": True, "client_id": client_id, "profile_name": profile_name}
+
+
+def client_voice_unbind(client_id: str) -> bool:
+    """Remove a client/agent voice binding. Returns True when a row was removed."""
+    client_id = (client_id or "").strip()
+    with _lock:
+        conn = _connect()
+        try:
+            cur = conn.execute("DELETE FROM client_voice_binds WHERE client_id = ?", (client_id,))
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            conn.close()
+
+
+def client_voice_get(client_id: str) -> dict | None:
+    """Resolve a client_id to its bound profile (with provider + voice_id)."""
+    client_id = (client_id or "").strip()
+    with _lock:
+        conn = _connect()
+        try:
+            row = conn.execute("SELECT * FROM client_voice_binds WHERE client_id = ?", (client_id,)).fetchone()
+            bind = dict(row) if row is not None else None
+        finally:
+            conn.close()
+    if bind is None:
+        return None
+    profile = voice_profile_get(bind["profile_name"])
+    if profile is None:
+        return None
+    return {"client_id": client_id, **bind, "profile": profile}
+
+
+def client_voice_list() -> list[dict]:
+    """List all client/agent voice bindings."""
+    with _lock:
+        conn = _connect()
+        try:
+            rows = conn.execute("SELECT * FROM client_voice_binds ORDER BY client_id").fetchall()
+            out = [dict(r) for r in rows]
+        finally:
+            conn.close()
+    return out
 
 
 # ---------------------------------------------------------------------------

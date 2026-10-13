@@ -79,7 +79,11 @@ async def handle_websocket_stream(
                 return
             voice_id = websocket.query_params.get("voice", "Kore")
             system = websocket.query_params.get("system", "")
-            await _handle_gemini_live(websocket, api_key, voice_id, system)
+            model = websocket.query_params.get("model") or os.getenv(
+                "SPEECH_MCP_GEMINI_LIVE_MODEL", "gemini-3.1-flash-live-preview"
+            )
+            thinking = websocket.query_params.get("thinking")
+            await _handle_gemini_live(websocket, api_key, voice_id, system, model, thinking)
         elif provider == "stt":
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
@@ -104,12 +108,12 @@ async def handle_websocket_stream(
 
 
 async def _handle_stt_stream(websocket: WebSocket, api_key: str):
-    """Gemini Live STT proxy placeholder — use REST /api/v1/transcribe for file/chunk STT."""
+    """Gemini Live STT proxy placeholder - use REST /api/v1/transcribe for file/chunk STT."""
     del api_key
     await websocket.send_json(
         {
             "type": "error",
-            "message": "STT stream not implemented — use /api/v1/transcribe?provider=funasr",
+            "message": "STT stream not implemented - use /api/v1/transcribe?provider=funasr",
         }
     )
     await websocket.close(code=1008, reason="STT stream not implemented")
@@ -206,6 +210,8 @@ async def _handle_gemini_live(
     api_key: str,
     voice_id: str = "Kore",
     system_instruction: str = "",
+    model: str = "gemini-3.1-flash-live-preview",
+    thinking_level: str | None = None,
 ):
     """
     Full-duplex Gemini Live voice chat proxy.
@@ -231,7 +237,10 @@ async def _handle_gemini_live(
 
     client = genai.Client(api_key=api_key)
 
-    model = "gemini-3.1-flash-live-preview"
+    # gemini-3.8-live-extended-thinking rejects sessions with no thinking_level set;
+    # other live models default fine to MINIMAL.
+    default_level = "MEDIUM" if "extended-thinking" in model else "MINIMAL"
+    level_name = (thinking_level or default_level).upper()
     config = types.LiveConnectConfig(
         response_modalities=[types.Modality.AUDIO],
         speech_config=types.SpeechConfig(
@@ -240,12 +249,12 @@ async def _handle_gemini_live(
         output_audio_transcription=types.AudioTranscriptionConfig(),
         input_audio_transcription=types.AudioTranscriptionConfig(),
         system_instruction=system_instruction or None,
-        thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.MINIMAL),
+        thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel(level_name)),
     )
 
     try:
         async with client.aio.live.connect(model=model, config=config) as session:
-            logger.info("Gemini Live session opened (voice=%s)", voice_id)
+            logger.info("Gemini Live session opened (model=%s, voice=%s)", model, voice_id)
 
             # Notify browser that session is ready
             await websocket.send_text(json.dumps({"type": "session_ready", "voice": voice_id, "model": model}))
@@ -254,7 +263,7 @@ async def _handle_gemini_live(
                 """Read from browser WebSocket, forward to Gemini."""
                 while True:
                     try:
-                        # Try to receive — could be binary (PCM) or text (JSON control)
+                        # Try to receive - could be binary (PCM) or text (JSON control)
                         msg = await websocket.receive()
                         if msg["type"] == "websocket.disconnect":
                             break
@@ -276,7 +285,7 @@ async def _handle_gemini_live(
                                 elif ctrl.get("type") == "end_turn":
                                     await session.send_realtime_input(audio_stream_end=True)
                                 elif ctrl.get("type") == "interrupt":
-                                    # Browser-initiated barge-in — just stop sending audio
+                                    # Browser-initiated barge-in - just stop sending audio
                                     # Gemini VAD handles server-side interruption
                                     pass
                             except json.JSONDecodeError:

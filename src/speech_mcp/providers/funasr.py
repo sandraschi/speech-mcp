@@ -2,8 +2,8 @@
 Alibaba FunASR local STT provider.
 
 Supports two deployment patterns:
-  1. Native — lazy-loaded AutoModel (VAD + ASR + punctuation + speaker diarization)
-  2. Sidecar — OpenAI-compatible /v1/audio/transcriptions HTTP endpoint
+  1. Native - lazy-loaded AutoModel (VAD + ASR + punctuation + speaker diarization)
+  2. Sidecar - OpenAI-compatible /v1/audio/transcriptions HTTP endpoint
 
 Models: Fun-ASR-Nano-2512, SenseVoiceSmall, and other FunASR hub entries.
 """
@@ -388,5 +388,5 @@ class FunASRProvider:
             return {
                 "available": False,
                 "mode": "native",
-                "error": "funasr package not installed — run: uv sync --extra funasr",
+                "error": "funasr package not installed - run: uv sync --extra funasr",
             }

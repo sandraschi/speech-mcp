@@ -59,6 +59,7 @@ from speech_mcp.tools.sound_events import register_sound_event_tools
 from speech_mcp.tools.speech import register_speech_tools
 from speech_mcp.tools.streaming_asr import register_streaming_asr_tools
 from speech_mcp.tools.stt import register_stt_tools
+from speech_mcp.tools.studio import register_studio_tools
 from speech_mcp.tools.translate import register_translate_tools
 from speech_mcp.tools.ui import register_ui_tools
 from speech_mcp.tools.utility import _weather_report, register_utility_tools
@@ -483,6 +484,7 @@ register_sound_event_tools(mcp)
 register_chat_tools(mcp)
 register_analytics_tools(mcp)
 register_translate_tools(mcp, funasr_provider, _speak)
+register_studio_tools(mcp, funasr_provider, gemini_client, voicestudio_provider)
 register_readout_tools(mcp, _providers, _speak)
 register_macro_tools(mcp, _speak, _weather_report)
 
@@ -677,6 +679,21 @@ async def health_check():
 @app.get("/")
 async def fleet_health_check():
     return {"status": "ok", "version": _server_version()}
+
+
+@app.get("/.well-known/speech-mcp")
+async def well_known_speech():
+    """Machine-readable capability discovery (VoiceStudio-style .well-known, protocol-neutral)."""
+    return {
+        "protocol": "speech-mcp.v1",
+        "server": "speech-mcp",
+        "version": _server_version(),
+        "transports": {"mcp": "/mcp", "rest": "/api/v1", "ws": "/ws/stream"},
+        "tts": ["windows", "gemini", "hume", "elevenlabs", "gemma", "voicestudio", "qwen", "kokoro"],
+        "stt": ["funasr", "gemini", "gemma", "sherpa_streaming", "muse", "voicestudio"],
+        "files_mode": {"tool": "synthesize_to_file", "returns": "output_path (WAV on disk, no base64)"},
+        "client_voices": {"bind": "manage_voice_bank(operation='bind_client')", "resolve": "client_id param"},
+    }
 
 
 @app.get("/api/capabilities")

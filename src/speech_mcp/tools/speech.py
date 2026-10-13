@@ -52,6 +52,87 @@ async def _play_mp3_bytes(data: bytes) -> None:
             pass
 
 
+async def synthesize_wav_bytes(
+    text: str,
+    provider: str,
+    voice: str,
+    *,
+    gemini_client: Any | None = None,
+    voicestudio_client: Any | None = None,
+) -> bytes:
+    """Synthesize text -> WAV bytes for files-mode providers (shared by speech + studio tools).
+
+    Supports windows/gemini/qwen/kokoro/voicestudio. Raises NotImplementedError for
+    hume/elevenlabs (MP3 play pipeline, not files-mode), RuntimeError for missing
+    clients or empty audio, ValueError for unknown providers.
+    """
+    text = (text or "").strip()
+    if not text:
+        raise ValueError("text is required")
+    provider = (provider or "").strip().lower()
+    voice = (voice or "default").strip() or "default"
+
+    if provider in ("hume", "elevenlabs"):
+        raise NotImplementedError(f"provider '{provider}' not implemented for files-mode (use text_to_speech)")
+
+    if provider == "windows":
+
+        def _synth_win() -> bytes:
+            import tempfile as _tf
+
+            with _tf.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp_path = tmp.name
+            try:
+                engine = pyttsx3.init()
+                engine.save_to_file(text, tmp_path)
+                engine.runAndWait()
+                with open(tmp_path, "rb") as f:
+                    return f.read()
+            finally:
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
+
+        data = await asyncio.to_thread(_synth_win)
+    elif provider == "gemini":
+        if not gemini_client:
+            raise RuntimeError("GOOGLE_API_KEY not set for gemini files-mode")
+        voice_name = voice if voice.lower() != "default" else "Kore"
+
+        def _synth_gemini() -> bytes:
+            return gemini_client.synthesize_wav(text, voice_name=voice_name)
+
+        data = await asyncio.to_thread(_synth_gemini)
+    elif provider == "qwen":
+        from speech_mcp.providers.qwen_tts import QwenTTSProvider
+
+        def _synth_qwen() -> bytes:
+            return QwenTTSProvider().synthesize_wav(text, voice=voice)
+
+        data = await asyncio.to_thread(_synth_qwen)
+    elif provider == "kokoro":
+        from speech_mcp.providers.kokoro import KokoroProvider
+
+        def _synth_koko() -> bytes:
+            return KokoroProvider().synthesize_wav(text, voice=voice)
+
+        data = await asyncio.to_thread(_synth_koko)
+    elif provider == "voicestudio":
+        if not voicestudio_client:
+            raise RuntimeError("VOICESTUDIO_ENABLED=true required for voicestudio files-mode")
+        result = await voicestudio_client.synthesize(text, voice)
+        if not result.get("success"):
+            raise RuntimeError(str(result.get("error", "VoiceStudio synthesis failed")))
+        data = result.get("wav_bytes")
+    else:
+        raise ValueError(f"Unknown files-mode provider '{provider}'")
+
+    if not data:
+        raise RuntimeError(f"provider '{provider}' returned empty audio")
+    return data
+
+
 async def _hume_speak(
     hume_client: HumeClient,
     text: str,
@@ -795,3 +876,116 @@ def register_speech_tools(
             return {"success": False, "error": f"Action '{action}' not implemented for voicestudio (use list/clone)"}
 
         return {"success": False, "error": f"Unknown provider '{provider}'"}
+
+    @mcp.tool(annotations=_MUTATING)
+    async def synthesize_to_file(
+        text: Annotated[str, Field(description="Text to synthesize (no base64 in response, file path returned).")],
+        provider: Annotated[
+            str, Field(description="TTS provider: windows, gemini, qwen, kokoro, voicestudio.")
+        ] = "gemini",
+        voice_id: Annotated[str, Field(description="Voice id, voice-bank profile name, or 'default'.")] = "default",
+        client_id: Annotated[
+            str, Field(description="Optional agent id; when voice_id is 'default', uses its bound profile.")
+        ] = "",
+        output_dir: Annotated[str, Field(description="Directory for the WAV file (created as needed).")] = "",
+        filename: Annotated[str, Field(description="Optional file name (defaults to tts_<ts>.wav).")] = "",
+        play: Annotated[bool, Field(description="Also play on the server speaker.")] = False,
+        ctx: Context | None = None,
+    ) -> dict:
+        """
+        Files-mode synthesis: text -> WAV file on disk (VoiceStudio-style, no base64 in context).
+
+        Resolves voice in order: explicit voice_id (or bank profile) -> client binding -> provider default.
+        Hume/ElevenLabs are intentionally not implemented here (MP3 pipeline plays, not files).
+
+        ## Return Format
+        {"success": bool, "provider": str, "voice": str, "output_path": str, "bytes": int, "played": bool}
+
+        ## Examples
+        `synthesize_to_file(text="Hello world", provider="gemini", voice_id="Kore")` -> WAV path.
+        `synthesize_to_file(text="Hi", client_id="claude-code")` -> bound profile voice, no playback.
+        """
+        import time as _time
+
+        text = (text or "").strip()
+        if not text:
+            return {"success": False, "error": "text is required"}
+
+        effective_provider = (provider or "gemini").strip().lower()
+        effective_voice = (voice_id or "default").strip()
+
+        # Voice-bank alias + per-agent binding (VoiceStudio-style precedence).
+        try:
+            from speech_mcp.storage import client_voice_get, voice_profile_get
+
+            if effective_voice and effective_voice.lower() != "default":
+                profile = voice_profile_get(effective_voice)
+                if profile:
+                    effective_provider = str(profile.get("provider") or effective_provider).lower()
+                    effective_voice = str(profile.get("voice_id") or "default")
+            elif client_id.strip():
+                bind = client_voice_get(client_id.strip())
+                if bind and bind.get("profile"):
+                    prof = bind["profile"]
+                    effective_provider = str(prof.get("provider") or effective_provider).lower()
+                    effective_voice = str(prof.get("voice_id") or effective_voice)
+        except Exception as e:
+            logger.warning("voice resolution failed: %s", e)
+
+        if effective_provider in ("hume", "elevenlabs"):
+            return {
+                "success": False,
+                "error": f"provider '{effective_provider}' not implemented for files-mode (use text_to_speech)",
+                "error_type": "not_implemented",
+            }
+
+        base_dir = (output_dir or "").strip()
+        if not base_dir:
+            base_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "audio")
+        try:
+            os.makedirs(base_dir, exist_ok=True)
+        except Exception as e:
+            return {"success": False, "error": f"cannot create output_dir: {e}"}
+        safe_name = (filename or "").strip() or f"tts_{int(_time.time())}.wav"
+        if not safe_name.lower().endswith(".wav"):
+            safe_name += ".wav"
+        safe_name = os.path.basename(safe_name)
+        out_path = os.path.join(base_dir, safe_name)
+
+        if ctx:
+            await ctx.info(f"Files-mode TTS [{effective_provider}/{effective_voice}]: {text[:60]}")
+
+        try:
+            wav_bytes = await synthesize_wav_bytes(
+                text,
+                effective_provider,
+                effective_voice,
+                gemini_client=gemini_client,
+                voicestudio_client=voicestudio_client,
+            )
+            with open(out_path, "wb") as f:
+                f.write(wav_bytes)
+        except (NotImplementedError, ValueError) as e:
+            return {"success": False, "error": str(e), "error_type": "not_implemented"}
+        except Exception as e:
+            logger.exception("synthesize_to_file failed")
+            return {"success": False, "error": str(e)}
+
+        if not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+            return {"success": False, "error": "synthesis produced empty file"}
+        size = os.path.getsize(out_path)
+        played = False
+        if play:
+            try:
+                await _play_wav_file(out_path)
+                played = True
+            except Exception as e:
+                logger.warning("playback failed for %s: %s", out_path, e)
+        return {
+            "success": True,
+            "provider": effective_provider,
+            "voice": effective_voice,
+            "output_path": out_path,
+            "bytes": size,
+            "played": played,
+        }

@@ -18,12 +18,13 @@ class WindowsProvider:
         # to threading and loop context if not handled carefully.
         pass
 
-    def synthesize_wav(self, text: str) -> bytes:
+    def synthesize_wav(self, text: str, voice: str = "default") -> bytes:
         """
         Synthesize text to WAV bytes using the Windows SAPI5 engine.
 
         Args:
             text: The text to speak.
+            voice: Requested voice_id (supports friendly aliases heart/sky/adam -> Zira/Hazel/David).
 
         Returns:
             WAV file bytes.
@@ -33,6 +34,31 @@ class WindowsProvider:
 
         try:
             engine = pyttsx3.init()
+            if voice and voice != "default":
+                try:
+                    voices = engine.getProperty("voices") or []
+                    target_id = None
+                    for v in voices:
+                        vid = getattr(v, "id", "") or ""
+                        vname = getattr(v, "name", "") or ""
+                        if voice == vid or voice.lower() in vname.lower() or voice.lower() in vid.lower():
+                            target_id = vid
+                            break
+                    if not target_id:
+                        alias_map = {"heart": "zira", "sky": "hazel", "adam": "david"}
+                        alias = alias_map.get(voice.lower())
+                        if alias:
+                            for v in voices:
+                                if alias in (getattr(v, "name", "") or "").lower():
+                                    target_id = getattr(v, "id", "")
+                                    break
+                    if not target_id and voices:
+                        idx = abs(hash(voice)) % len(voices)
+                        target_id = getattr(voices[idx], "id", None)
+                    if target_id:
+                        engine.setProperty("voice", target_id)
+                except Exception:
+                    pass
             engine.save_to_file(text, tmp.name)
             engine.runAndWait()
 
