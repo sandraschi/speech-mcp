@@ -1,5 +1,9 @@
+﻿import sys, os
+site_pkgs = os.path.abspath('.venv/Lib/site-packages')
+if site_pkgs not in sys.path:
+    sys.path.insert(0, site_pkgs)
 # -*- mode: python ; coding: utf-8 -*-
-# Tauri sidecar — one-file EXE (FunASR/torch excluded; install via uv --extra funasr separately)
+# Tauri sidecar â€” one-file EXE (FunASR/torch excluded; install via uv --extra funasr separately)
 from PyInstaller.utils.hooks import copy_metadata
 
 datas = [("src/speech_mcp", "speech_mcp")]
