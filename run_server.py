@@ -40,10 +40,9 @@ def main() -> None:
 
     import uvicorn
 
-    from speech_mcp.server import app, mcp
+    from speech_mcp.server import app
 
-    mcp_app = mcp.http_app(path="/", transport="sse")
-    app.mount("/mcp", mcp_app)
+    # Mount + lifespan live in speech_mcp.server (single owner, BUG-008/038).
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
 
 

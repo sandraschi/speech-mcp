@@ -3,7 +3,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import pyttsx3
 from elevenlabs.client import ElevenLabs
@@ -331,7 +331,7 @@ def register_speech_tools(
                     engine = pyttsx3.init()
                     if voice_id and voice_id != "default":
                         try:
-                            voices = engine.getProperty("voices") or []
+                            voices: list[Any] = list(cast("list[Any] | None", engine.getProperty("voices")) or [])
                             target_id = None
                             for v in voices:
                                 vid = getattr(v, "id", "") or ""
@@ -357,7 +357,7 @@ def register_speech_tools(
                             if target_id:
                                 engine.setProperty("voice", target_id)
                         except Exception:
-                            pass
+                            logger.debug("SAPI5 voice match failed, using default voice")
                     engine.save_to_file(text, tmp_path)
                     engine.runAndWait()
 

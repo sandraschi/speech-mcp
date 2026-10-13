@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+from typing import Any, cast
 
 import pyttsx3
 
@@ -19,15 +20,11 @@ class WindowsProvider:
         pass
 
     def synthesize_wav(self, text: str, voice: str = "default") -> bytes:
-        """
-        Synthesize text to WAV bytes using the Windows SAPI5 engine.
+        """Synthesize text to WAV bytes using the Windows SAPI5 engine.
 
-        Args:
-            text: The text to speak.
-            voice: Requested voice_id (supports friendly aliases heart/sky/adam -> Zira/Hazel/David).
-
-        Returns:
-            WAV file bytes.
+        The voice parameter accepts a voice id, a name fragment, or one of the
+        friendly aliases heart/sky/adam (mapped to Zira/Hazel/David). Returns
+        the rendered WAV file bytes.
         """
         tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
         tmp.close()
@@ -36,7 +33,7 @@ class WindowsProvider:
             engine = pyttsx3.init()
             if voice and voice != "default":
                 try:
-                    voices = engine.getProperty("voices") or []
+                    voices: list[Any] = list(cast("list[Any] | None", engine.getProperty("voices")) or [])
                     target_id = None
                     for v in voices:
                         vid = getattr(v, "id", "") or ""
@@ -58,7 +55,7 @@ class WindowsProvider:
                     if target_id:
                         engine.setProperty("voice", target_id)
                 except Exception:
-                    pass
+                    logger.debug("SAPI5 voice match failed, using default voice")
             engine.save_to_file(text, tmp.name)
             engine.runAndWait()
 

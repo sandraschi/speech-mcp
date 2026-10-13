@@ -319,15 +319,9 @@ class GeminiProvider:
         return _frames_to_wav(base_params, bytes(frames_all))
 
     def transcribe(self, audio_bytes: bytes, mime_type: str = "audio/wav") -> str:
-        """
-        Synchronous STT (Transcription).
+        """Synchronous STT transcription of raw audio bytes (WAV/MP3/etc).
 
-        Args:
-            audio_bytes: Raw audio data.
-            mime_type:   audio/wav, audio/mpeg, etc.
-
-        Returns:
-            The transcribed text.
+        Returns the transcript text, stripped. Raises ValueError on empty results.
         """
         from google.genai import types
 

@@ -107,7 +107,7 @@ def _run_listener(
                         engine.say("Going to sleep.")
                         engine.runAndWait()
                     except Exception:
-                        pass
+                        logger.debug("Sleep announcement failed (no audio device), continuing shutdown")
                     return
                 logger.info("Wake word detected: '%s' (score: %.4f)", name, score)
                 on_detection(name)

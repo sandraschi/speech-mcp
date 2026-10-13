@@ -249,7 +249,11 @@ class MuseRealtimeSession:
             if code == 1000:
                 return None
             reason = (getattr(exc, "reason", "") or "").strip()
-            advice = _CLOSE_ADVICE.get(code, "connection closed unexpectedly")
+            advice = (
+                _CLOSE_ADVICE.get(code, "connection closed unexpectedly")
+                if isinstance(code, int)
+                else "connection closed unexpectedly"
+            )
             detail = f": {reason}" if reason else ""
             raise RuntimeError(f"[{code}] {advice}{detail}") from exc
         if isinstance(message, bytes):

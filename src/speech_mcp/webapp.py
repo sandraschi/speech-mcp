@@ -14,12 +14,10 @@ import os
 
 import uvicorn
 
-from speech_mcp.server import app, mcp
+from speech_mcp.server import app
 
 if __name__ == "__main__":
-    # Mount MCP SSE transport into the FastAPI app
-    mcp_app = mcp.http_app(path="/", transport="sse")
-    app.mount("/mcp", mcp_app)
-
+    # MCP SSE transport is mounted in speech_mcp.server (single owner) —
+    # do NOT mount again here (BUG-008 double-prefix).
     port = int(os.getenv("SPEECH_MCP_PORT", "10909"))
     uvicorn.run(app, host="127.0.0.1", port=port)

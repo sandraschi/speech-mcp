@@ -11,7 +11,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from time import localtime, strftime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
@@ -31,7 +31,7 @@ from fastapi.security import APIKeyHeader
 from fastmcp import FastMCP
 from fastmcp.server import create_proxy
 from hume import HumeClient
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from speech_mcp.providers.funasr import FunASRConfig, FunASRProvider
 from speech_mcp.providers.gemini import GeminiProvider
@@ -229,6 +229,14 @@ logging.getLogger("fastmcp").addHandler(_queue_handler)
 
 logger = logging.getLogger(__name__)
 
+_DESTRUCTIVE = {"readonly": False, "destructive": True}
+
+
+def _error_response(action: str, error: Exception | str) -> dict:
+    """Shared dialogic error envelope with auto-logging (TOOL_DESIGN_STANDARDS §7.1 Pattern 3)."""
+    logger.exception("%s failed: %s", action, error)
+    return {"success": False, "action": action, "error": str(error)}
+
 
 def _probe_rag():
     """Verify LanceDB store is accessible before serving."""
@@ -336,10 +344,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+class _McpSlashMiddleware:
+    """Rewrite bare `/mcp` to `/mcp/` before routing.
+
+    Starlette ``Mount("/mcp")`` only matches ``/mcp/*``; without this the bare
+    path falls through to unrelated handlers (405). A ``Route("/mcp")`` cannot
+    delegate raw ASGI, hence middleware (verified 2026-10-05 fleet incident).
+    """
+
+    def __init__(self, app: Any):
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any):
+        if scope.get("type") == "http" and scope.get("path") == "/mcp":
+            scope = dict(scope)
+            scope["path"] = "/mcp/"
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(_McpSlashMiddleware)
+
 mcp = FastMCP("speech-mcp")
 
 # Skill resources: skill://{name} -> SKILL.md (also served via /api/skills)
 register_skill_resources(mcp)
+
+
+@mcp.prompt()
+def speech_expert() -> str:
+    """Speech-MCP expert guide: TTS/STT provider selection, wake word, voice bus."""
+    content = get_skill("speech-expert")
+    if content is None:
+        return "speech-mcp: multi-provider TTS/STT gateway. See /api/skills for guides."
+    return content
+
 
 # ── MCP Bridge (ProxyProvider) ────────────────────────────────────────────
 _bridge_proxies: list[str] = []
@@ -508,6 +547,48 @@ if funasr_provider:
 
     set_transcribe_path_hook(_voice_transcribe_file)
     logger.info("Fleet voice STT hook: FunASR file transcription")
+
+# ── MCP HTTP mount (single owner: this module) ──────────────────────────────
+# webapp.py / run_server.py must NOT mount again — they import {app, mcp} here.
+# path="/" avoids the BUG-008 double-prefix; the lifespan composition below avoids
+# BUG-038 (session manager never starts when .router.lifespan_context is used).
+mcp_app = mcp.http_app(path="/", transport="sse")
+app.mount("/mcp", mcp_app)
+
+_fleet_lifespan = lifespan
+
+
+@asynccontextmanager
+async def _composed_lifespan(app: FastAPI):
+    async with mcp_app.lifespan(app):
+        async with _fleet_lifespan(app):
+            yield
+
+
+app.router.lifespan_context = _composed_lifespan
+
+
+@mcp.tool(annotations=_DESTRUCTIVE)
+async def shutdown_server(
+    ctx: Annotated[Any, Field(description="MCP context (injected)")] | None = None,
+    confirm: Annotated[bool, Field(description="Must be true — acknowledges shutdown")] = False,
+) -> dict:
+    """Gracefully terminate the speech-mcp server process.
+
+    ## Return Format
+    `{"success": bool, "message": str}` — responds immediately, then exits the
+    process ~500 ms later so in-flight responses flush (same contract as
+    `POST /api/v1/shutdown`).
+
+    ## Examples
+    `shutdown_server(confirm=True)` → `{"success": True, "message": ...}`
+    """
+    del ctx
+    if not confirm:
+        return _error_response("shutdown_server", "confirm=True required")
+    threading.Timer(0.5, os._exit, args=(0,)).start()
+    return {"success": True, "message": "speech-mcp shutting down in ~500 ms"}
+
 
 api_key_header = APIKeyHeader(name="X-Speech-MCP-Auth", auto_error=False)
 
@@ -811,7 +892,7 @@ async def api_hardware():
 
         return {"monitors": get_monitors(), "microphones": get_microphones(), "cameras": get_cameras()}
     except Exception as e:
-        logger.error(f"Hardware probe failed: {e}")
+        logger.exception("Hardware probe failed: %s", e)
         return {"error": str(e)}
 
 
@@ -964,7 +1045,8 @@ async def api_voices_clone(request: Request):
     name = form.get("name")
     file = form.get("file")
     provider = form.get("provider") if isinstance(form.get("provider"), str) else "elevenlabs"
-    transcript = form.get("transcript") if isinstance(form.get("transcript"), str) else ""
+    _transcript = form.get("transcript")
+    transcript = _transcript if isinstance(_transcript, str) else ""
     if not isinstance(name, str) or not name:
         raise HTTPException(status_code=400, detail="name field required")
     if not isinstance(file, UploadFile):
@@ -1205,7 +1287,7 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
             # SAPI5 voices so the selection is audibly different. Also supports direct id/name match.
             if voice_id and voice_id != "default":
                 try:
-                    voices = engine.getProperty("voices") or []
+                    voices: list[Any] = list(cast("list[Any] | None", engine.getProperty("voices")) or [])
                     target_id = None
                     for v in voices:
                         vid = getattr(v, "id", "") or ""
@@ -1227,7 +1309,7 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
                     if target_id:
                         engine.setProperty("voice", target_id)
                 except Exception:
-                    pass
+                    logger.debug("SAPI5 voice match failed, using default voice")
             engine.save_to_file(text, tmp_path)
             engine.runAndWait()
 
@@ -2032,6 +2114,27 @@ async def websocket_logs(websocket: WebSocket):
 
 
 def main():
+    """Stdio entry: proxy to the HTTP daemon when it is up, else serve locally.
+
+    SOTA §2.3 split-brain guard — a LanceDB/SQLite-backed server must not run
+    two writers. Probes `/api/v1/health` first; on 200 serves the daemon's tools
+    over stdio via `create_proxy()`.
+    """
+    port = int(os.getenv("SPEECH_MCP_PORT", "10909"))
+    try:
+        import httpx
+
+        resp = httpx.get(f"http://127.0.0.1:{port}/api/v1/health", timeout=2.0)
+        if resp.status_code == 200:
+            daemon_url = f"http://127.0.0.1:{port}/mcp"
+            logger.info("HTTP daemon live on :%d — stdio proxying %s", port, daemon_url)
+            proxy_host = FastMCP("speech-mcp-stdio-proxy")
+            proxy_host.add_provider(create_proxy(daemon_url))
+            asyncio.run(proxy_host.run_stdio_async())
+            return
+        logger.info("HTTP daemon probe -> %d, starting local stdio server.", resp.status_code)
+    except Exception as e:
+        logger.warning("HTTP daemon probe failed (%s) — starting local stdio server.", e)
     asyncio.run(mcp.run_stdio_async())
 
 

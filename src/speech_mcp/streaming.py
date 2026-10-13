@@ -104,7 +104,7 @@ async def handle_websocket_stream(
         try:
             await websocket.send_json({"type": "error", "message": str(e)})
         except Exception:
-            pass
+            logger.debug("WS error reply failed (socket already closed)")
 
 
 async def _handle_stt_stream(websocket: WebSocket, api_key: str):
@@ -355,7 +355,7 @@ async def _handle_gemini_live(
                         try:
                             await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
                         except Exception:
-                            pass
+                            logger.debug("gemini error reply failed (socket already closed)")
                         break
 
             async with anyio.create_task_group() as tg:
@@ -367,7 +367,7 @@ async def _handle_gemini_live(
         try:
             await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
         except Exception:
-            pass
+            logger.debug("Gemini Live error reply failed (socket already closed)")
 
 
 async def _handle_muse_stream(websocket: WebSocket, muse_provider: Any):
@@ -425,7 +425,7 @@ async def _handle_muse_stream(websocket: WebSocket, muse_provider: Any):
                 try:
                     await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
                 except Exception:
-                    pass
+                    logger.debug("Muse error reply failed (socket already closed)")
 
         async with anyio.create_task_group() as tg:
             tg.start_soon(browser_to_muse)
@@ -436,6 +436,6 @@ async def _handle_muse_stream(websocket: WebSocket, muse_provider: Any):
         try:
             await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
         except Exception:
-            pass
+            logger.debug("Muse session error reply failed (socket already closed)")
     finally:
         await session.close()
