@@ -1,6 +1,6 @@
 import os
 import sys
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -148,6 +148,46 @@ def test_tts_wav_requires_text():
     """Verify TTS WAV returns 400 when text is missing."""
     response = client.get("/api/v1/tts/wav", params={"text": "", "provider": "windows"})
     assert response.status_code == 400
+
+
+def test_tts_post_gemini_default_voice_succeeds():
+    """Verify POST /api/v1/tts with provider=gemini and no voice_id override does not 500
+    (default voice_id must fall back to Kore instead of being passed literally to Gemini)."""
+    mock_gemini = Mock()
+    mock_gemini.synthesize_wav.return_value = b"fake_wav_bytes"
+    with (
+        patch("speech_mcp.server.gemini_client", mock_gemini),
+        patch("speech_mcp.tools.speech._play_wav_file", new_callable=AsyncMock),
+    ):
+        response = client.post(
+            "/api/v1/tts",
+            json={"text": "hello", "provider": "gemini"},
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("success") is True
+    assert data.get("voice") == "Kore"
+    mock_gemini.synthesize_wav.assert_called_once_with("hello", voice_name="Kore")
+
+
+def test_tts_post_elevenlabs_awaits_speak():
+    """Verify POST /api/v1/tts with provider=elevenlabs actually awaits _elevenlabs_speak
+    (regression: a lambda wrapped in asyncio.to_thread built the coroutine but never
+    awaited it, so synthesis silently never happened despite success:true)."""
+    mock_eleven = Mock()
+    with (
+        patch("speech_mcp.server.eleven_client", mock_eleven),
+        patch("speech_mcp.tools.speech._elevenlabs_speak", new_callable=AsyncMock) as mock_speak,
+    ):
+        response = client.post(
+            "/api/v1/tts",
+            json={"text": "hello", "provider": "elevenlabs", "voice_id": "test_voice"},
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("success") is True
+    assert data.get("voice") == "test_voice"
+    mock_speak.assert_awaited_once_with(mock_eleven, "hello", voice_id="test_voice")
 
 
 def test_hardware_endpoint_mock(mock_hardware):
