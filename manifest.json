@@ -22,7 +22,7 @@
       "command": "python",
       "args": ["-m", "speech_mcp.server"],
       "env": {
-        "PYTHONPATH": "${PWD}/src",
+        "PYTHONPATH": "${__dirname}/src",
         "PYTHONUNBUFFERED": "1"
       }
     }

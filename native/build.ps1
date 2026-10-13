@@ -8,6 +8,19 @@ New-Item -ItemType Directory -Force -Path $ResourceDir, $DevDir | Out-Null
 
 Write-Host "=== ${RepoName} Tauri Release Build ===" -ForegroundColor Cyan
 
+# Step 0: Vendor fleet NSIS helpers (canonical copies live in mcp-central-docs;
+# installers cannot reach the hub, so the files are vendored + hash-checked by
+# audit-mcpb-bundles.ps1. Re-vendored on every build so fixes propagate.)
+$HubNsis = "$Root\..\mcp-central-docs\scripts\nsis\mcp-clients.nsh"
+$HubReg = "$Root\..\mcp-central-docs\scripts\install-mcp-clients.ps1"
+if ((Test-Path $HubNsis) -and (Test-Path $HubReg)) {
+    Copy-Item $HubNsis "$PSScriptRoot\windows\mcp-clients.nsh" -Force
+    Copy-Item $HubReg "$ResourceDir\install-mcp-clients.ps1" -Force
+    Write-Host "  Vendored fleet NSIS helpers OK" -ForegroundColor Green
+} else {
+    Write-Host "  WARNING: mcp-central-docs hub not found - using previously vendored NSIS helpers" -ForegroundColor DarkYellow
+}
+
 # Step 1: TypeScript lint gate + frontend build
 $frontendDirs = @("web", "web_sota", "webapp/frontend", "webapp")
 foreach ($dir in $frontendDirs) {

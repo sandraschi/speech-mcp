@@ -1,4 +1,9 @@
 ; Fleet Tauri: kill UI + backend before install/uninstall (backend locks resources/*.exe).
+; AI-client registration via the vendored mcp-clients.nsh include below
+; (canonical: mcp-central-docs/scripts/nsis/mcp-clients.nsh, vendored by native/build.ps1).
+!define MCP_REG_NAME "speech-mcp"
+!define MCP_REG_EXE "speech-mcp-backend.exe"
+!include "mcp-clients.nsh"
 !macro KillFleetSidecars
   DetailPrint "Stopping fleet processes..."
   ExecWait 'taskkill /F /IM speech-mcp-backend.exe /T' $0
@@ -23,4 +28,9 @@
 
 !macro NSIS_HOOK_PREUNINSTALL
   !insertmacro KillFleetSidecars
+  !insertmacro McpClientsUnregister
+!macroend
+
+!macro NSIS_HOOK_POSTINSTALL
+  !insertmacro McpClientsRegister
 !macroend
