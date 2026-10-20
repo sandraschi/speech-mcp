@@ -31,6 +31,7 @@ async def speak_text(
     gemma_client=None,
     voicestudio_client=None,
     model: str | None = None,
+    mistral_client=None,
 ) -> dict:
     """Synthesize ``text`` and play it on the PC speaker. Honest errors only."""
     text = text.strip()
@@ -49,6 +50,7 @@ async def speak_text(
         gemma_client,
         voicestudio_client,
         model,
+        mistral_client,
     )
     analytics_record(
         provider=provider,
@@ -72,6 +74,7 @@ async def _speak_inner(
     gemma_client,
     voicestudio_client=None,
     model: str | None = None,
+    mistral_client=None,
 ) -> dict:
     try:
         if provider == "gemma":
@@ -120,6 +123,28 @@ async def _speak_inner(
                 return {"success": False, "error": "ElevenLabs not configured"}
             await asyncio.to_thread(lambda: _elevenlabs_speak(el, text, voice_id=voice_id))
             return {"success": True, "provider": "elevenlabs", "voice": voice_id}
+
+        if provider == "mistral":
+            if not mistral_client:
+                return {
+                    "success": False,
+                    "error": "Mistral not configured - set MISTRAL_ENABLED=true and MISTRAL_API_KEY",
+                }
+            wav = await mistral_client.synthesize_wav(text, voice_id=voice_id)
+            if not wav:
+                return {"success": False, "provider": "mistral", "error": "Mistral returned empty audio"}
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(wav)
+                tmp_path = tmp.name
+            try:
+                await _play_wav_file(tmp_path)
+            finally:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+            return {"success": True, "provider": "mistral", "voice": voice_id}
 
         if provider == "voicestudio":
             if not voicestudio_client:

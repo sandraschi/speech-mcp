@@ -17,6 +17,7 @@ def register_stt_tools(
     gemini_client: Any | None = None,
     gemma_client: Any | None = None,
     muse_provider: Any | None = None,
+    mistral_provider: Any | None = None,
 ):
     """Register speech-to-text tools (FunASR native, cloud fallbacks)."""
 
@@ -24,7 +25,13 @@ def register_stt_tools(
     async def transcribe_audio_file(
         file_path: Annotated[str, Field(description="Absolute path to a local audio file (WAV, MP3, FLAC).")],
         provider: Annotated[
-            str, Field(description="STT backend: funasr (local, recommended), gemini, gemma, muse.")
+            str,
+            Field(
+                description=(
+                    "STT backend: funasr (local, recommended), mistral (Voxtral 3, diarization + "
+                    "context biasing), gemini, gemma, muse."
+                )
+            ),
         ] = "funasr",
         language: Annotated[
             str, Field(description="Target language code (en, zh, ja, de, …) or 'auto' for detection.")
@@ -74,6 +81,18 @@ def register_stt_tools(
                     ),
                 }
             return await funasr_provider.transcribe_file(file_path, language=language)
+
+        if provider == "mistral":
+            if not mistral_provider:
+                return {
+                    "success": False,
+                    "error": "Mistral Voxtral not configured.",
+                    "recovery": (
+                        "Set MISTRAL_ENABLED=true plus MISTRAL_API_KEY, or point "
+                        "MISTRAL_SELF_HOST_URL at a local vLLM serving Voxtral-Mini-4B-Realtime."
+                    ),
+                }
+            return await mistral_provider.transcribe_file(file_path, language=language)
 
         if provider == "gemini":
             gemini = gemini_client

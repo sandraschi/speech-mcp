@@ -59,10 +59,11 @@ async def synthesize_wav_bytes(
     *,
     gemini_client: Any | None = None,
     voicestudio_client: Any | None = None,
+    mistral_client: Any | None = None,
 ) -> bytes:
     """Synthesize text -> WAV bytes for files-mode providers (shared by speech + studio tools).
 
-    Supports windows/gemini/qwen/kokoro/voicestudio. Raises NotImplementedError for
+    Supports windows/gemini/mistral/qwen/kokoro/voicestudio. Raises NotImplementedError for
     hume/elevenlabs (MP3 play pipeline, not files-mode), RuntimeError for missing
     clients or empty audio, ValueError for unknown providers.
     """
@@ -104,6 +105,10 @@ async def synthesize_wav_bytes(
             return gemini_client.synthesize_wav(text, voice_name=voice_name)
 
         data = await asyncio.to_thread(_synth_gemini)
+    elif provider == "mistral":
+        if not mistral_client:
+            raise RuntimeError("MISTRAL_ENABLED=true and MISTRAL_API_KEY required for mistral files-mode")
+        data = await mistral_client.synthesize_wav(text, voice_id=voice)
     elif provider == "qwen":
         from speech_mcp.providers.qwen_tts import QwenTTSProvider
 
@@ -225,6 +230,7 @@ def register_speech_tools(
     gemini_client: Any | None = None,
     gemma_client: Any | None = None,
     voicestudio_client: Any | None = None,
+    mistral_client: Any | None = None,
 ):
 
     @mcp.tool(annotations=_MUTATING)
@@ -270,7 +276,12 @@ def register_speech_tools(
     async def text_to_speech(
         text: Annotated[str, Field(description="Text to synthesize and play.")],
         provider: Annotated[
-            str, Field(description="TTS provider: windows, hume, gemini, gemma, elevenlabs, voicestudio, qwen, kokoro.")
+            str,
+            Field(
+                description=(
+                    "TTS provider: windows, hume, gemini, gemma, elevenlabs, mistral, voicestudio, qwen, kokoro."
+                )
+            ),
         ] = "windows",
         voice_id: Annotated[str, Field(description="Provider-specific voice identifier.")] = "default",
         description: Annotated[
@@ -301,6 +312,9 @@ def register_speech_tools(
           - 'gemma'       Gemma 4 Native Local (No API Key).
           - 'elevenlabs'  ElevenLabs (ELEVENLABS_API_KEY). voice_id must be a
                           valid voice ID from your account.
+          - 'mistral'     Mistral Voxtral Speech 3 (MISTRAL_API_KEY). voice_id is
+                          a preset or custom voice; 'default' uses the server
+                          default. 35+ languages, 50+ dialects.
           - 'voicestudio' Local VoiceStudio sidecar (VOICESTUDIO_ENABLED=true).
                           voice_id is a profile_id or voice-bank name. Requires
                           the VoiceStudio backend on VOICESTUDIO_URL.
@@ -545,6 +559,31 @@ def register_speech_tools(
                     ),
                 }
             return await _elevenlabs_speak(eleven_client, text, voice_id)
+
+        # -- Mistral Voxtral 3 speech (hosted or self-hosted) ------------------
+        elif provider == "mistral":
+            if not mistral_client:
+                return {
+                    "success": False,
+                    "error": "Mistral not configured - set MISTRAL_ENABLED=true and MISTRAL_API_KEY.",
+                    "recovery": "Or point MISTRAL_TTS_BASE_URL at a self-hosted server.",
+                }
+            wav = await mistral_client.synthesize_wav(text, voice_id=voice_id)
+            if not wav:
+                return {"success": False, "provider": "mistral", "error": "Mistral returned empty audio"}
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                    tmp.write(wav)
+                    tmp_path = tmp.name
+                await _play_wav_file(tmp_path)
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+            return {"success": True, "provider": "mistral", "voice": voice_id}
 
         # ── VoiceStudio local sidecar ────────────────────────────────────────
         elif provider == "voicestudio":
@@ -881,7 +920,7 @@ def register_speech_tools(
     async def synthesize_to_file(
         text: Annotated[str, Field(description="Text to synthesize (no base64 in response, file path returned).")],
         provider: Annotated[
-            str, Field(description="TTS provider: windows, gemini, qwen, kokoro, voicestudio.")
+            str, Field(description="TTS provider: windows, gemini, mistral, qwen, kokoro, voicestudio.")
         ] = "gemini",
         voice_id: Annotated[str, Field(description="Voice id, voice-bank profile name, or 'default'.")] = "default",
         client_id: Annotated[
@@ -962,6 +1001,7 @@ def register_speech_tools(
                 effective_voice,
                 gemini_client=gemini_client,
                 voicestudio_client=voicestudio_client,
+                mistral_client=mistral_client,
             )
             with open(out_path, "wb") as f:
                 f.write(wav_bytes)

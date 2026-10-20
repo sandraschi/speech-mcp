@@ -36,6 +36,7 @@ from pydantic import BaseModel, Field
 from speech_mcp.providers.funasr import FunASRConfig, FunASRProvider
 from speech_mcp.providers.gemini import GeminiProvider
 from speech_mcp.providers.gemma import gemma_provider
+from speech_mcp.providers.mistral import MistralConfig, MistralProvider
 from speech_mcp.providers.muse import MuseConfig, MuseVoiceProvider
 from speech_mcp.providers.voicestudio import VoiceStudioConfig, VoiceStudioProvider
 from speech_mcp.skills import get_skill, list_skills, register_skill_resources
@@ -48,6 +49,7 @@ from speech_mcp.tools.chat import register_chat_tools
 from speech_mcp.tools.demos import DemoName, register_demo_tools
 from speech_mcp.tools.macros import register_macro_tools
 from speech_mcp.tools.memory import register_memory_tools
+from speech_mcp.tools.mistral_voice import register_mistral_voice_tools
 from speech_mcp.tools.monitoring import register_monitoring_tools
 from speech_mcp.tools.muse_voice import register_muse_tools
 from speech_mcp.tools.rag import register_rag_tools
@@ -108,6 +110,16 @@ VOICESTUDIO_BASE_PATH = os.getenv("VOICESTUDIO_BASE_PATH", "").strip() or None
 MUSE_ENABLED = os.getenv("MUSE_ENABLED", "").lower() in ("1", "true", "yes")
 MUSE_API_KEY = os.getenv("MUSE_API_KEY", "").strip() or None
 MUSE_MODEL = os.getenv("MUSE_MODEL", "muse-voice-transcribe-1.0")
+
+# --- Mistral Voxtral 3 (hosted API or self-hosted vLLM) ---
+MISTRAL_ENABLED = os.getenv("MISTRAL_ENABLED", "").lower() in ("1", "true", "yes")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "").strip() or None
+MISTRAL_SELF_HOST_URL = os.getenv("MISTRAL_SELF_HOST_URL", "").strip() or None
+MISTRAL_STT_MODEL = os.getenv("MISTRAL_STT_MODEL", "voxtral-small-latest")
+MISTRAL_REALTIME_MODEL = os.getenv("MISTRAL_REALTIME_MODEL", "voxtral-mini-transcribe-realtime-3")
+MISTRAL_TTS_MODEL = os.getenv("MISTRAL_TTS_MODEL", "voxtral-mini-tts-3")
+MISTRAL_TTS_BASE_URL = os.getenv("MISTRAL_TTS_BASE_URL", "").strip() or ""
+MISTRAL_CONTEXT_BIAS = tuple(t.strip() for t in os.getenv("MISTRAL_CONTEXT_BIAS", "").split(",") if t.strip())
 
 # --- sherpa-onnx streaming STT (ja/en/de, CPU, barge-in) ---
 SHERPA_ASR_ENABLED = os.getenv("SHERPA_ASR_ENABLED", "").lower() in ("1", "true", "yes")
@@ -426,6 +438,26 @@ if MUSE_ENABLED and MUSE_API_KEY:
         logger.warning(f"Muse Voice Transcribe initialization skipped: {e}")
         muse_provider = None
 
+mistral_provider: MistralProvider | None = None
+if MISTRAL_ENABLED:
+    try:
+        _mistral_kwargs: dict[str, object] = {
+            "api_key": MISTRAL_API_KEY or "",
+            "base_url": MISTRAL_SELF_HOST_URL or "https://api.mistral.ai",
+            "stt_model": MISTRAL_STT_MODEL,
+            "realtime_model": MISTRAL_REALTIME_MODEL,
+            "tts_model": MISTRAL_TTS_MODEL,
+            "tts_base_url": MISTRAL_TTS_BASE_URL,
+            "self_hosted": bool(MISTRAL_SELF_HOST_URL),
+        }
+        if MISTRAL_CONTEXT_BIAS:
+            _mistral_kwargs["context_bias"] = MISTRAL_CONTEXT_BIAS
+        mistral_provider = MistralProvider(MistralConfig(**_mistral_kwargs))
+        logger.info("Mistral Voxtral enabled (%s)", "self-hosted" if MISTRAL_SELF_HOST_URL else "hosted API")
+    except Exception as e:
+        logger.warning(f"Mistral Voxtral initialization skipped: {e}")
+        mistral_provider = None
+
 voicestudio_provider: VoiceStudioProvider | None = None
 if VOICESTUDIO_ENABLED:
     try:
@@ -468,9 +500,22 @@ if SHERPA_ASR_ENABLED:
         sherpa_asr = None
 
 register_speech_tools(
-    mcp, hume_client, eleven_client, gemini_client, gemma_client, voicestudio_client=voicestudio_provider
+    mcp,
+    hume_client,
+    eleven_client,
+    gemini_client,
+    gemma_client,
+    voicestudio_client=voicestudio_provider,
+    mistral_client=mistral_provider,
 )
-register_stt_tools(mcp, funasr_provider, gemini_client, gemma_client, muse_provider=muse_provider)
+register_stt_tools(
+    mcp,
+    funasr_provider,
+    gemini_client,
+    gemma_client,
+    muse_provider=muse_provider,
+    mistral_provider=mistral_provider,
+)
 register_agentic_tools(mcp, hume_client)
 register_utility_tools(mcp)
 register_monitoring_tools(mcp)
@@ -488,6 +533,7 @@ _providers = {
     "windows": True,
     "sherpa_streaming": bool(sherpa_asr),
     "muse": bool(muse_provider),
+    "mistral": bool(mistral_provider),
     "voicestudio": bool(voicestudio_provider),
     "qwen": True,
     "kokoro": True,
@@ -507,12 +553,14 @@ async def _speak(
         hume_client=hume_client,
         gemma_client=gemma_client,
         voicestudio_client=voicestudio_provider,
+        mistral_client=mistral_provider,
     )
 
 
 register_ui_tools(mcp, providers=_providers)
 register_streaming_asr_tools(mcp, sherpa_asr)
 register_muse_tools(mcp, muse_provider)
+register_mistral_voice_tools(mcp, mistral_provider)
 register_runtime_tools(mcp, sherpa_asr)
 register_revise_tools(mcp)
 register_demo_tools(mcp)
@@ -719,6 +767,7 @@ async def health_check():
             "hume_api_key": bool(os.getenv("HUME_API_KEY")),
             "hume_config_id": bool(os.getenv("HUME_CONFIG_ID")),
             "elevenlabs_api_key": bool(os.getenv("ELEVENLABS_API_KEY")),
+            "mistral_api_key": bool(os.getenv("MISTRAL_API_KEY")),
         },
         "providers": {
             "hume": bool(hume_client),
@@ -729,6 +778,7 @@ async def health_check():
             "windows": True,
             "sherpa_streaming": bool(sherpa_asr),
             "muse": bool(muse_provider),
+            "mistral": bool(mistral_provider),
             "voicestudio": bool(voicestudio_provider),
             "qwen": True,
             "kokoro": True,
@@ -770,8 +820,8 @@ async def well_known_speech():
         "server": "speech-mcp",
         "version": _server_version(),
         "transports": {"mcp": "/mcp", "rest": "/api/v1", "ws": "/ws/stream"},
-        "tts": ["windows", "gemini", "hume", "elevenlabs", "gemma", "voicestudio", "qwen", "kokoro"],
-        "stt": ["funasr", "gemini", "gemma", "sherpa_streaming", "muse", "voicestudio"],
+        "tts": ["windows", "gemini", "hume", "elevenlabs", "mistral", "gemma", "voicestudio", "qwen", "kokoro"],
+        "stt": ["funasr", "mistral", "gemini", "gemma", "sherpa_streaming", "muse", "voicestudio"],
         "files_mode": {"tool": "synthesize_to_file", "returns": "output_path (WAV on disk, no base64)"},
         "client_voices": {"bind": "manage_voice_bank(operation='bind_client')", "resolve": "client_id param"},
     }
@@ -785,9 +835,9 @@ async def api_capabilities():
         "fastmcp": _fastmcp_version(),
         "protocols": ["MCP SSE", "REST", "WebSocket"],
         "features": {
-            "tts": ["windows", "gemini", "hume", "elevenlabs", "gemma", "voicestudio", "qwen", "kokoro"],
-            "stt": ["funasr", "gemini", "gemma", "sherpa_streaming", "muse", "voicestudio"],
-            "streaming": ["hume_evi", "gemini_live", "sherpa_streaming"],
+            "tts": ["windows", "gemini", "hume", "elevenlabs", "mistral", "gemma", "voicestudio", "qwen", "kokoro"],
+            "stt": ["funasr", "mistral", "gemini", "gemma", "sherpa_streaming", "muse", "voicestudio"],
+            "streaming": ["hume_evi", "gemini_live", "sherpa_streaming", "mistral_realtime"],
             "barge_in": bool(getattr(sherpa_asr, "_barge_in", None)),
             "rag": True,
             "voice_cloning": True,
@@ -995,6 +1045,24 @@ async def api_voices():
         )
     if gemma_client:
         providers.append({"name": "gemma", "status": "available", "voices": gemma_client.voices})
+    if mistral_provider:
+        try:
+            mistral_voices = await mistral_provider.list_voices()
+        except Exception as e:  # pragma: no cover - network guard only
+            logger.warning("Mistral voices fetch failed: %s", e)
+            mistral_voices = {"success": False, "voices": []}
+        providers.append(
+            {
+                "name": "mistral",
+                "status": "available",
+                "voices": mistral_voices.get("voices", []),
+                "models": {
+                    "stt": mistral_provider.config.stt_model,
+                    "realtime": mistral_provider.config.realtime_model,
+                    "tts": mistral_provider.config.tts_model,
+                },
+            }
+        )
     from speech_mcp.providers.kokoro import KokoroProvider
     from speech_mcp.providers.qwen_tts import QwenTTSProvider
 
@@ -1174,6 +1242,28 @@ async def api_tts(req: TTSRequest):
                 raise HTTPException(status_code=400, detail="voice_id required for ElevenLabs")
             await _elevenlabs_speak(el, req.text, voice_id=effective_voice)
             return {"success": True, "provider": "elevenlabs", "voice": effective_voice}
+        if req.provider == "mistral":
+            if not mistral_provider:
+                raise HTTPException(status_code=503, detail="Mistral not configured - set MISTRAL_ENABLED=true")
+            from speech_mcp.tools.speech import _play_wav_file
+
+            wav = await mistral_provider.synthesize_wav(req.text, voice_id=req.voice_id)
+            if not wav:
+                raise HTTPException(status_code=500, detail="Mistral returned empty audio")
+            import tempfile as _tf_mistral
+
+            with _tf_mistral.NamedTemporaryFile(suffix=".wav", delete=False) as _tmp:
+                _tmp.write(wav)
+                _tmp_path = _tmp.name
+            try:
+                await _play_wav_file(_tmp_path)
+            finally:
+                if os.path.exists(_tmp_path):
+                    try:
+                        os.remove(_tmp_path)
+                    except OSError:
+                        pass
+            return {"success": True, "provider": "mistral", "voice": req.voice_id}
         if req.provider == "voicestudio":
             if not voicestudio_provider:
                 raise HTTPException(status_code=503, detail="VoiceStudio not configured - set VOICESTUDIO_ENABLED=true")
