@@ -104,6 +104,7 @@ speech-mcp is a **gateway**: cloud TTS/live voice plus **local STT via FunASR**.
 | `kokoro` | Batch TTS (local) | Good small (82M Apache, CPU-friendly) | `kokoro` extra + espeak-ng |
 | `hume` | Batch TTS (Octave) | High | `HUME_API_KEY` |
 | `elevenlabs` | Batch TTS + voice cloning | High | `ELEVENLABS_API_KEY` |
+| `mistral` | Batch + realtime STT (diarization, context biasing), batch TTS | High | `MISTRAL_ENABLED` + `MISTRAL_API_KEY`, or `MISTRAL_SELF_HOST_URL` |
 | `windows` | Batch TTS (SAPI5) | Low | None |
 
 ---

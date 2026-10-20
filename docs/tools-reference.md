@@ -22,7 +22,7 @@ Synthesize speech and play it immediately on the PC speaker.
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `text` | str | required | Text to speak. Gemini supports inline audio tags: `[excited]`, `[whispers]`, `[laughs]`, `[sighs]`, `[fast]`, `[slow]` |
-| `provider` | str | `"windows"` | `windows`, `hume`, `gemini`, `gemma`, `elevenlabs`, `voicestudio` |
+| `provider` | str | `"windows"` | `windows`, `hume`, `gemini`, `gemma`, `elevenlabs`, `mistral`, `voicestudio` |
 | `voice_id` | str | `"default"` | Provider-specific voice name (voicestudio: profile_id or voice-bank name) |
 | `description` | str | None | **Hume only.** Prose style prompt (e.g. `"warm, slightly melancholic female voice"`) |
 
@@ -35,6 +35,7 @@ Synthesize speech and play it immediately on the PC speaker.
 | `gemini` | `GOOGLE_API_KEY` | `Kore`, `Aoede`, `Charon`, `Fenrir`, `Orion`, `Puck`, `Leda`, `Zephyr` + more | Gemini 3.1 Flash TTS, inline audio tags |
 | `gemma` | No | local | Gemma 4 local, SAPI5 fallback |
 | `elevenlabs` | `ELEVENLABS_API_KEY` | account voices | High-fidelity synthesis |
+| `mistral` | `MISTRAL_ENABLED` + `MISTRAL_API_KEY`, or `MISTRAL_SELF_HOST_URL` | preset/custom voices, `default` | Voxtral Speech 3, 35+ languages - see [providers/mistral.md](providers/mistral.md) |
 | `voicestudio` | No (needs `VOICESTUDIO_ENABLED=true` + backend on :3900) | profile_id / voice-bank name | Local TTS/clone sidecar — see [providers/voicestudio.md](providers/voicestudio.md) |
 
 **Returns:** `{"success": true, "provider": "...", "bytes_played": N, "status": "played"}`

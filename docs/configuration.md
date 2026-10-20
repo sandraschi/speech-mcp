@@ -12,6 +12,17 @@ HUME_CONFIG_ID=your-hume-evi-config-id   # from evi.hume.ai — needed for EVI c
 # ElevenLabs — voice cloning TTS
 ELEVENLABS_API_KEY=your-elevenlabs-api-key
 
+# Mistral Voxtral 3 - STT (diarization + context biasing) and TTS
+# Hosted: MISTRAL_ENABLED=true + MISTRAL_API_KEY.
+# Self-hosted: MISTRAL_SELF_HOST_URL to a local vLLM, key left empty.
+MISTRAL_ENABLED=false
+MISTRAL_API_KEY=your-mistral-api-key
+MISTRAL_STT_MODEL=voxtral-small-latest
+MISTRAL_REALTIME_MODEL=voxtral-mini-transcribe-realtime-3
+MISTRAL_TTS_MODEL=voxtral-mini-tts-3
+# MISTRAL_CONTEXT_BIAS=FastMCP,NSSM,Voxtral
+# MISTRAL_SELF_HOST_URL=http://127.0.0.1:8010
+
 # Google Gemini — Gemini 3.1 Flash TTS
 # Free key at https://aistudio.google.com/apikey
 GOOGLE_API_KEY=your-google-api-key
@@ -48,6 +59,7 @@ None are required — the server starts and defaults to Windows TTS with no keys
 | `hume` | `HUME_API_KEY` | Batch | High (Octave) | `description` prose style prompt |
 | `gemini` | `GOOGLE_API_KEY` | Batch | Highest | Model: `gemini-3.1-flash-tts-preview` |
 | `elevenlabs` | `ELEVENLABS_API_KEY` | Batch | High | Voice cloning supported |
+| `mistral` | `MISTRAL_ENABLED` + key, or `MISTRAL_SELF_HOST_URL` | Batch + realtime STT, TTS | High | Voxtral 3; diarization + context biasing; see [mistral.md](providers/mistral.md) |
 | `gemini_live` | `GOOGLE_API_KEY` | Real-time | Very good | Full-duplex conversation, sub-second latency |
 
 ---
