@@ -441,4 +441,30 @@ export async function fetchAnalytics(
   }
 }
 
+export interface EviSessionBootstrap {
+  success: boolean;
+  provider: string;
+  acronym: string;
+  websocket_url: string;
+  local_proxy: string;
+  configured: boolean;
+  has_key: boolean;
+  has_config_id: boolean;
+  proxy_status: string;
+  status: string;
+  next_steps: string[];
+}
+
+export async function fetchEviSession(): Promise<EviSessionBootstrap | null> {
+  try {
+    const res = await fetch(`${BACKEND}/api/v1/evi/session`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export { BACKEND };

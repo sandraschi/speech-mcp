@@ -24,6 +24,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BACKEND } from "../api";
+import BillingBanner, { isBillingError } from "./BillingBanner";
 
 const GEMINI_LIVE_VOICES = [
   "Aoede",
@@ -312,7 +313,7 @@ const VoiceChat: React.FC = () => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
-            Voice Chat
+            Gemini Voice Chat
           </h1>
           <p className="text-sm font-bold uppercase tracking-widest text-slate-400">
             Gemini Live · Full-Duplex · Real-Time
@@ -404,12 +405,15 @@ const VoiceChat: React.FC = () => {
         </div>
       )}
 
-      {errorMsg && (
-        <div className="glass-card p-4 border border-rose-500/30 text-rose-400 text-sm font-bold flex items-center gap-3">
-          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
-          {errorMsg}
-        </div>
-      )}
+      {errorMsg &&
+        (isBillingError(errorMsg) ? (
+          <BillingBanner message={errorMsg} />
+        ) : (
+          <div className="glass-card p-4 border border-rose-500/30 text-rose-400 text-sm font-bold flex items-center gap-3">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
+            {errorMsg}
+          </div>
+        ))}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Transcript */}

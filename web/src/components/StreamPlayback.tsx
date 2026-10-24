@@ -1,6 +1,7 @@
 import { Activity, Volume2, XCircle } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import BillingBanner, { isBillingError } from "./BillingBanner";
 
 interface StreamPlaybackProps {
   streamUrl: string | null;
@@ -86,7 +87,7 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
     socket.onmessage = async (event: MessageEvent) => {
       if (!isMounted || !isPlayingRef.current) return;
 
-      // Handle metadata messages (like interrupts from server)
+      // Handle metadata messages (error / interrupts from server)
       if (typeof event.data === "string") {
         try {
           const msg = JSON.parse(event.data);
@@ -94,7 +95,14 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
             setStatus("idle");
             return;
           }
-        } catch (_e) {}
+          if (msg.type === "error") {
+            setErrorMsg(msg.message || "Synthesis failed");
+            setStatus("error");
+            return;
+          }
+        } catch {
+          /* not JSON - ignore */
+        }
         return;
       }
 
@@ -149,6 +157,14 @@ export const StreamPlayback: React.FC<StreamPlaybackProps> = ({
   }, [streamUrl, text, onDone, status, playKey]);
 
   if (status === "idle") return null;
+
+  if (status === "error" && isBillingError(errorMsg)) {
+    return (
+      <div className="mt-4 animate-in fade-in zoom-in-95 duration-500">
+        <BillingBanner message={errorMsg} />
+      </div>
+    );
+  }
 
   return (
     <div className="glass-card p-5 mt-4 animate-in fade-in zoom-in-95 duration-500 border border-white/10 bg-slate-900/60 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden relative group">

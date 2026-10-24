@@ -8,6 +8,7 @@ import AppLayout from "./components/AppLayout";
 import ChatPage from "./components/ChatPage";
 import CreativeLabs from "./components/CreativeLabs";
 import DeviceSettings from "./components/DeviceSettings";
+import EviSession from "./components/EviSession";
 import HealthPage from "./components/HealthPage";
 import HelpPage from "./components/HelpPage";
 import HistoryPage from "./components/HistoryPage";
@@ -278,7 +279,9 @@ function App() {
           <SemanticSearch />
         ) : activePage === "chat" ? (
           <ChatPage />
-        ) : activePage === "lab" || activePage === "evi" ? (
+        ) : activePage === "evi" ? (
+          <EviSession />
+        ) : activePage === "lab" ? (
           <InteractionLab />
         ) : activePage === "creative" || activePage === "tts" ? (
           <CreativeLabs />

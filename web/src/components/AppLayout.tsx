@@ -143,7 +143,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           />
           <NavItem
             icon="🎙️"
-            label="EVI Session"
+            label="Hume Voice Chat"
             active={activePage === "evi"}
             collapsed={isCollapsed}
             onClick={() => {
@@ -153,7 +153,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           />
           <NavItem
             icon="🗣️"
-            label="Voice Chat"
+            label="Gemini Voice Chat"
             active={activePage === "voicechat"}
             collapsed={isCollapsed}
             onClick={() => {
@@ -437,7 +437,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           />
           <NavItem
             icon="🎙️"
-            label="EVI Session"
+            label="Hume Voice Chat"
             active={activePage === "evi"}
             collapsed={false}
             onClick={() => {
@@ -447,7 +447,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           />
           <NavItem
             icon="🗣️"
-            label="Voice Chat"
+            label="Gemini Voice Chat"
             active={activePage === "voicechat"}
             collapsed={false}
             onClick={() => {

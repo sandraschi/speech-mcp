@@ -18,8 +18,9 @@ const HelpPage: React.FC = () => {
           Documentation & Help
         </h2>
         <p className="text-slate-400">
-          Speech MCP: FunASR local STT, cloud TTS, EVI, wake word, RAG, and MCP
-          tools. Expand sections below.
+          Speech MCP: FunASR local STT, cloud TTS, EVI (Empathic Voice Interface
+          — Hume AI realtime conversation), wake word, RAG, and MCP tools.
+          Expand sections below.
         </p>
       </header>
 
@@ -77,6 +78,30 @@ const HelpPage: React.FC = () => {
         </p>
       </Section>
 
+      <Section title="EVI — Empathic Voice Interface (Hume AI)">
+        <p className="text-slate-400 text-sm mb-4">
+          <strong>EVI = Empathic Voice Interface</strong> (Hume AI, not
+          “Empathetic”). Full-duplex conversation model that detects 50+
+          emotional nuances in your voice and adapts its own tone in realtime —
+          backchanneling, affective dialog, native interrupts. This is different
+          from <strong>Octave TTS</strong>, which is batch text-to-speech with
+          emotional prosody via a{" "}
+          <code className="text-accent-purple">description</code> prompt.
+        </p>
+        <ProviderDoc
+          name="Hume EVI (realtime)"
+          envKey="HUME_API_KEY + HUME_CONFIG_ID"
+          docsUrl="https://www.hume.ai/docs"
+          features={[
+            "MCP: start_evi_session — returns websocket_url + local_proxy (/ws/stream?provider=hume) + config_id",
+            "Needs HUME_CONFIG_ID from evi.hume.ai — EVI chat only, not needed for Octave TTS",
+            "Prosody tracking + dynamic adaptation + native overlap handling",
+            "Status: live — web Hume Voice Chat page connects mic via /ws/stream?provider=hume",
+          ]}
+          notes="Full guide: docs/providers/hume.md. EVI vs Gemini Live: docs/modern_speech_ai.md."
+        />
+      </Section>
+
       <Section title="Text-to-speech providers">
         <p className="text-slate-400 text-sm mb-4">
           Cloud and local TTS via{" "}
@@ -89,12 +114,12 @@ const HelpPage: React.FC = () => {
           envKey="HUME_API_KEY"
           docsUrl="https://www.hume.ai/docs"
           features={[
-            "EVI (Empathic Voice Interface) real-time conversation",
+            "EVI (Empathic Voice Interface) realtime conversation — see EVI section above",
             "Octave TTS with emotional prosody",
             "Streaming audio",
             "Voice IDs: ito, kora (and config-dependent)",
           ]}
-          notes="Required for EVI sessions and Hume TTS. Get keys at beta.hume.ai. HUME_CONFIG_ID is needed for EVI."
+          notes="Required for EVI sessions and Hume TTS. Get keys at beta.hume.ai. HUME_CONFIG_ID from evi.hume.ai is needed for EVI chat, not for Octave TTS."
         />
         <ProviderDoc
           name="Gemini 3.1 Flash"
@@ -144,8 +169,12 @@ const HelpPage: React.FC = () => {
             cloud TTS.
           </li>
           <li>
-            Start an EVI session from EVI Session or use Octave TTS from the TTS
-            page.
+            Start an EVI session from the Hume Voice Chat page (Connect EVI —
+            needs <code className="text-accent-purple">HUME_API_KEY</code> +{" "}
+            <code className="text-accent-purple">HUME_CONFIG_ID</code> from
+            evi.hume.ai), via MCP{" "}
+            <code className="text-accent-purple">start_evi_session</code>, or
+            use Octave TTS from the TTS page.
           </li>
           <li>
             Use Semantic Search to query the RAG knowledge base (ingest via MCP
@@ -164,7 +193,7 @@ const HelpPage: React.FC = () => {
           <code className="text-accent-purple">/api/v1/voices</code>,{" "}
           <code className="text-accent-purple">/api/v1/stats</code>,{" "}
           <code className="text-accent-purple">/api/v1/search</code>,{" "}
-          <code className="text-accent-purple">POST /api/v1/tts/wav</code>,{" "}
+          <code className="text-accent-purple">GET /api/v1/tts/wav</code>,{" "}
           <code className="text-accent-purple">POST /api/v1/transcribe</code>{" "}
           (FunASR STT body),{" "}
           <code className="text-accent-purple">/api/v1/utility</code>,{" "}
@@ -199,7 +228,7 @@ const HelpPage: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <TagItem tag="[whispers]" desc="Breathiness & intimacy" />
           <TagItem tag="[happy]" desc="Bright & energetic" />
-          <TagItem tag="[shouts]" desc="Loud & proyecting" />
+          <TagItem tag="[shouts]" desc="Loud & projecting" />
           <TagItem tag="[sad]" desc="Downward & empathetic" />
           <TagItem tag="[serious]" desc="Flattened & authoritative" />
           <TagItem tag="[confused]" desc="Hesitant & inquisitive" />
@@ -217,7 +246,7 @@ const HelpPage: React.FC = () => {
         <ul className="list-disc list-inside text-slate-400 text-sm space-y-2">
           <li>
             <strong>Native Barge-in (Gemini)</strong>: The server automatically
-            stops generating if it detects yours voice (Server-side VAD).
+            stops generating if it detects your voice (Server-side VAD).
           </li>
           <li>
             <strong>Global Interrupt</strong>: Clicking the Stop button in the
@@ -265,8 +294,12 @@ const HelpPage: React.FC = () => {
         </h3>
         <div className="space-y-4">
           <FaqItem
-            q="Why is the EVI session returning 'simulated'?"
-            a="Check HUME_API_KEY and HUME_CONFIG_ID in Settings. If missing or invalid, voice generation falls back to local modes."
+            q="Gemini speech fails with 402 / prepayment credits depleted?"
+            a="The Google AI Studio wallet is empty - Gemini TTS and Gemini Voice Chat share one prepaid balance. Top up at https://ai.studio/projects (AI Studio > Billing). The app shows an amber banner with the payment link instead of failing silently. Hume, ElevenLabs, and local providers keep working."
+          />
+          <FaqItem
+            q="Why is the EVI session returning 'simulated' / MOCK_KEY?"
+            a="start_evi_session returns access_token from HUME_API_KEY (MOCK_KEY when unset) and needs HUME_CONFIG_ID from evi.hume.ai for chat. Set both keys and press Connect EVI on the Hume Voice Chat page."
           />
           <FaqItem
             q="How do I use local LLMs like Ollama?"
