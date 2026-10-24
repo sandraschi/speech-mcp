@@ -65,7 +65,10 @@ async def handle_websocket_stream(
             if not api_key:
                 await websocket.close(code=1008, reason="HUME key not configured")
                 return
-            await _handle_hume(websocket, api_key)
+            hume_cfg = websocket.query_params.get("config_id") or None
+            hume_system = websocket.query_params.get("system", "")
+            hume_voice = websocket.query_params.get("voice", "")
+            await _handle_hume(websocket, hume_client, api_key, hume_cfg, hume_system, hume_voice)
         elif provider == "gemini":
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
@@ -156,9 +159,199 @@ async def _handle_elevenlabs(websocket: WebSocket, client: ElevenLabs, voice_id:
             break
 
 
-async def _handle_hume(websocket: WebSocket, api_key: str):
-    # Hume uses its own socket-like protocol, but we can proxy it
-    pass
+async def _handle_hume(
+    websocket: WebSocket,
+    hume_client: Any | None,
+    api_key: str,
+    config_id: str | None = None,
+    system_instruction: str = "",
+    voice_name: str = "",
+):
+    """Full-duplex Hume EVI voice chat proxy.
+
+    Browser  <──PCM 16kHz──>  this WS  <──base64 audio_input──>  Hume EVI
+                              <──WAV bytes──┘  └──audio_output──┘
+
+    Browser sends:
+      - binary frames: raw 16-bit PCM at 16kHz (mic audio)
+      - JSON text frames: { type: "text", text: "..." }  (text injection)
+
+    Browser receives:
+      - binary frames: WAV audio (48kHz from EVI, playable via AudioContext)
+      - JSON: { type: "session_ready", ... }
+      - JSON: { type: "transcript", role: "user"|"model", text }
+      - JSON: { type: "emotion", scores: {...}, top: [...] }
+      - JSON: { type: "interrupted" } / { type: "turn_complete" }
+      - JSON: { type: "error", message }
+    """
+    from hume.empathic_voice.chat.socket_client import AudioInput, SessionSettings, UserInput
+
+    cfg = (config_id or os.getenv("HUME_CONFIG_ID") or "").strip() or None
+    if hume_client is None:
+        try:
+            from hume import HumeClient as _HumeClient
+
+            hume_client = _HumeClient(api_key=api_key)
+        except Exception as e:
+            await websocket.send_json({"type": "error", "message": f"Hume init failed: {e}"})
+            await websocket.close()
+            return
+
+    def _text_of(obj: Any) -> str:
+        try:
+            m = getattr(obj, "message", None)
+            if m is None:
+                return ""
+            c = getattr(m, "content", "")
+            return c if isinstance(c, str) else str(c or "")
+        except Exception:
+            return ""
+
+    def _emotion_of(obj: Any) -> dict | None:
+        try:
+            models = getattr(obj, "models", None)
+            prosody = getattr(models, "prosody", None) if models is not None else None
+            scores = getattr(prosody, "scores", None) if prosody is not None else None
+            if scores is None:
+                return None
+            dump = scores.model_dump() if hasattr(scores, "model_dump") else dict(scores)
+            if not isinstance(dump, dict) or not dump:
+                return None
+            top = sorted(dump.items(), key=lambda kv: kv[1], reverse=True)[:5]
+            return {"scores": dict(top), "top": [k for k, _ in top]}
+        except Exception:
+            return None
+
+    try:
+        async with hume_client.empathic_voice.chat.connect(
+            api_key=api_key,
+            config_id=cfg,
+            verbose_transcription=True,
+        ) as hume_ws:
+            # Tell EVI we stream Linear16 16kHz mono + optional system prompt.
+            try:
+                from hume.empathic_voice.types.audio_configuration import AudioConfiguration
+
+                settings_kwargs: dict[str, Any] = {
+                    "audio": AudioConfiguration(channels=1, sample_rate=16000, encoding="linear16")
+                }
+                if system_instruction:
+                    settings_kwargs["system_prompt"] = system_instruction
+                if voice_name and voice_name.lower() != "default":
+                    settings_kwargs["voice_id"] = voice_name
+                await hume_ws.send_publish(SessionSettings(**settings_kwargs))
+            except Exception as e:
+                logger.debug("Hume session_settings failed (continuing): %s", e)
+
+            await websocket.send_json({"type": "session_ready", "provider": "hume_evi", "config_id": cfg})
+            logger.info("Hume EVI session opened (config_id=%s)", cfg or "default")
+
+            async def browser_to_hume():
+                while True:
+                    try:
+                        msg = await websocket.receive()
+                    except WebSocketDisconnect:
+                        break
+                    except Exception:
+                        break
+                    if msg.get("type") == "websocket.disconnect":
+                        break
+                    try:
+                        if msg.get("bytes") is not None:
+                            b64 = base64.b64encode(msg["bytes"]).decode("ascii")
+                            await hume_ws.send_publish(AudioInput(data=b64))
+                        elif msg.get("text") is not None:
+                            try:
+                                ctrl = json.loads(msg["text"])
+                            except json.JSONDecodeError:
+                                continue
+                            if ctrl.get("type") == "text" and ctrl.get("text"):
+                                await hume_ws.send_publish(UserInput(text=ctrl["text"]))
+                            # "end_turn" / "interrupt": Hume handles turn-taking
+                            # natively; nothing to forward.
+                    except Exception as e:
+                        logger.debug("browser_to_hume error: %s", e)
+                        break
+
+            async def hume_to_browser():
+                try:
+                    async for event in hume_ws:
+                        try:
+                            etype = getattr(event, "type", "")
+                            if etype == "audio_output":
+                                raw = base64.b64decode(getattr(event, "data", ""))
+                                if raw:
+                                    await websocket.send_bytes(raw)
+                            elif etype == "user_message":
+                                text = _text_of(event)
+                                if not text:
+                                    continue
+                                interim = bool(getattr(event, "interim", False))
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "interim" if interim else "transcript",
+                                            "role": "user",
+                                            "text": text,
+                                        }
+                                    )
+                                )
+                            elif etype == "assistant_message":
+                                text = _text_of(event)
+                                if text:
+                                    await websocket.send_text(
+                                        json.dumps({"type": "transcript", "role": "model", "text": text})
+                                    )
+                                emo = _emotion_of(event)
+                                if emo:
+                                    await websocket.send_text(json.dumps({"type": "emotion", **emo}))
+                            elif etype == "assistant_prosody":
+                                emo = _emotion_of(event)
+                                if emo:
+                                    await websocket.send_text(json.dumps({"type": "emotion", **emo}))
+                            elif etype == "user_interruption":
+                                await websocket.send_text(json.dumps({"type": "interrupted"}))
+                            elif etype == "assistant_end":
+                                await websocket.send_text(json.dumps({"type": "turn_complete"}))
+                            elif etype == "chat_metadata":
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "session_info",
+                                            "chat_id": str(getattr(event, "chat_id", "")),
+                                            "chat_group_id": str(getattr(event, "chat_group_id", "")),
+                                        }
+                                    )
+                                )
+                            elif etype in ("web_socket_error", "error"):
+                                detail = str(getattr(event, "message", event))
+                                await websocket.send_text(json.dumps({"type": "error", "message": detail}))
+                        except WebSocketDisconnect:
+                            break
+                        except Exception as e:
+                            logger.debug("hume_to_browser event error: %s", e)
+                            continue
+                except WebSocketDisconnect:
+                    pass
+                except Exception as e:
+                    logger.debug("hume_to_browser loop error: %s", e)
+                    try:
+                        await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
+                    except Exception:
+                        logger.debug("hume error reply failed (socket already closed)")
+
+            async with anyio.create_task_group() as tg:
+                tg.start_soon(browser_to_hume)
+                tg.start_soon(hume_to_browser)
+
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.exception("Hume EVI session error: %s", e)
+        try:
+            await websocket.send_text(json.dumps({"type": "error", "message": str(e)}))
+        except Exception:
+            logger.debug("Hume EVI error reply failed (socket already closed)")
 
 
 async def _handle_gemini(websocket: WebSocket, api_key: str, voice_id: str):
@@ -191,7 +384,11 @@ async def _handle_gemini(websocket: WebSocket, api_key: str, voice_id: str):
                 await websocket.send_bytes(wav_bytes)
             except Exception as e:
                 logger.exception("Gemini WS TTS failed")
-                await websocket.send_json({"type": "error", "message": str(e)})
+                detail = str(e) or "Unknown Gemini error"
+                lowered = detail.lower()
+                if any(s in lowered for s in ("resource_exhausted", "prepayment", "prepay", "billing", " 402", "(402")):
+                    detail += " Top up: https://ai.studio/projects (AI Studio > Billing)."
+                await websocket.send_json({"type": "error", "message": f"Gemini TTS failed: {detail}"})
 
 
 def _pcm_to_wav_bytes(pcm_bytes: bytes, sample_rate: int = 24000) -> bytes:

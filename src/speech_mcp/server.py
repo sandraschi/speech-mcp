@@ -86,6 +86,10 @@ if os.getenv("GOOGLE_API_KEY") and os.getenv("GEMINI_API_KEY"):
 HUME_API_KEY = os.getenv("HUME_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
+# Google AI Studio billing - Gemini speech (TTS + Live) draws from one prepaid wallet.
+# A 402 RESOURCE_EXHAUSTED must surface as 402 with a payment link, never a bare 500.
+_GOOGLE_BILLING_URL = "https://ai.studio/projects"
+
 # --- FunASR local STT ---
 FUNASR_ENABLED = os.getenv("FUNASR_ENABLED", "").lower() in ("1", "true", "yes")
 FUNASR_OPENAI_URL = os.getenv("FUNASR_OPENAI_URL", "").strip() or None
@@ -1175,6 +1179,28 @@ async def api_history():
     return list(_history)
 
 
+def _gemini_http_exception(e: Exception) -> HTTPException:
+    """Translate a Gemini API failure into an HTTP error the UI can act on.
+
+    Google 402 RESOURCE_EXHAUSTED (prepaid credits depleted) is a billing state,
+    not a bug - it returns 402 with the AI Studio payment link so the frontend
+    renders a top-up banner instead of a generic failure. All other failures
+    return 500 with the provider message (never an empty body).
+    """
+    msg = str(e) or "Unknown Gemini error"
+    lowered = msg.lower()
+    if any(s in lowered for s in ("resource_exhausted", "prepayment", "prepay", "billing", " 402", "(402")):
+        return HTTPException(
+            status_code=402,
+            detail=(
+                "Google AI Studio prepayment credits are depleted - Gemini speech is disabled "
+                f"until the wallet is topped up: {_GOOGLE_BILLING_URL} (AI Studio > Billing). "
+                f"Provider error: {msg}"
+            ),
+        )
+    return HTTPException(status_code=500, detail=f"Gemini request failed: {msg}")
+
+
 @app.post("/api/v1/tts")
 async def api_tts(req: TTSRequest):
     """Synthesize speech via any provider and play on server speaker."""
@@ -1200,13 +1226,18 @@ async def api_tts(req: TTSRequest):
             _default_model = getattr(gemini, "default_model", None)
             _default_model = _default_model if isinstance(_default_model, str) else "gemini-3.8-flash-tts"
             effective_model = req.model or _default_model
-            if req.model:
-                wav = await asyncio.to_thread(
-                    lambda: gemini.synthesize_wav(req.text, voice_name=effective_voice, model=effective_model)
-                )
-            else:
-                # Backwards-compat call shape (existing test pins this exact signature).
-                wav = await asyncio.to_thread(lambda: gemini.synthesize_wav(req.text, voice_name=effective_voice))
+            try:
+                if req.model:
+                    wav = await asyncio.to_thread(
+                        lambda: gemini.synthesize_wav(text=req.text, voice_name=effective_voice, model=effective_model)
+                    )
+                else:
+                    # Backwards-compat call shape (existing test pins this exact signature).
+                    wav = await asyncio.to_thread(lambda: gemini.synthesize_wav(req.text, voice_name=effective_voice))
+            except HTTPException:
+                raise
+            except Exception as e:
+                raise _gemini_http_exception(e) from e
             if not wav:
                 raise HTTPException(status_code=500, detail="Gemini returned empty audio")
             import tempfile as _tf
@@ -1442,7 +1473,12 @@ async def api_tts_wav(text: str, provider: str = "windows", voice_id: str = "def
                 return gemini.synthesize_wav(text, voice_name=effective_voice, model=effective_model)
             return gemini.synthesize_wav(text, voice_name=effective_voice)
 
-        wav_bytes = await asyncio.to_thread(_synth_gemini)
+        try:
+            wav_bytes = await asyncio.to_thread(_synth_gemini)
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise _gemini_http_exception(e) from e
         return Response(content=wav_bytes, media_type="audio/wav")
     if provider == "voicestudio":
         if not voicestudio_provider:
@@ -1857,7 +1893,38 @@ async def api_agentic(req: AgenticRequest):
         "error_type": "not_implemented",
         "suggestions": [
             "Call the MCP tool agentic_conversation_workflow from a sampling-capable client",
-            "Use the Voice Chat page for live conversational interaction",
+            "Use the Gemini Voice Chat page for live conversational interaction",
+        ],
+    }
+
+
+@app.get("/api/v1/evi/session")
+async def api_evi_session():
+    """Non-secret EVI bootstrap for the web EVI Session page.
+
+    Mirrors the MCP tool start_evi_session without leaking HUME_API_KEY.
+    Returns connection targets + readiness flags so the frontend can render
+    setup guidance instead of a fake connected state.
+    """
+    has_key = bool(os.getenv("HUME_API_KEY"))
+    has_config = bool(os.getenv("HUME_CONFIG_ID"))
+    base = os.getenv("SPEECH_MCP_BACKEND_URL", "http://localhost:10909")
+    local_proxy = base.replace("https://", "wss://").replace("http://", "ws://") + "/ws/stream?provider=hume"
+    return {
+        "success": True,
+        "provider": "Hume AI (EVI)",
+        "acronym": "Empathic Voice Interface",
+        "websocket_url": "wss://api.hume.ai/v0/evi/chat",
+        "local_proxy": local_proxy,
+        "configured": has_key and has_config,
+        "has_key": has_key,
+        "has_config_id": has_config,
+        "proxy_status": "live",
+        "status": "ready" if (has_key and has_config) else "needs_setup",
+        "next_steps": [
+            "Set HUME_API_KEY + HUME_CONFIG_ID (from evi.hume.ai) to enable EVI chat",
+            "Open the web EVI Session page and press Connect EVI, or call MCP start_evi_session",
+            "Speak: mic streams 16kHz PCM via /ws/stream?provider=hume to Hume EVI",
         ],
     }
 

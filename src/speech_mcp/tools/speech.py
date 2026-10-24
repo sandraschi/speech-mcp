@@ -17,6 +17,111 @@ logger = logging.getLogger(__name__)
 _MUTATING = {"readonly": False}
 _DESTRUCTIVE = {"readonly": False, "destructive": True}
 
+# EXTERNAL_FAULT_TRANSPARENCY kinds for cloud-provider faults. A bare
+# {"success": False, "error": str(e)} is not an acceptable failure return -
+# the client must get what failed, why, and the exact next step.
+_BILLING_SIGNALS = ("resource_exhausted", "prepayment", "prepay", "billing", " 402", "(402")
+_AUTH_SIGNALS = (
+    "401",
+    "403",
+    "invalid api key",
+    "incorrect api key",
+    "unauthorized",
+    "unauthenticated",
+    "authentication",
+    "api key not valid",
+    "permission denied",
+    "forbidden",
+)
+_GOOGLE_BILLING_URL = "https://ai.studio/projects"
+
+
+def _provider_failure(
+    provider: str,
+    e: Exception,
+    *,
+    fallback_providers: list[str] | None = None,
+    key_help: str | None = None,
+    billing_url: str | None = None,
+) -> dict:
+    """Dialogic failure return for cloud-provider faults (billing / auth / other).
+
+    Tells the client what failed, why, and the exact next step - including a
+    human-escalation message for wallet/key problems only Sandra can fix
+    ("wake Sandra" class: needs_human + human_message).
+    Maps to EXTERNAL_FAULT_TRANSPARENCY kinds billing_exhausted/auth_rejected.
+    """
+    raw = str(e) or f"Unknown {provider} error"
+    lowered = raw.lower()
+    fallbacks = fallback_providers or ["windows"]
+    if any(s in lowered for s in _BILLING_SIGNALS):
+        return {
+            "success": False,
+            "provider": provider,
+            "error": f"{provider} prepaid wallet is empty - {raw}",
+            "error_kind": "billing_exhausted",
+            "recovery": (
+                f"Top up the wallet{f' at {billing_url}' if billing_url else ''}, then retry. "
+                f"Meanwhile use one of: {', '.join(fallbacks)}."
+            ),
+            **({"billing_url": billing_url} if billing_url else {}),
+            "fallback_providers": fallbacks,
+            "needs_human": True,
+            "human_message": (
+                f"Sandra: the {provider} wallet is empty - speech needs a top-up"
+                f"{f' at {billing_url}' if billing_url else ''}."
+            ),
+            "dialogic": {
+                "suggestion": f"{provider} is billing-blocked (402), not broken. Do NOT retry - retries never refill a wallet.",
+                "remediation": f"Reroute to '{fallbacks[0]}' now; escalate the top-up to the user.",
+            },
+        }
+    if any(s in lowered for s in _AUTH_SIGNALS):
+        return {
+            "success": False,
+            "provider": provider,
+            "error": f"{provider} rejected the API key - {raw}",
+            "error_kind": "auth_rejected",
+            "recovery": key_help or f"Check the {provider} API key in .env and restart the backend.",
+            "fallback_providers": fallbacks,
+            "needs_human": True,
+            "human_message": f"Sandra: the {provider} API key was rejected - it needs re-pasting in .env.",
+            "dialogic": {
+                "suggestion": f"{provider} auth failed. Verify the key is actually sent (one check), then escalate.",
+                "remediation": f"Reroute to '{fallbacks[0]}' now; escalate the key fix to the user.",
+            },
+        }
+    return {
+        "success": False,
+        "provider": provider,
+        "error": raw,
+        "error_kind": "provider_error",
+        "fallback_providers": fallbacks,
+        "needs_human": False,
+        "dialogic": {
+            "suggestion": f"{provider} failed on its side, not on the request. Try a fallback provider.",
+            "remediation": f"Retry once with provider='{fallbacks[0]}'.",
+        },
+    }
+
+
+def _key_missing(provider: str, env_var: str, key_help: str, fallbacks: list[str]) -> dict:
+    """Dialogic return for a cloud provider whose key was never configured."""
+    return {
+        "success": False,
+        "provider": provider,
+        "error": f"{provider} not available - {env_var} not set.",
+        "error_kind": "unconfigured",
+        "recovery": key_help,
+        "fallback_providers": fallbacks,
+        "needs_human": True,
+        "human_message": f"Sandra: {provider} needs {env_var} in .env before it can speak.",
+        "dialogic": {
+            "suggestion": f"{provider} was never configured. Use a fallback now; escalate the key setup.",
+            "remediation": f"Reroute to '{fallbacks[0]}' now; escalate key setup to the user.",
+        },
+    }
+
 
 async def _play_wav_file(path: str) -> None:
     """Play a WAV file via winsound (stdlib, zero dependencies)."""
@@ -326,6 +431,12 @@ def register_speech_tools(
         ## Return Format
         {"success": bool, "provider": str, "voice_id": str}
 
+        On failure: {"success": False, "error": str, "error_kind": str,
+        "recovery": str, "fallback_providers": [...], "needs_human": bool,
+        "human_message": str, "dialogic": {"suggestion": str, "remediation": str}}.
+        error_kind follows EXTERNAL_FAULT_TRANSPARENCY (billing_exhausted,
+        auth_rejected, unconfigured, provider_error).
+
         ## Examples
         await text_to_speech("Hello world", provider="windows")
         await text_to_speech("[excited] Great job!", provider="gemini", voice_id="Kore")
@@ -396,18 +507,33 @@ def register_speech_tools(
         # ── Hume AI Octave ─────────────────────────────────────────────────────
         elif provider == "hume":
             if not hume_client:
-                return {"success": False, "error": "HUME_API_KEY not configured"}
-            return await _hume_speak(hume_client, text, description)
+                return _key_missing(
+                    "hume",
+                    "HUME_API_KEY",
+                    "Add HUME_API_KEY to .env (keys at beta.hume.ai) and restart.",
+                    ["gemini", "elevenlabs", "windows"],
+                )
+            try:
+                return await _hume_speak(hume_client, text, description)
+            except Exception as e:
+                logger.exception("Hume TTS failed")
+                return _provider_failure(
+                    "hume",
+                    e,
+                    fallback_providers=["gemini", "elevenlabs", "windows"],
+                    key_help="Check HUME_API_KEY in .env (keys at beta.hume.ai) and restart.",
+                )
 
         # ── Gemini 3.8 Flash / Flash-Lite TTS ────────────────────────────────────
         elif provider == "gemini":
             gemini = gemini_client
             if not gemini:
-                return {
-                    "success": False,
-                    "error": "Gemini TTS not available - GOOGLE_API_KEY not set.",
-                    "recovery": "Add GOOGLE_API_KEY to .env (free at aistudio.google.com/apikey) and restart.",
-                }
+                return _key_missing(
+                    "gemini",
+                    "GOOGLE_API_KEY",
+                    "Add GOOGLE_API_KEY to .env (free at aistudio.google.com/apikey) and restart.",
+                    ["hume", "elevenlabs", "windows"],
+                )
             effective_voice = voice_id if voice_id and voice_id.lower() != "default" else "Kore"
             _default_model = getattr(gemini, "default_model", None)
             _default_model = _default_model if isinstance(_default_model, str) else "gemini-3.8-flash-tts"
@@ -442,7 +568,13 @@ def register_speech_tools(
                 }
             except Exception as e:
                 logger.exception("Gemini TTS failed")
-                return {"success": False, "error": str(e)}
+                return _provider_failure(
+                    "gemini",
+                    e,
+                    fallback_providers=["hume", "elevenlabs", "windows"],
+                    key_help="Check GOOGLE_API_KEY in .env (free at aistudio.google.com/apikey) and restart.",
+                    billing_url=_GOOGLE_BILLING_URL,
+                )
             finally:
                 if tmp_path and os.path.exists(tmp_path):
                     try:
@@ -549,7 +681,12 @@ def register_speech_tools(
         # ── ElevenLabs ─────────────────────────────────────────────────────────
         elif provider == "elevenlabs":
             if not eleven_client:
-                return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
+                return _key_missing(
+                    "elevenlabs",
+                    "ELEVENLABS_API_KEY",
+                    "Add ELEVENLABS_API_KEY to .env and restart.",
+                    ["hume", "gemini", "windows"],
+                )
             if not voice_id or voice_id == "default":
                 return {
                     "success": False,
@@ -558,7 +695,16 @@ def register_speech_tools(
                         "action='list' to see available voices"
                     ),
                 }
-            return await _elevenlabs_speak(eleven_client, text, voice_id)
+            try:
+                return await _elevenlabs_speak(eleven_client, text, voice_id)
+            except Exception as e:
+                logger.exception("ElevenLabs TTS failed")
+                return _provider_failure(
+                    "elevenlabs",
+                    e,
+                    fallback_providers=["hume", "gemini", "windows"],
+                    key_help="Check ELEVENLABS_API_KEY in .env and restart.",
+                )
 
         # -- Mistral Voxtral 3 speech (hosted or self-hosted) ------------------
         elif provider == "mistral":
@@ -664,8 +810,9 @@ def register_speech_tools(
 
         ## Return Format
         ``{"success": bool, "provider": str, "lines": int, "voices_used": int,
-        "bytes_played": int, "status": "played"}`` - or ``{"success": False,
-        "error": str}`` on failure.
+        "bytes_played": int, "status": "played"}`` - or the dialogic failure
+        shape (``error``, ``error_kind``, ``recovery``, ``fallback_providers``,
+        ``needs_human``, ``human_message``, ``dialogic``) on failure.
 
         ## Examples
         ``text_to_dialogue(lines=[{"text": "Hello.", "voice_id": "v1"},
@@ -682,11 +829,12 @@ def register_speech_tools(
         if provider == "gemini":
             gemini = gemini_client
             if not gemini:
-                return {
-                    "success": False,
-                    "error": "Gemini TTS not available - GOOGLE_API_KEY not set.",
-                    "recovery": "Add GOOGLE_API_KEY to .env (free at aistudio.google.com/apikey) and restart.",
-                }
+                return _key_missing(
+                    "gemini",
+                    "GOOGLE_API_KEY",
+                    "Add GOOGLE_API_KEY to .env (free at aistudio.google.com/apikey) and restart.",
+                    ["elevenlabs", "windows"],
+                )
             try:
                 turns = []
                 for i, line in enumerate(lines):
@@ -735,12 +883,23 @@ def register_speech_tools(
                             pass
             except Exception as e:
                 logger.exception("Gemini dialogue failed")
-                return {"success": False, "error": str(e)}
+                return _provider_failure(
+                    "gemini",
+                    e,
+                    fallback_providers=["elevenlabs", "windows"],
+                    key_help="Check GOOGLE_API_KEY in .env (free at aistudio.google.com/apikey) and restart.",
+                    billing_url=_GOOGLE_BILLING_URL,
+                )
 
         if provider != "elevenlabs":
             return {"success": False, "error": f"Unknown dialogue provider '{provider}'. Use 'elevenlabs' or 'gemini'."}
         if not eleven_client:
-            return {"success": False, "error": "ELEVENLABS_API_KEY not configured"}
+            return _key_missing(
+                "elevenlabs",
+                "ELEVENLABS_API_KEY",
+                "Add ELEVENLABS_API_KEY to .env and restart.",
+                ["gemini", "windows"],
+            )
 
         from elevenlabs import DialogueInput
 
@@ -782,7 +941,12 @@ def register_speech_tools(
             }
         except Exception as e:
             logger.exception("ElevenLabs dialogue failed")
-            return {"success": False, "error": str(e)}
+            return _provider_failure(
+                "elevenlabs",
+                e,
+                fallback_providers=["gemini", "windows"],
+                key_help="Check ELEVENLABS_API_KEY in .env and restart.",
+            )
         finally:
             if tmp_path and os.path.exists(tmp_path):
                 try:
