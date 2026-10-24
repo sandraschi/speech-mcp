@@ -13,7 +13,7 @@
   <a href="docs/HUMANOID_VOICE.md"><img src="https://img.shields.io/badge/Humanoid_voice-thesis-8b5cf6?style=flat-square" alt="Humanoid voice thesis"></a>
 </p>
 
-A modern multi-provider speech gateway featuring **Alibaba FunASR local STT**, **Gemini Live real-time voice chat**, **Gemini 3.8 Flash TTS**, **Qwen3-TTS + Kokoro local TTS**, **Hume AI Octave**, and **ElevenLabs** voice cloning — built for **embodied agents and humanoid-scale voice** (wake → understand → fleet act → speak).
+A modern multi-provider speech gateway featuring **Alibaba FunASR local STT**, **Gemini Live real-time voice chat**, **Gemini 3.8 Flash TTS**, **Qwen3-TTS + Kokoro local TTS**, **Hume AI Octave TTS + EVI (Empathic Voice Interface) realtime conversation**, and **ElevenLabs** voice cloning — built for **embodied agents and humanoid-scale voice** (wake → understand → fleet act → speak).
 
 ### Why this repo matters — humanoids and open speech
 
@@ -102,7 +102,7 @@ speech-mcp is a **gateway**: cloud TTS/live voice plus **local STT via FunASR**.
 | `gemma` | Batch TTS/STT | Stub (STT raises, TTS falls back to SAPI5) | None |
 | `qwen` | Batch TTS (local) | Good (0.6B, realtime-capable via endpoint) | `QWEN_TTS_URL` or `qwen-tts` extra |
 | `kokoro` | Batch TTS (local) | Good small (82M Apache, CPU-friendly) | `kokoro` extra + espeak-ng |
-| `hume` | Batch TTS (Octave) | High | `HUME_API_KEY` |
+| `hume` | Batch TTS (Octave) + realtime EVI conversation | High | `HUME_API_KEY` (+ `HUME_CONFIG_ID` for EVI) |
 | `elevenlabs` | Batch TTS + voice cloning | High | `ELEVENLABS_API_KEY` |
 | `mistral` | Batch + realtime STT (diarization, context biasing), batch TTS | High | `MISTRAL_ENABLED` + `MISTRAL_API_KEY`, or `MISTRAL_SELF_HOST_URL` |
 | `windows` | Batch TTS (SAPI5) | Low | None |
@@ -116,6 +116,8 @@ speech-mcp is a **gateway**: cloud TTS/live voice plus **local STT via FunASR**.
 **Gemma 4 Native Multimodal** — SOTA 2026 local engine integration. Features native audio/vision encoders for low-latency conversational reasoning. Supports prosody-aware interaction and local-first Zero-STT fallback. Optimized for A4B throughput (100+ t/s).
 
 **Gemini 3.8 Flash TTS** — Highest-quality cloud synthesis (`gemini-3.8-flash-tts`, Lite: `gemini-3.8-flash-lite-tts`). 31 prebuilt voices + custom/saved 3.8 voices, 100+ languages, voice design from text, expressive audio tags (`[whispers]`, `[excited]`, etc.).
+
+**Hume EVI (Empathic Voice Interface) + Octave TTS** — Full-duplex emotionally-aware conversation (prosody tracking, dynamic adaptation, native interrupt handling) via MCP `start_evi_session` (`HUME_API_KEY` + `HUME_CONFIG_ID` from `evi.hume.ai`) or the web EVI Session page (Connect EVI → mic streams 16kHz PCM via `/ws/stream?provider=hume`). Octave handles batch TTS with emotional prosody (`description` prompt). See [Hume EVI guide](docs/providers/hume.md) and [EVI vs Gemini Live](docs/modern_speech_ai.md).
 
 **Creative Labs** — Polyglot synthesis demo with 19 languages (European, Slavic, Classical, Experimental, Global), literary samples, voice selection, prosody slider, and tongue-twister panel.
 
@@ -139,8 +141,9 @@ speech-mcp is a **gateway**: cloud TTS/live voice plus **local STT via FunASR**.
 - [**FunASR local STT (full guide)**](docs/providers/funasr.md) ← **start here for STT**
 - [**Chinese FOSS speech landscape**](docs/CHINESE_AI_RESEARCH.md) ← SenseVoice, CosyVoice, ChatTTS, GPT-SoVITS, …
 - [Installation](INSTALL.md) — includes `uv sync --extra funasr`
-- [Configuration reference](docs/configuration.md)
-- [Tools reference](docs/tools-reference.md) — `transcribe_*` MCP tools
+- [Configuration reference](docs/configuration.md) — `HUME_API_KEY` + `HUME_CONFIG_ID` (from `evi.hume.ai`, EVI chat only)
+- [Tools reference](docs/tools-reference.md) — `transcribe_*`, `start_evi_session`, TTS, agentic MCP tools
+- [Hume EVI + Octave (Empathic Voice Interface)](docs/providers/hume.md) ← **what EVI is, when to use EVI vs Octave**
 - [Local voice alternatives](docs/local_voice_alternatives.md) ← kyutai-mcp / offline duplex
 - [Gemini Live voice chat](docs/gemini_live.md)
 - [Architecture](docs/architecture.md)
